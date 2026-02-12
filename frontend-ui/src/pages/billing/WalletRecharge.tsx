@@ -1,20 +1,43 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Wallet, CreditCard, Zap, Shield, ArrowLeft, CheckCircle } from "lucide-react";
+import { Wallet, CreditCard, Zap, Shield, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { paymentApi } from "@/lib/api";
 import { useWallet } from "@/contexts/WalletContext";
 
 declare global {
     interface Window {
-        Razorpay: any;
+        Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
     }
+}
+
+interface RazorpayResponse {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+}
+
+interface RazorpayOptions {
+    key: string;
+    amount: number;
+    currency: string;
+    name: string;
+    description: string;
+    order_id: string;
+    handler: (response: RazorpayResponse) => void;
+    prefill: { name: string; email: string };
+    theme: { color: string };
+    modal: { ondismiss: () => void };
+}
+
+interface RazorpayInstance {
+    open: () => void;
 }
 
 const quickAmounts = [500, 1000, 2000, 5000, 10000, 25000];
@@ -24,6 +47,8 @@ const WalletRecharge = () => {
     const [amount, setAmount] = useState<number>(1000);
     const [customAmount, setCustomAmount] = useState<string>("");
     const [isProcessing, setIsProcessing] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [successAmount, setSuccessAmount] = useState<number>(0);
     const { refreshBalance } = useWallet();
 
     const handleAmountSelect = (value: number) => {
@@ -67,7 +92,7 @@ const WalletRecharge = () => {
                 name: "FastFare Logistics",
                 description: `Wallet Recharge - ₹${amount}`,
                 order_id: orderData.orderId,
-                handler: async function (response: any) {
+                handler: async function (response: RazorpayResponse) {
                     try {
                         // Verify payment
                         const result = await paymentApi.verifyPayment({
@@ -78,10 +103,15 @@ const WalletRecharge = () => {
 
                         if (result.success) {
                             toast.success(`₹${amount} added to wallet successfully!`);
+                            setSuccessAmount(amount);
+                            setShowSuccess(true);
                             await refreshBalance();
+                            setIsProcessing(false);
+                            setTimeout(() => setShowSuccess(false), 3000);
                             navigate("/billing");
                         } else {
                             toast.error("Payment verification failed");
+                            setIsProcessing(false);
                         }
                     } catch (error) {
                         toast.error("Payment verification failed");
@@ -104,9 +134,10 @@ const WalletRecharge = () => {
 
             const razorpay = new window.Razorpay(options);
             razorpay.open();
-        } catch (error: any) {
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to initiate payment';
             console.error("Payment error:", error);
-            toast.error(error.message || "Failed to initiate payment");
+            toast.error(errorMessage);
         } finally {
             setIsProcessing(false);
         }
@@ -250,6 +281,45 @@ const WalletRecharge = () => {
                     </Card>
                 </motion.div>
             </div>
+
+            {/* Success Feedback Overlay */}
+            <AnimatePresence>
+                {showSuccess && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                        onClick={() => setShowSuccess(false)}
+                    >
+                        <motion.div
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                                className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4"
+                            >
+                                <CheckCircle className="h-8 w-8 text-green-600" />
+                            </motion.div>
+                            <h3 className="text-xl font-bold mb-2">Recharge Successful!</h3>
+                            <p className="text-muted-foreground mb-4">
+                                ₹{successAmount.toLocaleString()} has been added to your wallet
+                            </p>
+                            <Button
+                                onClick={() => setShowSuccess(false)}
+                                className="w-full bg-green-600 hover:bg-green-700"
+                            >
+                                Done
+                            </Button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </DashboardLayout>
     );
 };

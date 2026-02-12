@@ -17,7 +17,15 @@ import {
     RefreshCw,
     Upload,
     Calculator,
-    Users
+    Users,
+    FileBarChart2,
+    Navigation,
+    Search,
+    ClipboardList,
+    Box,
+    RotateCcw,
+    Radio,
+    Crown
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { authApi } from "@/lib/api";
@@ -32,15 +40,32 @@ const primaryNavItems: NavItem[] = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Users", href: "/users", icon: Users },
     { label: "Shipments", href: "/shipments", icon: Package },
-    { label: "Fleet Tracking", href: "/fleet-tracking", icon: MapPin },
-    { label: "Tracking", href: "/track", icon: MapPin },
+    { label: "My Orders", href: "/my-orders", icon: ClipboardList },
+    { label: "Fleet Tracking", href: "/fleet-tracking", icon: Navigation },
+    { label: "Orders", href: "/partner/orders", icon: ClipboardList },
+    { label: "Fleet View", href: "/partner/fleet-view", icon: Radio },
+    { label: "Activity", href: "/partner/activity", icon: BarChart3 },
+    { label: "Tracking", href: "/track", icon: Search },
+    { label: "Fleet", href: "/fleet", icon: Truck },
     { label: "Warehouse", href: "/warehouse", icon: Warehouse },
     { label: "Drivers", href: "/drivers", icon: Truck },
     { label: "Bulk Ops", href: "/bulk/upload", icon: Upload },
     { label: "Rates", href: "/rates", icon: Calculator },
     { label: "Returns", href: "/returns", icon: RefreshCw },
     { label: "Wallet", href: "/billing", icon: Wallet },
+    { label: "Settlement", href: "/settlement", icon: Crown },
+    { label: "My Reports", href: "/my-reports", icon: FileBarChart2 },
+    { label: "Reports", href: "/reports", icon: FileBarChart2 },
     { label: "Analytics", href: "/analytics", icon: BarChart3 },
+    { label: "Partner Mgmt", href: "/admin/partners", icon: Users },
+    // WMS Items (visible to partners)
+    { label: "Warehouse Hub", href: "/wms", icon: Warehouse },
+    { label: "WMS Fleet", href: "/wms/fleet", icon: Truck },
+    { label: "Inventory", href: "/wms/inventory", icon: Package },
+    { label: "Inbound", href: "/wms/inbound", icon: Box },
+    { label: "RTD Returns", href: "/wms/rtd", icon: RotateCcw },
+    { label: "Live Tracking", href: "/wms/tracking", icon: MapPin },
+    { label: "WMS Reports", href: "/wms/reports", icon: FileBarChart2 },
 ];
 
 const secondaryNavItems: NavItem[] = [
@@ -60,10 +85,27 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
     const user = authApi.getCurrentUser();
 
     const isActive = (href: string) => {
-        if (href === "/dashboard") {
-            return location.pathname === "/dashboard";
+        const currentPath = location.pathname;
+
+        // Exact match for root-level hub pages that have sub-routes under the same prefix
+        // Without this, /wms matches /wms/fleet, /wms/inventory, etc.
+        const exactMatchOnly = ["/dashboard", "/wms"];
+        if (exactMatchOnly.includes(href)) {
+            return currentPath === href;
         }
-        return location.pathname.startsWith(href);
+
+        // Exact match
+        if (currentPath === href) {
+            return true;
+        }
+
+        // Check if current path starts with href followed by a / (for sub-routes)
+        // This prevents /fleet from matching /fleet-tracking
+        if (currentPath.startsWith(href + "/")) {
+            return true;
+        }
+
+        return false;
     };
 
     const handleLogout = () => {
@@ -111,23 +153,38 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                 {/* Primary Navigation */}
                 <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                     {primaryNavItems.filter(item => {
-                        // Admin-only items
-                        const adminItems = ["Users", "Warehouse", "Drivers", "Bulk Ops"];
-                        if (user?.role !== 'admin' && adminItems.includes(item.label)) {
+                        // Hide "My Reports" from admin (admin uses "Reports")
+                        if (user?.role === 'admin' && item.label === "My Reports") {
                             return false;
                         }
 
-                        // Partner specific filtering
+                        // Admin-only items - hide from non-admins
+                        const adminItems = ["Users", "Warehouse", "Drivers", "Bulk Ops", "Fleet", "Fleet Tracking", "Reports", "Analytics", "Partner Mgmt"];
+                        if (user?.role !== 'admin' && adminItems.includes(item.label)) {
+                            // Allow shipment_partner to see Fleet Tracking and Fleet
+                            if (user?.role === 'shipment_partner' && (item.label === "Fleet Tracking" || item.label === "Fleet")) {
+                                return true;
+                            }
+                            return false;
+                        }
+
+                        // Partner specific filtering - show limited menu + WMS items
                         if (user?.role === 'shipment_partner') {
-                            const partnerAllowed = ["Dashboard", "Fleet Tracking", "Tracking", "Wallet", "Settings", "Help Center"];
+                            const partnerAllowed = [
+                                "Dashboard", "Orders", "Fleet", "Fleet Tracking", "Tracking", "Wallet", "Settlement", "My Reports", "Settings", "Help Center",
+                                // WMS items
+                                "Warehouse Hub", "WMS Fleet", "Inventory", "Inbound", "RTD Returns", "Live Tracking", "WMS Reports"
+                            ];
                             return partnerAllowed.includes(item.label);
                         }
 
-                        // Hide Partner-only items for others
-                        if (item.label === "Fleet Tracking") {
-                            return false;
+                        // Regular user filtering - hide partner/admin specific items
+                        if (user?.role === 'user') {
+                            const userAllowed = ["Dashboard", "Shipments", "My Orders", "Tracking", "Rates", "Returns", "Wallet", "My Reports"];
+                            return userAllowed.includes(item.label);
                         }
 
+                        // Admin can see everything except "My Reports" (handled above)
                         return true;
                     }).map((item) => (
                         <Link

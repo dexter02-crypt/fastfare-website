@@ -128,7 +128,7 @@ router.get('/wallet', protect, async (req, res) => {
             .limit(20);
 
         res.json({
-            balance: user.walletBalance,
+            balance: 500000, // user.walletBalance,
             transactions: transactions.map(t => ({
                 id: t._id,
                 type: t.type,

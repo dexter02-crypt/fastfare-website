@@ -1,0 +1,34 @@
+import express from 'express';
+import Vehicle from '../models/Vehicle.js';
+import Trip from '../models/Trip.js';
+import Inventory from '../models/Inventory.js';
+import RTD from '../models/RTD.js';
+
+const router = express.Router();
+
+// GET /api/wms/reports/summary
+router.get('/summary', async (req, res) => {
+    try {
+        const inventoryStats = await Inventory.aggregate([
+            { $group: { _id: '$category', value: { $sum: { $multiply: ['$price', '$stock.total'] } }, count: { $sum: 1 } } }
+        ]);
+
+        const tripStats = await Trip.aggregate([
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
+
+        const vehicleStats = await Vehicle.aggregate([
+            { $group: { _id: '$type', count: { $sum: 1 } } }
+        ]);
+
+        res.json({
+            inventoryByCategory: inventoryStats.map(i => ({ name: i._id, value: i.value, count: i.count })),
+            tripsByStatus: tripStats.map(t => ({ name: t._id, value: t.count })),
+            vehiclesByType: vehicleStats.map(v => ({ name: v._id, value: v.count }))
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+export default router;

@@ -14,8 +14,7 @@ import {
   X,
   FileText,
 } from "lucide-react";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import DashboardLayout from "@/components/DashboardLayout";
 
 const BulkUpload = () => {
   const navigate = useNavigate();
@@ -25,10 +24,10 @@ const BulkUpload = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
 
-  const validateAndSetFile = (file: File) => {
+  const validateAndSetFile = useCallback((selectedFile: File) => {
     // Check extension
     const validExtensions = ['csv', 'xlsx', 'xls'];
-    const extension = file.name.split('.').pop()?.toLowerCase();
+    const extension = selectedFile.name.split('.').pop()?.toLowerCase();
 
     // Check MIME type (permissive)
     const validTypes = [
@@ -39,8 +38,8 @@ const BulkUpload = () => {
       "application/csv"
     ];
 
-    if (validExtensions.includes(extension || '') || validTypes.includes(file.type)) {
-      setFile(file);
+    if (validExtensions.includes(extension || '') || validTypes.includes(selectedFile.type)) {
+      setFile(selectedFile);
     } else {
       toast({
         title: "Invalid File Format",
@@ -48,7 +47,7 @@ const BulkUpload = () => {
         variant: "destructive"
       });
     }
-  };
+  }, [toast]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -68,7 +67,7 @@ const BulkUpload = () => {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       validateAndSetFile(e.dataTransfer.files[0]);
     }
-  }, []);
+  }, [validateAndSetFile]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -101,27 +100,15 @@ const BulkUpload = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Header />
-
-      <main className="flex-1 py-8">
-        <div className="container max-w-3xl mx-auto px-4">
-          {/* Page Header */}
-          <div className="flex items-center gap-4 mb-8">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/dashboard")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Bulk Order Upload</h1>
-              <p className="text-muted-foreground">
-                Upload multiple orders at once using CSV or Excel
-              </p>
-            </div>
-          </div>
+    <DashboardLayout>
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Page Header */}
+        <div>
+          <h1 className="text-2xl font-bold">Bulk Order Upload</h1>
+          <p className="text-muted-foreground">
+            Upload multiple orders at once using CSV or Excel
+          </p>
+        </div>
 
           {/* Instructions Card */}
           <Card className="mb-6">
@@ -308,11 +295,8 @@ const BulkUpload = () => {
               </ul>
             </CardContent>
           </Card>
-        </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </DashboardLayout>
   );
 };
 

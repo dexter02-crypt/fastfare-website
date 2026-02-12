@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
-    Truck, CheckCircle, Package, Wallet, ChevronRight
+    Truck, CheckCircle, Package, Wallet, ChevronRight,
+    Warehouse, MapPin, RotateCcw, Box, TrendingUp, ArrowUpRight
 } from "lucide-react";
 import { authApi } from "@/lib/api";
 
@@ -14,7 +15,16 @@ const stats = [
     { label: "Total Shipments", value: "142", icon: Package, bg: "bg-blue-100", text: "text-blue-600" },
     { label: "In Transit", value: "89", icon: Truck, bg: "bg-orange-100", text: "text-orange-600" },
     { label: "Delivered Today", value: "47", icon: CheckCircle, bg: "bg-green-100", text: "text-green-600" },
-    { label: "Wallet Balance", value: "$12,450", icon: Wallet, bg: "bg-purple-100", text: "text-purple-600" },
+    { label: "Wallet Balance", value: "₹5,00,000", icon: Wallet, bg: "bg-purple-100", text: "text-purple-600" },
+];
+
+const wmsActions = [
+    { label: "Fleet Management", desc: "Vehicles & drivers", icon: Truck, href: "/wms/fleet", color: "from-blue-500 to-blue-600" },
+    { label: "Inventory", desc: "Stock management", icon: Package, href: "/wms/inventory", color: "from-emerald-500 to-emerald-600" },
+    { label: "Inbound", desc: "Receiving dock", icon: Box, href: "/wms/inbound", color: "from-purple-500 to-purple-600" },
+    { label: "Returns (RTD)", desc: "Return to depot", icon: RotateCcw, href: "/wms/rtd", color: "from-orange-500 to-orange-600" },
+    { label: "Live Tracking", desc: "Track drivers", icon: MapPin, href: "/wms/tracking", color: "from-cyan-500 to-cyan-600" },
+    { label: "WMS Reports", desc: "Analytics", icon: TrendingUp, href: "/wms/reports", color: "from-indigo-500 to-indigo-600" },
 ];
 
 const activity = [
@@ -69,11 +79,43 @@ const PartnerDashboard = () => {
                     ))}
                 </div>
 
+                {/* WMS Quick Actions */}
+                <div>
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            <Warehouse className="h-5 w-5 text-primary" />
+                            <h3 className="font-semibold text-lg">Warehouse Management</h3>
+                        </div>
+                        <Link to="/wms">
+                            <Button variant="ghost" className="text-blue-600 font-medium hover:text-blue-700 hover:bg-blue-50 text-sm">
+                                View Full Dashboard <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
+                            </Button>
+                        </Link>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                        {wmsActions.map((action, i) => (
+                            <motion.div key={action.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 + i * 0.05 }}>
+                                <Link to={action.href}>
+                                    <div className="group p-4 rounded-xl border bg-white hover:shadow-md transition-all hover:-translate-y-0.5 text-center">
+                                        <div className={`h-10 w-10 mx-auto rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-3`}>
+                                            <action.icon className="h-5 w-5 text-white" />
+                                        </div>
+                                        <p className="text-sm font-medium">{action.label}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">{action.desc}</p>
+                                    </div>
+                                </Link>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+
                 {/* Recent Activity */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-4 md:p-6 flex items-center justify-between border-b border-gray-100">
                         <h3 className="font-semibold text-lg">Recent Activity</h3>
-                        <Button variant="ghost" className="text-blue-600 font-medium hover:text-blue-700 hover:bg-blue-50">View All</Button>
+                        <Link to="/partner/activity">
+                            <Button variant="ghost" className="text-blue-600 font-medium hover:text-blue-700 hover:bg-blue-50">View All</Button>
+                        </Link>
                     </div>
 
                     <div className="w-full overflow-auto">

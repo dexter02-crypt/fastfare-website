@@ -49,6 +49,8 @@ import PublicTracking from "./pages/tracking/PublicTracking";
 import TrackingResults from "./pages/tracking/TrackingResults";
 import LiveMapTracking from "./pages/tracking/LiveMapTracking";
 import ProofOfDelivery from "./pages/tracking/ProofOfDelivery";
+import UserLiveTracking from "./pages/tracking/UserLiveTracking";
+import PartnerFleetView from "./pages/tracking/PartnerFleetView";
 
 // Rates
 import RateCalculator from "./pages/rates/RateCalculator";
@@ -60,8 +62,18 @@ import InventoryManagement from "./pages/warehouse/InventoryManagement";
 // Drivers
 import DriverManagement from "./pages/drivers/DriverManagement";
 
+// Fleet
+import FleetManagement from "./pages/fleet/FleetManagement";
+import PartnerOrders from "./pages/orders/PartnerOrders";
+import PartnerActivity from "./pages/orders/PartnerActivity";
+import UserOrders from "./pages/orders/UserOrders";
+
 // Analytics
 import AnalyticsDashboard from "./pages/analytics/AnalyticsDashboard";
+
+// Reports
+import Reports from "./pages/reports/Reports";
+import UserReports from "./pages/reports/UserReports";
 
 // Billing
 import BillingDashboard from "./pages/billing/BillingDashboard";
@@ -80,17 +92,49 @@ import FinancialSetup from "./pages/settings/FinancialSetup";
 // Returns
 import ReturnsDashboard from "./pages/returns/ReturnsDashboard";
 
-// Legal
+// Legal — Seller/User Policies
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import TermsOfService from "./pages/legal/TermsOfService";
+import AcceptableUsePolicy from "./pages/legal/AcceptableUsePolicy";
+import SellerRegistrationPolicy from "./pages/legal/SellerRegistrationPolicy";
+import TierMembershipPolicy from "./pages/legal/TierMembershipPolicy";
+import SettlementPayoutPolicy from "./pages/legal/SettlementPayoutPolicy";
+import CODReconciliationPolicy from "./pages/legal/CODReconciliationPolicy";
+import ShippingDeliveryPolicy from "./pages/legal/ShippingDeliveryPolicy";
+import RTOCancellationPolicy from "./pages/legal/RTOCancellationPolicy";
+
+// Legal — Partner Policies
 import PartnerAgreement from "./pages/legal/PartnerAgreement";
+import PartnerPrivacyPolicy from "./pages/legal/PartnerPrivacyPolicy";
+import PartnerOnboardingPolicy from "./pages/legal/PartnerOnboardingPolicy";
+import PartnerPayoutPolicy from "./pages/legal/PartnerPayoutPolicy";
+import PartnerCodeOfConduct from "./pages/legal/PartnerCodeOfConduct";
+import PartnerDisputePolicy from "./pages/legal/PartnerDisputePolicy";
+
+// Legal — Platform-Wide Policies
+import AntiFraudPolicy from "./pages/legal/AntiFraudPolicy";
+import GrievanceRedressalPolicy from "./pages/legal/GrievanceRedressalPolicy";
+import DataRetentionPolicy from "./pages/legal/DataRetentionPolicy";
 
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import PartnerManagement from "./pages/admin/PartnerManagement";
+
+// Settlement & Tier System
+import SettlementDashboard from "./pages/settlement/SettlementDashboard";
 
 // Onboarding
 import BusinessStage from "./pages/onboarding/BusinessStage";
 import SellingChannels from "./pages/onboarding/SellingChannels";
+
+// WMS (Warehouse Management System)
+import WMSDashboard from "./pages/wms/WMSDashboard";
+import WMSFleetManagement from "./pages/wms/FleetManagement";
+import WMSInventoryPage from "./pages/wms/InventoryPage";
+import WMSRTDDashboard from "./pages/wms/RTDDashboard";
+import WMSInboundPage from "./pages/wms/InboundPage";
+import WMSReportsPage from "./pages/wms/WMSReportsPage";
+import WMSTrackingPage from "./pages/wms/WMSTrackingPage";
 
 const queryClient = new QueryClient();
 
@@ -147,6 +191,8 @@ const App = () => (
             <Route path="/track/:awb" element={<TrackingResults />} />
             <Route path="/tracking/:awb/live" element={<LiveMapTracking />} />
             <Route path="/tracking/:awb/pod" element={<ProofOfDelivery />} />
+            <Route path="/track-live/:awb" element={<UserLiveTracking />} />
+            <Route path="/partner/fleet-view" element={<PartnerFleetView />} />
 
             {/* Rates */}
             <Route path="/rates" element={<RateCalculator />} />
@@ -159,8 +205,18 @@ const App = () => (
             {/* Drivers */}
             <Route path="/drivers" element={<DriverManagement />} />
 
+            {/* Fleet */}
+            <Route path="/fleet" element={<FleetManagement />} />
+            <Route path="/partner/orders" element={<PartnerOrders />} />
+            <Route path="/partner/activity" element={<PartnerActivity />} />
+            <Route path="/my-orders" element={<UserOrders />} />
+
             {/* Analytics */}
             <Route path="/analytics" element={<AnalyticsDashboard />} />
+
+            {/* Reports */}
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/my-reports" element={<UserReports />} />
 
             {/* Billing */}
             <Route path="/billing" element={<BillingDashboard />} />
@@ -181,16 +237,48 @@ const App = () => (
 
             {/* Admin */}
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/partners" element={<PartnerManagement />} />
 
-            {/* Legal */}
+            {/* Settlement & Tier System */}
+            <Route path="/settlement" element={<SettlementDashboard />} />
+
+            {/* Legal — Seller/User Policies */}
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/acceptable-use" element={<AcceptableUsePolicy />} />
+            <Route path="/seller-registration-policy" element={<SellerRegistrationPolicy />} />
+            <Route path="/tier-membership" element={<TierMembershipPolicy />} />
+            <Route path="/settlement-payout" element={<SettlementPayoutPolicy />} />
+            <Route path="/cod-reconciliation" element={<CODReconciliationPolicy />} />
+            <Route path="/shipping-delivery" element={<ShippingDeliveryPolicy />} />
+            <Route path="/rto-cancellation" element={<RTOCancellationPolicy />} />
+
+            {/* Legal — Partner Policies */}
             <Route path="/partner-agreement" element={<PartnerAgreement />} />
+            <Route path="/partner-privacy" element={<PartnerPrivacyPolicy />} />
+            <Route path="/partner-onboarding" element={<PartnerOnboardingPolicy />} />
+            <Route path="/partner-payout" element={<PartnerPayoutPolicy />} />
+            <Route path="/partner-code-of-conduct" element={<PartnerCodeOfConduct />} />
+            <Route path="/partner-dispute" element={<PartnerDisputePolicy />} />
+
+            {/* Legal — Platform-Wide Policies */}
+            <Route path="/anti-fraud" element={<AntiFraudPolicy />} />
+            <Route path="/grievance-redressal" element={<GrievanceRedressalPolicy />} />
+            <Route path="/data-retention" element={<DataRetentionPolicy />} />
 
             {/* Onboarding */}
             <Route path="/onboarding/business-stage" element={<BusinessStage />} />
             <Route path="/onboarding/channels" element={<SellingChannels />} />
             <Route path="/onboarding/kyc" element={<KYCVerification />} />
+
+            {/* WMS (Warehouse Management System) */}
+            <Route path="/wms" element={<WMSDashboard />} />
+            <Route path="/wms/fleet" element={<WMSFleetManagement />} />
+            <Route path="/wms/inventory" element={<WMSInventoryPage />} />
+            <Route path="/wms/rtd" element={<WMSRTDDashboard />} />
+            <Route path="/wms/inbound" element={<WMSInboundPage />} />
+            <Route path="/wms/reports" element={<WMSReportsPage />} />
+            <Route path="/wms/tracking" element={<WMSTrackingPage />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

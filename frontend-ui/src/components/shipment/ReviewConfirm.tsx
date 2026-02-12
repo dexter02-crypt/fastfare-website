@@ -13,12 +13,50 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+interface AddressData {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  pincode: string;
+  city: string;
+  state: string;
+  landmark?: string;
+  addressType: string;
+}
+
+interface PackageItem {
+  id: string;
+  name: string;
+  quantity: number;
+  weight: number;
+  length: number;
+  width: number;
+  height: number;
+  value: number;
+}
+
+interface PackagesData {
+  packages: PackageItem[];
+  contentType: string;
+  paymentMode: string;
+  codAmount: number;
+}
+
+interface ServiceData {
+  carrier: string;
+  serviceType: string;
+  insurance: boolean;
+  fragileHandling: boolean;
+  signatureRequired: boolean;
+}
+
 interface ReviewConfirmProps {
   bookingData: {
-    pickup: any;
-    delivery: any;
-    packages: any;
-    service: any;
+    pickup: AddressData;
+    delivery: AddressData;
+    packages: PackagesData;
+    service: ServiceData;
   };
   termsAccepted: boolean;
   onTermsChange: (accepted: boolean) => void;
@@ -74,7 +112,7 @@ const ReviewConfirm = ({
   const totalCost = shippingCost + insuranceCost + fragileCost + signatureCost;
 
   const totalWeight = packages.packages?.reduce(
-    (sum: number, p: any) => sum + p.weight * p.quantity,
+    (sum: number, p: PackageItem) => sum + p.weight * p.quantity,
     0
   ) || 0;
 
@@ -167,7 +205,7 @@ const ReviewConfirm = ({
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {packages.packages?.map((pkg: any, index: number) => (
+            {packages.packages?.map((pkg: PackageItem, index: number) => (
               <div
                 key={pkg.id}
                 className="flex items-center justify-between text-sm p-2 bg-muted rounded"

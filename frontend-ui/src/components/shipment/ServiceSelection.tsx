@@ -6,18 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Truck, Zap, Clock, Shield, Package, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface ServiceFormData {
+  serviceType: string;
+  carrier: string;
+  insurance: boolean;
+  fragileHandling: boolean;
+  signatureRequired: boolean;
+  scheduledPickup: boolean;
+  pickupDate: string;
+  pickupSlot: string;
+}
+
 interface ServiceSelectionProps {
-  data: {
-    serviceType: string;
-    carrier: string;
-    insurance: boolean;
-    fragileHandling: boolean;
-    signatureRequired: boolean;
-    scheduledPickup: boolean;
-    pickupDate: string;
-    pickupSlot: string;
-  };
-  onChange: (data: any) => void;
+  data: ServiceFormData;
+  onChange: (data: ServiceFormData) => void;
 }
 
 const carriers = [
@@ -84,7 +86,7 @@ const serviceTypes = [
 ];
 
 const ServiceSelection = ({ data, onChange }: ServiceSelectionProps) => {
-  const handleChange = (field: string, value: any) => {
+  const handleChange = <K extends keyof ServiceFormData>(field: K, value: ServiceFormData[K]) => {
     onChange({ ...data, [field]: value });
   };
 

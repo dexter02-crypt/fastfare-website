@@ -65,6 +65,9 @@ const shipmentSchema = new mongoose.Schema({
     scheduledPickup: { type: Boolean, default: false },
     pickupDate: Date,
     pickupSlot: String,
+    assignedDriver: { type: String, default: null },   // Driver ID from mobile app
+    assignedDriverName: { type: String, default: null },
+    assignedVehicle: { type: String, default: null },
     status: {
         type: String,
         enum: ['pending', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled', 'returned'],
@@ -81,6 +84,15 @@ const shipmentSchema = new mongoose.Schema({
     totalWeight: Number,
     totalValue: Number,
     shippingCost: Number,
+    platformFee: { type: Number, default: 0 },
+    sellerEarning: { type: Number, default: 0 },
+    settlementStatus: {
+        type: String,
+        enum: ['not_applicable', 'pending', 'scheduled', 'settled', 'held', 'cancelled'],
+        default: 'not_applicable'
+    },
+    settlementDate: Date,
+    rtoCharges: { type: Number, default: 0 },
     createdAt: {
         type: Date,
         default: Date.now

@@ -6,14 +6,18 @@ import {
   LayoutDashboard,
   LogOut,
   Search,
-  Trophy,
   Wallet,
+  MapPin,
   HelpCircle,
   Grid,
   Bell,
   User,
   ChevronDown,
-  ArrowLeft
+  ArrowLeft,
+  Package,
+  Zap,
+  FileText,
+  Truck,
 } from "lucide-react";
 import { useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
@@ -27,23 +31,50 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const Header = () => {
+interface HeaderProps {
+  mobileMenuOpen?: boolean;
+  onMobileMenuToggle?: () => void;
+}
+
+const Header = ({ mobileMenuOpen, onMobileMenuToggle }: HeaderProps = {}) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [localMobileMenuOpen, setLocalMobileMenuOpen] = useState(false);
   const isAuthenticated = authApi.isAuthenticated();
   const user = authApi.getCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
   const { balance } = useWallet();
 
   const navLinks = [
-    { label: "Solutions", href: "#solutions" },
+    { label: "Solutions", href: "#solutions", dropdown: true },
+    { label: "Products", href: "#products", dropdown: true },
     { label: "Pricing", href: "/pricing" },
     { label: "Integrations", href: "#integrations" },
-    { label: "Resources", href: "#resources" },
+    { label: "Resources", href: "#resources", dropdown: true },
+  ];
+
+  const solutionsItems = [
+    { label: "Courier Services", href: "/solutions/courier", icon: Truck },
+    { label: "Warehousing", href: "/solutions/warehousing", icon: Grid },
+    { label: "Returns Management", href: "/solutions/returns", icon: Package },
+  ];
+
+  const productsItems = [
+    { label: "Bulk Shipping", href: "/products/bulk", icon: Package },
+    { label: "Express Delivery", href: "/products/express", icon: Zap },
+    { label: "International", href: "/products/international", icon: Truck },
+  ];
+
+  const resourcesItems = [
+    { label: "Documentation", href: "/resources/docs", icon: FileText },
+    { label: "API", href: "/resources/api", icon: Package },
+    { label: "Support", href: "/support", icon: HelpCircle },
   ];
 
   const handleLogout = () => {
@@ -70,12 +101,24 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between gap-4">
-        <div className="flex items-center gap-4 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Mobile Menu Button - Only for authenticated users */}
+          {isAuthenticated && onMobileMenuToggle && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={onMobileMenuToggle}
+              title="Toggle Menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          )}
+          {/* Back Button */}
           {location.pathname !== "/" && (
             <Button
               variant="ghost"
               size="icon"
-              className="mr-2"
               onClick={() => navigate(-1)}
               title="Go Back"
             >
@@ -106,26 +149,13 @@ const Header = () => {
 
             {/* Right Actions */}
             <div className="flex items-center gap-3 md:gap-6 shrink-0">
-              {/* Business Success Score */}
-              <div className="hidden lg:flex items-center gap-2 text-sm bg-yellow-50 px-3 py-1.5 rounded-full border border-yellow-100">
-                <div className="bg-yellow-100 p-1 rounded-full">
-                  <Trophy className="h-4 w-4 text-yellow-600" />
-                </div>
-                <div className="flex flex-col leading-none">
-                  <span className="text-[10px] text-muted-foreground font-medium uppercase">Business Score</span>
-                  <span className="font-bold text-yellow-700">0/6</span>
-                </div>
-              </div>
-
               {/* Wallet */}
-              <div className="hidden md:flex items-center gap-3 bg-muted/30 px-3 py-1.5 rounded-lg border">
-                <div className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-primary" />
-                  <span className="font-semibold">₹{balance.toLocaleString()}</span>
-                </div>
-                <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => navigate('/billing/recharge')}>
-                  + Add
-                </Button>
+
+
+              {/* Track Order Link */}
+              <div className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onClick={() => navigate('/track')}>
+                <MapPin className="h-4 w-4" />
+                <span className="hidden lg:inline">Track Order</span>
               </div>
 
               {/* Help */}
@@ -160,12 +190,21 @@ const Header = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center gap-2 cursor-pointer">
-                    <Avatar className="h-9 w-9 border">
-                      <AvatarImage src="" />
-                      <AvatarFallback className="bg-primary/10 text-primary">
-                        {getInitials(user?.businessName || "U")}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className={`rounded-full p-[2px] ${user?.role === 'shipment_partner'
+                      ? user?.tier === 'gold'
+                        ? 'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-[0_0_8px_rgba(234,179,8,0.4)]'
+                        : user?.tier === 'silver'
+                          ? 'bg-gradient-to-br from-slate-300 via-slate-400 to-slate-500 shadow-[0_0_8px_rgba(148,163,184,0.4)]'
+                          : 'bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 shadow-[0_0_8px_rgba(180,83,9,0.3)]'
+                      : ''
+                      }`}>
+                      <Avatar className={`h-9 w-9 border-2 border-background`}>
+                        <AvatarImage src="" />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {getInitials(user?.businessName || "U")}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
                     <ChevronDown className="h-4 w-4 text-muted-foreground hidden md:block" />
                   </div>
                 </DropdownMenuTrigger>
@@ -196,17 +235,63 @@ const Header = () => {
           <>
             <nav className="hidden md:flex items-center gap-8">
               {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  to={link.href}
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {link.label}
-                </Link>
+                link.dropdown ? (
+                  <DropdownMenu key={link.label}>
+                    <DropdownMenuTrigger asChild>
+                      <Link
+                        to={link.href}
+                        className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {link.label}
+                        <ChevronDown className="h-3 w-3" />
+                      </Link>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                      {link.label === "Solutions" && solutionsItems.map((item, idx) => (
+                        <DropdownMenuItem key={idx} asChild>
+                          <Link to={item.href} className="flex items-center gap-2 cursor-pointer">
+                            <item.icon className="h-4 w-4" />
+                            {item.label}
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                      {link.label === "Products" && productsItems.map((item, idx) => (
+                        <DropdownMenuItem key={idx} asChild>
+                          <Link to={item.href} className="flex items-center gap-2 cursor-pointer">
+                            <item.icon className="h-4 w-4" />
+                            {item.label}
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                      {link.label === "Resources" && resourcesItems.map((item, idx) => (
+                        <DropdownMenuItem key={idx} asChild>
+                          <Link to={item.href} className="flex items-center gap-2 cursor-pointer">
+                            <item.icon className="h-4 w-4" />
+                            {item.label}
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Link
+                    key={link.label}
+                    to={link.href}
+                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {link.label}
+                  </Link>
+                )
               ))}
             </nav>
 
             <div className="hidden md:flex items-center gap-4">
+              <Link to="/tracking">
+                <Button variant="ghost" size="sm" className="gap-1">
+                  <Package className="h-4 w-4" />
+                  Track Orders
+                </Button>
+              </Link>
               <Link to="/login">
                 <Button variant="ghost" size="sm">
                   Log in

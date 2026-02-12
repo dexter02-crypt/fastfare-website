@@ -52,7 +52,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     return (
         <div className="min-h-screen bg-background">
             {/* Global Header */}
-            <Header />
+            <Header mobileMenuOpen={mobileMenuOpen} onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
 
             {/* Desktop Sidebar */}
             <div className="hidden lg:block">

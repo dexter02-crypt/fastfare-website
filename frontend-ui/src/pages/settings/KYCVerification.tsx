@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,17 +19,35 @@ import {
 const KYCVerification = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [kycType, setKycType] = useState<"gst" | "aadhaar">("aadhaar");
-  const [step, setStep] = useState<"select" | "verify" | "processing" | "complete">("select");
+  const [kycType, setKycType] = useState<"aadhaar" | "pan" | "gst">("aadhaar");
+  const [step, setStep] = useState<"select" | "verify" | "otp" | "processing" | "complete">("select");
   const [gstin, setGstin] = useState("");
+  const [panNumber, setPanNumber] = useState("");
+  const [aadhaarNumber, setAadhaarNumber] = useState("");
+  const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [kycStatus, setKycStatus] = useState<any>(null);
+  const [kycStatus, setKycStatus] = useState<KYCStatus | null>(null);
   const [sessionUrl, setSessionUrl] = useState<string | null>(null);
+  const [verificationDetails, setVerificationDetails] = useState<VerificationDetails | null>(null);
+
+  interface KYCStatus {
+    status: string;
+    verificationType?: string;
+    details?: VerificationDetails;
+    verifiedAt?: string;
+  }
+
+  interface VerificationDetails {
+    gstin?: string;
+    panNumber?: string;
+    aadhaarNumber?: string;
+  }
 
   // Fetch KYC status on mount
   useEffect(() => {
     fetchKycStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchKycStatus = async () => {
@@ -39,7 +58,7 @@ const KYCVerification = () => {
         return;
       }
 
-      const response = await fetch("http://localhost:3000/api/kyc/status", {
+      const response = await fetch(`${API_BASE_URL}/api/kyc/status`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -48,6 +67,7 @@ const KYCVerification = () => {
       if (response.ok) {
         const data = await response.json();
         setKycStatus(data.kyc);
+        setVerificationDetails(data.kyc.details);
 
         // If already verified, show complete step
         if (data.kyc.status === "verified") {
@@ -62,70 +82,182 @@ const KYCVerification = () => {
     }
   };
 
-  const handleProceedToVerify = () => {
-    setStep("verify");
+  const mockAadhaarVerification = async () => {
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const mockResponse = {
+      success: true,
+      details: {
+        aadhaarNumber: "XXXXXXXX" + aadhaarNumber.slice(-4),
+        name: "Demo User",
+        dob: "1990-01-01",
+        gender: "M",
+        address: "123 Demo Street, Demo City - 110001"
+      }
+    };
+
+    setVerificationDetails(mockResponse.details);
+    setStep("otp");
+    setIsLoading(false);
+    toast({
+      title: "OTP Sent",
+      description: "OTP sent to your Aadhaar-linked mobile number",
+    });
   };
 
-  const handleStartVerification = async () => {
-    // Only GST needs validation here, Aadhaar is handled by Didit session
-    if (kycType === "gst" && gstin.length !== 15) {
+  const mockPanVerification = async () => {
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const panRegex = /[A-Z]{5}[0-9]{4}[A-Z]{1}/;
+    if (!panRegex.test(panNumber)) {
+      setIsLoading(false);
       toast({
-        title: "Invalid Input",
-        description: "Please enter a valid 15-character GSTIN",
+        title: "Invalid PAN",
+        description: "Please enter a valid PAN number (e.g., ABCDE1234F)",
         variant: "destructive",
       });
       return;
     }
 
-    setIsLoading(true);
+    const mockResponse = {
+      success: true,
+      details: {
+        panNumber: panNumber.toUpperCase(),
+        name: "Demo User",
+        status: "Active",
+        category: "Individual"
+      }
+    };
 
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        navigate("/login");
+    setVerificationDetails(mockResponse.details);
+    await mockCompleteVerification(mockResponse.details, "pan");
+  };
+
+  const mockOtpVerification = async () => {
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    if (otp !== "123456") {
+      setIsLoading(false);
+      toast({
+        title: "Invalid OTP",
+        description: "For demo, use OTP: 123456",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await mockCompleteVerification(verificationDetails, "aadhaar");
+  };
+
+    const mockCompleteVerification = async (details: VerificationDetails | null, type: string) => {
+    setStep("processing");
+
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    const mockResponse = {
+      success: true,
+      kyc: {
+        status: "verified",
+        verificationType: type,
+        details: details,
+        verifiedAt: new Date().toISOString()
+      }
+    };
+
+    setKycStatus(mockResponse.kyc);
+    localStorage.setItem("kycStatus", "verified");
+    localStorage.removeItem("kycSkippedAt");
+    setIsLoading(false);
+    setShowSuccessDialog(true);
+    setStep("complete");
+
+    toast({
+      title: "KYC Verified",
+      description: "Your KYC has been successfully verified",
+    });
+  };
+
+  const handleProceedToVerify = () => {
+    setStep("verify");
+  };
+
+  const handleStartVerification = async () => {
+    if (kycType === "aadhaar") {
+      if (aadhaarNumber.length !== 12 || !/^\d{12}$/.test(aadhaarNumber)) {
+        toast({
+          title: "Invalid Aadhaar",
+          description: "Please enter a valid 12-digit Aadhaar number",
+          variant: "destructive",
+        });
+        return;
+      }
+      await mockAadhaarVerification();
+    } else if (kycType === "pan") {
+      await mockPanVerification();
+    } else if (kycType === "gst") {
+      if (gstin.length !== 15) {
+        toast({
+          title: "Invalid Input",
+          description: "Please enter a valid 15-character GSTIN",
+          variant: "destructive",
+        });
         return;
       }
 
-      // Create verification session with Didit
-      const response = await fetch("http://localhost:3000/api/kyc/create-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          verificationType: kycType,
-          verificationId: kycType === "gst" ? gstin : undefined,
-        }),
-      });
+      setIsLoading(true);
 
-      const data = await response.json();
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          navigate("/login");
+          return;
+        }
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to create verification session");
+        // Create verification session with Didit
+        const response = await fetch(`${API_BASE_URL}/api/kyc/create-session`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            verificationType: kycType,
+            verificationId: gstin,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to create verification session");
+        }
+
+        // Store session URL and move to processing step
+        setSessionUrl(data.verificationUrl);
+        setStep("processing");
+
+        toast({
+          title: "Verification Started",
+          description: "Complete the verification in the new window.",
+        });
+
+        // Open verification URL in new window
+        if (data.verificationUrl) {
+          window.open(data.verificationUrl, "_blank", "width=600,height=700");
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Verification failed';
+        toast({
+          title: "Verification Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
       }
-
-      // Store session URL and move to processing step
-      setSessionUrl(data.verificationUrl);
-      setStep("processing");
-
-      toast({
-        title: "Verification Started",
-        description: "Complete the verification in the new window.",
-      });
-
-      // Open verification URL in new window
-      if (data.verificationUrl) {
-        window.open(data.verificationUrl, "_blank", "width=600,height=700");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Verification Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -156,7 +288,7 @@ const KYCVerification = () => {
         <p className="text-muted-foreground">KYC helps ensure secure and verified deliveries</p>
       </div>
 
-      <RadioGroup value={kycType} onValueChange={(v) => setKycType(v as "gst" | "aadhaar")}>
+      <RadioGroup value={kycType} onValueChange={(v) => setKycType(v as "aadhaar" | "pan" | "gst")}>
         <div
           className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${kycType === "aadhaar" ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
             }`}
@@ -171,7 +303,23 @@ const KYCVerification = () => {
               <Badge className="bg-green-500 hover:bg-green-600">RECOMMENDED</Badge>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              Verify instantly using UIDAI Aadhaar verification
+              Verify instantly using UIDAI Aadhaar verification with OTP
+            </p>
+          </div>
+        </div>
+
+        <div
+          className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${kycType === "pan" ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
+            }`}
+          onClick={() => setKycType("pan")}
+        >
+          <RadioGroupItem value="pan" id="pan" className="mt-1" />
+          <div className="flex-1">
+            <Label htmlFor="pan" className="font-semibold cursor-pointer">
+              Verify with PAN
+            </Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Verify using your PAN card number
             </p>
           </div>
         </div>
@@ -215,7 +363,23 @@ const KYCVerification = () => {
           <div>
             <h2 className="text-xl font-semibold mb-2">Secure Aadhaar Verification</h2>
             <p className="text-muted-foreground">
-              We will redirect you to Didit's secure verification page where you can enter your Aadhaar details and receive an OTP on your linked mobile number.
+              Enter your 12-digit Aadhaar number to receive OTP verification
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="aadhaar">Aadhaar Number</Label>
+            <Input
+              id="aadhaar"
+              type="text"
+              placeholder="1234 5678 9012"
+              value={aadhaarNumber.replace(/(\d{4})(?=\d)/g, '$1 ')}
+              onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
+              maxLength={14}
+              className="font-mono text-lg"
+            />
+            <p className="text-xs text-muted-foreground">
+              12-digit Aadhaar number
             </p>
           </div>
 
@@ -227,22 +391,59 @@ const KYCVerification = () => {
             <ul className="list-disc list-inside text-sm text-blue-700 dark:text-blue-400 space-y-1">
               <li>Official UIDAI verification</li>
               <li>OTP sent to Aadhaar-linked mobile</li>
-              <li>Instant verification</li>
+              <li>For demo use OTP: 123456</li>
             </ul>
           </div>
 
           <Button
             onClick={handleStartVerification}
-            disabled={isLoading}
+            disabled={aadhaarNumber.length !== 12 || isLoading}
             className="w-full gradient-primary"
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Starting Session...
+                Sending OTP...
               </>
             ) : (
-              "Start Verification Session"
+              "Send OTP"
+            )}
+          </Button>
+        </div>
+      ) : kycType === "pan" ? (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold mb-2">Enter Your PAN</h2>
+            <p className="text-muted-foreground">We'll verify your identity using PAN records</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pan">PAN Number</Label>
+            <Input
+              id="pan"
+              placeholder="ABCDE1234F"
+              value={panNumber.toUpperCase()}
+              onChange={(e) => setPanNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
+              maxLength={10}
+              className="font-mono text-lg uppercase"
+            />
+            <p className="text-xs text-muted-foreground">
+              10-character PAN (e.g., ABCDE1234F)
+            </p>
+          </div>
+
+          <Button
+            onClick={handleStartVerification}
+            disabled={panNumber.length !== 10 || isLoading}
+            className="w-full gradient-primary"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              "Verify PAN"
             )}
           </Button>
         </div>
@@ -284,6 +485,64 @@ const KYCVerification = () => {
           </Button>
         </div>
       )}
+    </motion.div>
+  );
+
+  const renderOtpStep = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      <Button variant="ghost" className="gap-2 -ml-2" onClick={() => setStep("verify")}>
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </Button>
+
+      <div>
+        <h2 className="text-xl font-semibold mb-2">Enter OTP</h2>
+        <p className="text-muted-foreground">
+          Enter the 6-digit OTP sent to your Aadhaar-linked mobile number
+        </p>
+      </div>
+
+      {verificationDetails && (
+        <div className="bg-gray-50 dark:bg-gray-900/30 p-4 rounded-lg border">
+          <p className="text-sm font-medium mb-1">Aadhaar Number</p>
+          <p className="font-mono">{verificationDetails.aadhaarNumber}</p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="otp">OTP</Label>
+        <Input
+          id="otp"
+          type="text"
+          placeholder="123456"
+          value={otp}
+          onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          maxLength={6}
+          className="font-mono text-2xl text-center tracking-widest"
+        />
+        <p className="text-xs text-center text-muted-foreground">
+          For demo, use OTP: 123456
+        </p>
+      </div>
+
+      <Button
+        onClick={mockOtpVerification}
+        disabled={otp.length !== 6 || isLoading}
+        className="w-full gradient-primary"
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Verifying...
+          </>
+        ) : (
+          "Verify OTP"
+        )}
+      </Button>
     </motion.div>
   );
 
@@ -400,22 +659,40 @@ const KYCVerification = () => {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Shield className="h-6 w-6 text-primary" />
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle>Complete Your KYC</CardTitle>
+                  <CardDescription>
+                    KYC verification is required to start shipping
+                  </CardDescription>
+                </div>
               </div>
-              <div>
-                <CardTitle>Complete Your KYC</CardTitle>
-                <CardDescription>
-                  KYC verification is required to start shipping
-                </CardDescription>
-              </div>
+              <Button variant="ghost" size="sm" onClick={() => {
+                  if (confirm("Are you sure you want to skip KYC? Some features may be restricted.")) {
+                    const user = JSON.parse(localStorage.getItem("user") || "{}");
+                    user.kycSkipped = true;
+                    localStorage.setItem("user", JSON.stringify(user));
+                    
+                    // Set keys for Dashboard reminder
+                    localStorage.setItem("kycStatus", "pending");
+                    localStorage.setItem("kycSkippedAt", new Date().toISOString());
+                    
+                    navigate("/dashboard");
+                  }
+              }}>
+                Skip for now
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
             <AnimatePresence mode="wait">
               {step === "select" && renderSelectStep()}
               {step === "verify" && renderVerifyStep()}
+              {step === "otp" && renderOtpStep()}
               {step === "processing" && renderProcessingStep()}
               {step === "complete" && renderCompleteStep()}
             </AnimatePresence>

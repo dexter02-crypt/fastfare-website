@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -113,7 +114,7 @@ const NewShipmentBooking = () => {
           pickupSlot: serviceData.pickupSlot,
         };
 
-        const response = await fetch("http://localhost:3000/api/shipments/create", {
+        const response = await fetch(`${API_BASE_URL}/api/shipments/create`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -135,10 +136,11 @@ const NewShipmentBooking = () => {
 
         navigate("/shipment/success", { state: { shipment: data.shipment } });
 
-      } catch (error: any) {
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Could not book shipment. Please try again.';
         toast({
           title: "Booking Failed",
-          description: error.message || "Could not book shipment. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {

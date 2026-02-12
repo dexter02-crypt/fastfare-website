@@ -7,13 +7,52 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import DashboardLayout from "@/components/DashboardLayout";
 import {
   Settings, Bell, Shield, Key, Globe, Building2, Users,
-  CreditCard, Package, Truck, Save, RefreshCw
+  CreditCard, Package, Truck, Save, RefreshCw, Smartphone,
+  Lock, Monitor, Laptop, AlertTriangle, CheckCircle, X
 } from "lucide-react";
 import { toast } from "sonner";
+
+// Mock active sessions data
+const mockSessions = [
+  {
+    id: "1",
+    device: "Chrome on Windows",
+    icon: Monitor,
+    location: "Mumbai, India",
+    ip: "192.168.1.100",
+    lastActive: "Active now",
+    isCurrent: true
+  },
+  {
+    id: "2",
+    device: "Safari on MacBook",
+    icon: Laptop,
+    location: "Delhi, India",
+    ip: "192.168.2.55",
+    lastActive: "2 hours ago",
+    isCurrent: false
+  },
+  {
+    id: "3",
+    device: "FastFare Mobile App",
+    icon: Smartphone,
+    location: "Pune, India",
+    ip: "192.168.3.200",
+    lastActive: "Yesterday",
+    isCurrent: false
+  }
+];
 
 const SettingsPage = () => {
   const [notifications, setNotifications] = useState({
@@ -35,6 +74,22 @@ const SettingsPage = () => {
     test: "ff_test_" + Math.random().toString(36).substring(7)
   });
 
+  // Security state
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorDialog, setTwoFactorDialog] = useState(false);
+  const [twoFactorStep, setTwoFactorStep] = useState(1);
+  const [otpCode, setOtpCode] = useState("");
+
+  const [passwordDialog, setPasswordDialog] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    current: "",
+    new: "",
+    confirm: ""
+  });
+
+  const [sessionsDialog, setSessionsDialog] = useState(false);
+  const [sessions, setSessions] = useState(mockSessions);
+
   const handleSave = () => {
     toast.success("Settings saved successfully");
   };
@@ -50,12 +105,64 @@ const SettingsPage = () => {
     toast.success("Copied to clipboard");
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
+  // 2FA Handlers
+  const handleEnable2FA = () => {
+    setTwoFactorStep(1);
+    setOtpCode("");
+    setTwoFactorDialog(true);
+  };
 
-      <main className="container py-8">
-        <div className="mb-8">
+  const handleVerify2FA = () => {
+    if (otpCode.length === 6) {
+      setTwoFactorEnabled(true);
+      setTwoFactorDialog(false);
+      toast.success("Two-Factor Authentication enabled successfully!");
+    } else {
+      toast.error("Please enter a valid 6-digit code");
+    }
+  };
+
+  const handleDisable2FA = () => {
+    setTwoFactorEnabled(false);
+    toast.success("Two-Factor Authentication disabled");
+  };
+
+  // Password Change Handler
+  const handleChangePassword = () => {
+    if (!passwordData.current) {
+      toast.error("Please enter your current password");
+      return;
+    }
+    if (passwordData.new.length < 8) {
+      toast.error("New password must be at least 8 characters");
+      return;
+    }
+    if (passwordData.new !== passwordData.confirm) {
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    // Simulate API call
+    toast.success("Password changed successfully!");
+    setPasswordDialog(false);
+    setPasswordData({ current: "", new: "", confirm: "" });
+  };
+
+  // Session Management
+  const handleTerminateSession = (sessionId: string) => {
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    toast.success("Session terminated successfully");
+  };
+
+  const handleTerminateAllOther = () => {
+    setSessions(prev => prev.filter(s => s.isCurrent));
+    toast.success("All other sessions terminated");
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground">Manage your account and organization preferences</p>
         </div>
@@ -332,28 +439,58 @@ const SettingsPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Security Settings</CardTitle>
+                  <CardDescription>Manage your account security</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Two-Factor Authentication */}
                   <div className="flex items-center justify-between p-4 rounded-lg border">
-                    <div>
-                      <p className="font-medium">Two-Factor Authentication</p>
-                      <p className="text-sm text-muted-foreground">Add extra security to your account</p>
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${twoFactorEnabled ? 'bg-green-100' : 'bg-gray-100'}`}>
+                        <Smartphone className={`h-5 w-5 ${twoFactorEnabled ? 'text-green-600' : 'text-gray-600'}`} />
+                      </div>
+                      <div>
+                        <p className="font-medium">Two-Factor Authentication</p>
+                        <p className="text-sm text-muted-foreground">
+                          {twoFactorEnabled ? 'Your account is protected with 2FA' : 'Add extra security to your account'}
+                        </p>
+                      </div>
                     </div>
-                    <Button variant="outline">Enable 2FA</Button>
+                    {twoFactorEnabled ? (
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-green-100 text-green-800">Enabled</Badge>
+                        <Button variant="outline" size="sm" onClick={handleDisable2FA}>Disable</Button>
+                      </div>
+                    ) : (
+                      <Button variant="outline" onClick={handleEnable2FA}>Enable 2FA</Button>
+                    )}
                   </div>
+
+                  {/* Change Password */}
                   <div className="flex items-center justify-between p-4 rounded-lg border">
-                    <div>
-                      <p className="font-medium">Change Password</p>
-                      <p className="text-sm text-muted-foreground">Update your password regularly</p>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-blue-100">
+                        <Lock className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Change Password</p>
+                        <p className="text-sm text-muted-foreground">Update your password regularly</p>
+                      </div>
                     </div>
-                    <Button variant="outline">Change</Button>
+                    <Button variant="outline" onClick={() => setPasswordDialog(true)}>Change</Button>
                   </div>
+
+                  {/* Active Sessions */}
                   <div className="flex items-center justify-between p-4 rounded-lg border">
-                    <div>
-                      <p className="font-medium">Active Sessions</p>
-                      <p className="text-sm text-muted-foreground">3 active sessions</p>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-purple-100">
+                        <Monitor className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Active Sessions</p>
+                        <p className="text-sm text-muted-foreground">{sessions.length} active session(s)</p>
+                      </div>
                     </div>
-                    <Button variant="outline">Manage</Button>
+                    <Button variant="outline" onClick={() => setSessionsDialog(true)}>Manage</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -403,11 +540,172 @@ const SettingsPage = () => {
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
+      </div>
 
-      <Footer />
-    </div>
+      {/* 2FA Setup Dialog */}
+      <Dialog open={twoFactorDialog} onOpenChange={setTwoFactorDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
+            <DialogDescription>
+              Add an extra layer of security to your account
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {twoFactorStep === 1 && (
+              <>
+                <div className="text-center space-y-4">
+                  <div className="mx-auto w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <Smartphone className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-muted-foreground">QR Code</p>
+                      <p className="text-xs text-muted-foreground">(Scan with authenticator app)</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                  </p>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Or enter this code manually:</p>
+                    <code className="font-mono text-sm">JBSW Y3DP EHPK 3PXP</code>
+                  </div>
+                </div>
+                <Button className="w-full" onClick={() => setTwoFactorStep(2)}>
+                  Continue
+                </Button>
+              </>
+            )}
+
+            {twoFactorStep === 2 && (
+              <>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Enter the 6-digit code from your authenticator app
+                  </p>
+                  <Input
+                    placeholder="000000"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="text-center text-2xl font-mono tracking-widest"
+                    maxLength={6}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setTwoFactorStep(1)}>
+                    Back
+                  </Button>
+                  <Button className="flex-1" onClick={handleVerify2FA}>
+                    Verify & Enable
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={passwordDialog} onOpenChange={setPasswordDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>
+              Enter your current password and choose a new one
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Current Password</label>
+              <Input
+                type="password"
+                placeholder="Enter current password"
+                value={passwordData.current}
+                onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">New Password</label>
+              <Input
+                type="password"
+                placeholder="Enter new password"
+                value={passwordData.new}
+                onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">Minimum 8 characters</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Confirm New Password</label>
+              <Input
+                type="password"
+                placeholder="Confirm new password"
+                value={passwordData.confirm}
+                onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasswordDialog(false)}>Cancel</Button>
+            <Button onClick={handleChangePassword}>Change Password</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Active Sessions Dialog */}
+      <Dialog open={sessionsDialog} onOpenChange={setSessionsDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Active Sessions</DialogTitle>
+            <DialogDescription>
+              Manage devices where you're currently logged in
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3">
+            {sessions.map((session) => (
+              <div key={session.id} className="flex items-center justify-between p-3 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-full ${session.isCurrent ? 'bg-green-100' : 'bg-gray-100'}`}>
+                    <session.icon className={`h-5 w-5 ${session.isCurrent ? 'text-green-600' : 'text-gray-600'}`} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{session.device}</p>
+                      {session.isCurrent && <Badge className="text-xs bg-green-100 text-green-800">Current</Badge>}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{session.location} • {session.ip}</p>
+                    <p className="text-xs text-muted-foreground">{session.lastActive}</p>
+                  </div>
+                </div>
+                {!session.isCurrent && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => handleTerminateSession(session.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            {sessions.length > 1 && (
+              <Button variant="outline" className="text-red-600" onClick={handleTerminateAllOther}>
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Terminate All Other Sessions
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </DashboardLayout>
   );
 };
 
 export default SettingsPage;
+

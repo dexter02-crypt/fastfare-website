@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Alert } from "@/components/ui/alert";
 import {
   LayoutDashboard,
   Truck,
@@ -22,6 +23,9 @@ import {
   Plus,
   Calculator,
   MoreVertical,
+  Shield,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/logo.png";
@@ -75,7 +79,7 @@ const stats = [
   },
   {
     label: "Wallet Balance",
-    value: "₹12,450",
+    value: "₹5,00,000",
     sublabel: "Available credits",
     icon: Wallet,
     color: "bg-purple-50 text-purple-600",
@@ -123,7 +127,63 @@ const shipments = [
 
 const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showKycReminder, setShowKycReminder] = useState(false);
   const location = useLocation();
+  const [userRole, setUserRole] = useState<string>("");
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    setUserRole(user.role || "");
+
+    const kycStatus = localStorage.getItem("kycStatus");
+    const kycSkippedAt = localStorage.getItem("kycSkippedAt");
+
+    if (kycStatus === "pending" && kycSkippedAt) {
+      setShowKycReminder(true);
+    }
+  }, []);
+
+  const stats = [
+    {
+      label: "Total Shipments",
+      value: "142",
+      change: "+5% vs last week",
+      positive: true,
+      icon: Package,
+      color: "bg-blue-50 text-primary",
+    },
+    {
+      label: "In Transit",
+      value: "89",
+      sublabel: "Active deliveries",
+      icon: Truck,
+      color: "bg-orange-50 text-orange-600",
+    },
+    {
+      label: "Delivered Today",
+      value: "47",
+      change: "+12% vs yesterday",
+      positive: true,
+      icon: CheckCircle,
+      color: "bg-green-50 text-success",
+    },
+    {
+      label: userRole === 'shipment_partner' ? "Account Funds" : "Wallet Balance",
+      value: "₹5,00,000",
+      sublabel: "Available credits",
+      icon: Wallet,
+      color: "bg-purple-50 text-purple-600",
+    },
+  ];
+
+  const handleDismissKycReminder = () => {
+    setShowKycReminder(false);
+  };
+
+  const kycSkippedAt = localStorage.getItem("kycSkippedAt");
+  const daysSinceSkip = kycSkippedAt
+    ? Math.floor((Date.now() - new Date(kycSkippedAt).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
 
   return (
     <div className="min-h-screen bg-muted/30 flex w-full">
@@ -257,6 +317,65 @@ const Dashboard = () => {
               </div>
             </div>
 
+            {/* KYC Reminder Banner */}
+            {showKycReminder && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6"
+              >
+                <Alert className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 dark:from-amber-950/20 dark:to-orange-950/20 dark:border-amber-800">
+                  <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <AlertCircle className="h-4 w-4 inline mr-2 text-amber-600 dark:text-amber-400" />
+                        <strong className="text-amber-900 dark:text-amber-100">Complete KYC Verification</strong>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-amber-600 hover:text-amber-800 dark:text-amber-400"
+                        onClick={handleDismissKycReminder}
+                      >
+                        <X size={14} />
+                      </Button>
+                    </div>
+                    <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
+                      Your KYC is still pending. Complete it to unlock all features and start shipping.
+                      {daysSinceSkip > 0 && (
+                        <span className="ml-2 font-medium">
+                          (Skipped {daysSinceSkip} {daysSinceSkip === 1 ? 'day' : 'days'} ago)
+                        </span>
+                      )}
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                        onClick={() => {
+                          handleDismissKycReminder();
+                        }}
+                      >
+                        <Link to="/settings/kyc" className="flex items-center gap-1">
+                          Complete KYC Now <ChevronRight size={14} />
+                        </Link>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/30"
+                        onClick={handleDismissKycReminder}
+                      >
+                        Remind Later
+                      </Button>
+                    </div>
+                  </div>
+                </Alert>
+              </motion.div>
+            )}
+
             {/* Stats Grid */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               {stats.map((stat) => (
@@ -309,9 +428,11 @@ const Dashboard = () => {
             <div className="bg-card rounded-xl border border-border shadow-card">
               <div className="p-5 border-b border-border flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Recent Shipments</h2>
-                <Button variant="ghost" size="sm" className="text-primary gap-1">
-                  View all <ChevronRight size={16} />
-                </Button>
+                <Link to="/shipments">
+                  <Button variant="ghost" size="sm" className="text-primary gap-1">
+                    View all <ChevronRight size={16} />
+                  </Button>
+                </Link>
               </div>
               <div className="overflow-x-auto">
                 <Table>

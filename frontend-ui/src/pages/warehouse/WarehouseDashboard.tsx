@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import DashboardLayout from "@/components/DashboardLayout";
 import {
   Warehouse, Package, TrendingUp, AlertTriangle, Plus, Search,
   ArrowUpRight, ArrowDownRight, MapPin, Users, Truck, BarChart3
@@ -38,11 +37,9 @@ const WarehouseDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="container py-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Warehouse Management</h1>
             <p className="text-muted-foreground">Manage inventory and fulfillment operations</p>
@@ -203,10 +200,8 @@ const WarehouseDashboard = () => {
             </Card>
           </div>
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </DashboardLayout>
   );
 };
 

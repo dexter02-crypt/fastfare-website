@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Package, Truck, MapPin } from "lucide-react";
-import logo from "@/assets/logo.png";
+import Header from "@/components/Header";
 
 const PublicTracking = () => {
   const navigate = useNavigate();
@@ -23,19 +23,8 @@ const PublicTracking = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <a href="/" className="flex items-center gap-2">
-              <img src={logo} alt="FastFare" className="h-8 w-auto" />
-            </a>
-            <Button variant="outline" onClick={() => navigate("/login")}>
-              Login
-            </Button>
-          </div>
-        </div>
-      </header>
+      {/* Header — auth-aware: shows profile for logged-in users, Login for guests */}
+      <Header />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-16">

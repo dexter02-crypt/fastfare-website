@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { API_BASE_URL } from "@/config";
+
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,19 +42,20 @@ const Login = () => {
   });
 
   // Timer for OTP resend
-  useState(() => {
+  // Timer for OTP resend
+  useEffect(() => {
     if (resendTimer > 0) {
       const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
       return () => clearTimeout(timer);
     }
-  });
+  }, [resendTimer]);
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:3000/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -79,18 +82,19 @@ const Login = () => {
 
       await refreshBalance();
 
-      // Route based on role
+      // Route based on role (replace history so back button doesn't go to login)
       if (data.user.role === "admin") {
-        navigate("/admin");
+        navigate("/dashboard", { replace: true });
       } else if (data.user.role === "shipment_partner") {
-        navigate("/drivers");
+        navigate("/fleet-tracking", { replace: true });
       } else {
-        navigate("/dashboard");
+        navigate("/dashboard", { replace: true });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
       toast({
         title: "Login Failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -110,7 +114,7 @@ const Login = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/api/auth/send-otp", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: formData.phone }),
@@ -130,10 +134,11 @@ const Login = () => {
         description: data.phone ? `Verification code sent to ${data.phone}` : `Verification code sent to +91 ${formData.phone}`,
       });
 
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Please try again';
       toast({
         title: "Failed to Send OTP",
-        description: error.message || "Please try again",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -154,7 +159,7 @@ const Login = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/api/auth/verify-otp", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -190,18 +195,19 @@ const Login = () => {
 
       await refreshBalance();
 
-      // Route based on role
+      // Route based on role (replace history so back button doesn't go to login)
       if (data.user.role === "admin") {
-        navigate("/admin");
+        navigate("/dashboard", { replace: true });
       } else if (data.user.role === "shipment_partner") {
-        navigate("/drivers");
+        navigate("/fleet-tracking", { replace: true });
       } else {
-        navigate("/dashboard");
+        navigate("/dashboard", { replace: true });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Verification failed';
       toast({
         title: "Verification Failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

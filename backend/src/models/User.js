@@ -83,6 +83,21 @@ const userSchema = new mongoose.Schema({
             default: {}
         }
     },
+    tier: {
+        type: String,
+        enum: ['bronze', 'silver', 'gold'],
+        default: 'bronze'
+    },
+    tierUpdatedAt: {
+        type: Date,
+        default: Date.now
+    },
+    platformFeePercent: {
+        type: Number,
+        default: 5,
+        min: 0,
+        max: 100
+    },
     createdAt: {
         type: Date,
         default: Date.now

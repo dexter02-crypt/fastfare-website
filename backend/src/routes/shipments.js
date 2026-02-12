@@ -223,4 +223,75 @@ router.get('/stats/dashboard', protect, async (req, res) => {
     }
 });
 
+// Get user's orders with driver info and live positions
+router.get('/my-orders', protect, async (req, res) => {
+    try {
+        const { status, search } = req.query;
+        const query = { user: req.user._id };
+
+        if (status && status !== 'all') {
+            query.status = status;
+        }
+        if (search) {
+            query.$or = [
+                { awb: { $regex: search, $options: 'i' } },
+                { 'delivery.name': { $regex: search, $options: 'i' } },
+                { 'delivery.city': { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const shipments = await Shipment.find(query)
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // Get live driver positions
+        const { getDriverPositions } = await import('../socket/location.socket.js');
+        const positions = getDriverPositions();
+
+        // Enrich each shipment with live driver location
+        const enriched = shipments.map(s => {
+            let driverLocation = null;
+            if (s.assignedDriver) {
+                const pos = positions.find(p => p.driverId === s.assignedDriver);
+                if (pos) {
+                    driverLocation = {
+                        lat: pos.lat,
+                        lng: pos.lng,
+                        driverName: pos.driverName || s.assignedDriverName || s.assignedDriver,
+                        online: pos.online !== false,
+                        timestamp: pos.timestamp
+                    };
+                }
+            }
+            return {
+                id: s._id,
+                awb: s.awb,
+                status: s.status,
+                pickup: s.pickup,
+                delivery: s.delivery,
+                packages: s.packages,
+                contentType: s.contentType,
+                serviceType: s.serviceType,
+                paymentMode: s.paymentMode,
+                codAmount: s.codAmount,
+                totalWeight: s.totalWeight,
+                shippingCost: s.shippingCost,
+                estimatedDelivery: s.estimatedDelivery,
+                actualDelivery: s.actualDelivery,
+                trackingHistory: s.trackingHistory,
+                assignedDriver: s.assignedDriver,
+                assignedDriverName: s.assignedDriverName,
+                assignedVehicle: s.assignedVehicle,
+                driverLocation,
+                createdAt: s.createdAt
+            };
+        });
+
+        res.json({ success: true, orders: enriched });
+    } catch (error) {
+        console.error('My orders error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

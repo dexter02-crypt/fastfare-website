@@ -36,7 +36,7 @@ const OrganizationSetup = () => {
     acceptTerms: false,
   });
 
-  const updateFormData = (field: string, value: any) => {
+  const updateFormData = (field: string, value: string | boolean | string[]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 

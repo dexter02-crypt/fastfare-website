@@ -19,8 +19,7 @@ import {
   Home,
   Plus,
 } from "lucide-react";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import DashboardLayout from "@/components/DashboardLayout";
 
 const mockCreatedOrders = [
   {
@@ -64,11 +63,8 @@ const BulkSuccess = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Header />
-
-      <main className="flex-1 py-8">
-        <div className="container max-w-4xl mx-auto px-4">
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto space-y-6">
           {/* Success Animation */}
           <motion.div
             initial={{ scale: 0 }}
@@ -229,11 +225,8 @@ const BulkSuccess = () => {
               <Plus className="h-4 w-4 mr-2" /> Upload More Orders
             </Button>
           </motion.div>
-        </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </DashboardLayout>
   );
 };
 

@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+
+import { useState, useCallback } from "react";
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from "@react-google-maps/api";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,23 +8,56 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
     MapPin, Truck, Search, Plus, Minus, Maximize,
-    Info, Star, MoreVertical
+    Info, Star, MoreVertical, Fuel, Gauge, Phone, Clock, Navigation, Calendar, User, MapPinned
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useFleetData, Driver } from "../../hooks/useFleetData";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
-const drivers = [
-    { id: "402", name: "John Doe", vehicle: "Volva FH16", location: "Queens Blvd, NY", status: "Online", eta: "4 mins away", lat: 60, lng: 30 },
-    { id: "110", name: "Sarah Smith", vehicle: "Ford Transit", location: "I-95 South, NJ", status: "On Trip", eta: "I-95 South", lat: 40, lng: 50 },
-    { id: "205", name: "Mike Ross", vehicle: "Freightliner", location: "Warehouse A", status: "Idle", eta: "Warehouse A", lat: 20, lng: 70 },
-    { id: "301", name: "David Kim", vehicle: "Scania R-series", location: "Offline", status: "Offline", eta: "Last seen 2h ago", lat: 80, lng: 20 },
-];
+// Map Styles
+const containerStyle = {
+    width: '100%',
+    height: '100%'
+};
+
+const center = {
+    lat: 40.7128,
+    lng: -74.0060
+};
 
 const FleetTracking = () => {
-    const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+    const { drivers } = useFleetData();
+    const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
     const [filter, setFilter] = useState("All");
     const [searchQuery, setSearchQuery] = useState("");
+    const [map, setMap] = useState<google.maps.Map | null>(null);
+    const [detailsOpen, setDetailsOpen] = useState(false);
+    const [detailDriver, setDetailDriver] = useState<Driver | null>(null);
 
+    const { isLoaded, loadError } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
+    });
+
+    const onLoad = useCallback(function callback(map: google.maps.Map) {
+        setMap(map);
+    }, []);
+
+    const onUnmount = useCallback(function callback(map: google.maps.Map) {
+        setMap(null);
+    }, []);
+
+    const selectedDriver = drivers.find(d => d.id === selectedDriverId);
+    
+    // ... existing filter logic ...
     const filteredDrivers = drivers.filter(d => {
         const matchesStatus = filter === "All" || d.status === filter;
         const matchesSearch = d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -38,6 +73,18 @@ const FleetTracking = () => {
             default: return 'bg-gray-100 text-gray-400';
         }
     };
+
+    const handleDriverClick = (driver: Driver) => {
+        setSelectedDriverId(driver.id);
+        if (map) {
+            map.panTo({ lat: driver.lat, lng: driver.lng });
+            map.setZoom(14);
+        }
+    };
+    
+    if (loadError) {
+        return <div>Map cannot be loaded</div>
+    }
 
     return (
         <DashboardLayout>
@@ -73,8 +120,8 @@ const FleetTracking = () => {
                         {filteredDrivers.map(driver => (
                             <div
                                 key={driver.id}
-                                onClick={() => setSelectedDriver(driver.id)}
-                                className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${selectedDriver === driver.id ? 'bg-blue-50/50 border-l-4 border-l-blue-600' : ''}`}
+                                onClick={() => handleDriverClick(driver)}
+                                className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${selectedDriverId === driver.id ? 'bg-blue-50/50 border-l-4 border-l-blue-600' : ''}`}
                             >
                                 <div className="flex items-center gap-3">
                                     <Avatar className="h-10 w-10">
@@ -88,7 +135,19 @@ const FleetTracking = () => {
                                                 {driver.status.toUpperCase()}
                                             </Badge>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-0.5">{driver.vehicle} • {driver.eta}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">{driver.vehicle}</p>
+                                        
+                                        {/* New Metadata in List */}
+                                        <div className="flex items-center gap-3 mt-1.5">
+                                            <div className="flex items-center text-[10px] text-gray-500 gap-1">
+                                                <Gauge className="h-3 w-3" />
+                                                <span>{driver.speed}</span>
+                                            </div>
+                                            <div className="flex items-center text-[10px] text-gray-500 gap-1">
+                                                <Fuel className="h-3 w-3" />
+                                                <span>{driver.fuelLevel.toFixed(0)}%</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -114,45 +173,82 @@ const FleetTracking = () => {
                         </div>
                     </div>
 
-                    {/* Map Placeholder */}
-                    <div className="w-full h-full relative overflow-hidden bg-[#e5e7eb] flex items-center justify-center">
-                        <div className="absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg')] opacity-10 bg-repeat space" />
-                        <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/30 to-slate-200/50" />
-
-                        {/* Map Elements (Filtered) */}
-                        {filteredDrivers.filter(d => d.status !== 'Offline').map(d => (
-                            <div
-                                key={d.id}
-                                className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
-                                style={{
-                                    left: `${d.lng}%`,
-                                    top: `${d.lat}%`,
-                                    zIndex: selectedDriver === d.id ? 50 : 1
+                    {/* Google Map */}
+                    <div className="w-full h-full relative">
+                        {isLoaded ? (
+                            <GoogleMap
+                                mapContainerStyle={containerStyle}
+                                center={center}
+                                zoom={10}
+                                onLoad={onLoad}
+                                onUnmount={onUnmount}
+                                options={{
+                                    fullscreenControl: false,
+                                    streetViewControl: false,
+                                    mapTypeControl: false
                                 }}
-                                onClick={() => setSelectedDriver(d.id)}
                             >
-                                <div className={`w-8 h-8 rounded-full shadow-lg flex items-center justify-center text-white border-2 border-white transition-transform group-hover:scale-110 ${d.status === 'Online' ? 'bg-green-500' : d.status === 'On Trip' ? 'bg-blue-500' : 'bg-orange-500'} ${selectedDriver === d.id ? 'scale-125 ring-4 ring-blue-500/30' : ''}`}>
-                                    <Truck className="h-4 w-4" />
-                                </div>
-                                {/* Tooltip */}
-                                <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white px-3 py-1.5 rounded-lg shadow-xl border text-xs whitespace-nowrap z-20 transition-opacity ${selectedDriver === d.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 pointer-events-none'}`}>
-                                    <p className="font-bold">{d.name}</p>
-                                    <p className="text-gray-500">{d.location}</p>
-                                </div>
-                            </div>
-                        ))}
+                                {drivers.filter(d => d.status !== 'Offline').map(driver => (
+                                    <Marker
+                                        key={driver.id}
+                                        position={{ lat: driver.lat, lng: driver.lng }}
+                                        onClick={() => setSelectedDriverId(driver.id)}
+                                        icon={{
+                                            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                                            scale: 6,
+                                            fillColor: driver.status === 'Online' ? '#22c55e' : driver.status === 'On Trip' ? '#3b82f6' : '#f97316',
+                                            fillOpacity: 1,
+                                            strokeWeight: 1,
+                                            rotation: driver.heading
+                                        }}
+                                    />
+                                ))}
 
-                        <div className="absolute bottom-6 right-6 flex flex-col gap-2">
-                            <Button variant="secondary" size="icon" className="shadow-lg bg-white hover:bg-gray-50 text-gray-700">
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                            <Button variant="secondary" size="icon" className="shadow-lg bg-white hover:bg-gray-50 text-gray-700">
-                                <Minus className="h-4 w-4" />
-                            </Button>
-                            <Button variant="secondary" size="icon" className="shadow-lg bg-white hover:bg-gray-50 text-gray-700">
-                                <Maximize className="h-4 w-4" />
-                            </Button>
-                        </div>
+                                {selectedDriver && (
+                                    <InfoWindow
+                                        position={{ lat: selectedDriver.lat, lng: selectedDriver.lng }}
+                                        onCloseClick={() => setSelectedDriverId(null)}
+                                    >
+                                        <div className="p-2 min-w-[200px]">
+                                            <h3 className="font-bold text-sm mb-1">{selectedDriver.name}</h3>
+                                            <p className="text-xs text-gray-500 mb-2">{selectedDriver.vehicle}</p>
+                                            
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                                <div className="flex items-center gap-1">
+                                                    <Gauge className="h-3 w-3 text-gray-400" />
+                                                    <span>{selectedDriver.speed}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <Fuel className="h-3 w-3 text-gray-400" />
+                                                    <span>{selectedDriver.fuelLevel.toFixed(0)}%</span>
+                                                </div>
+                                                <div className="col-span-2 text-gray-400">
+                                                    Heading: {selectedDriver.heading.toFixed(0)}°
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="mt-2 pt-2 border-t flex justify-end">
+                                                <Button 
+                                                    size="sm" 
+                                                    className="h-6 text-xs" 
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setDetailDriver(selectedDriver);
+                                                        setDetailsOpen(true);
+                                                    }}
+                                                >
+                                                    View Details
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </InfoWindow>
+                                )}
+                            </GoogleMap>
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                                Loading Map...
+                            </div>
+                        )}
                     </div>
 
                     {/* Bottom Panel - Driver Performance (Desktop Only) */}
@@ -166,14 +262,19 @@ const FleetTracking = () => {
                                 <tr>
                                     <th className="px-4 py-2 text-left font-medium">Driver Name</th>
                                     <th className="px-4 py-2 text-left font-medium">Vehicle ID</th>
-                                    <th className="px-4 py-2 text-left font-medium">Location</th>
+                                    <th className="px-4 py-2 text-left font-medium">Speed</th> {/* New Column */}
+                                    <th className="px-4 py-2 text-left font-medium">Fuel</th> {/* New Column */}
                                     <th className="px-4 py-2 text-left font-medium">Status</th>
-                                    <th className="px-4 py-2 text-left font-medium">Safety Score</th>
+                                    <th className="px-4 py-2 text-left font-medium">Last Updated</th> {/* Updated Column */}
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
                                 {filteredDrivers.map(driver => (
-                                    <tr key={driver.id} className={`hover:bg-gray-50/50 ${selectedDriver === driver.id ? 'bg-blue-50/50' : ''}`} onClick={() => setSelectedDriver(driver.id)}>
+                                    <tr 
+                                        key={driver.id} 
+                                        className={`hover:bg-gray-50/50 cursor-pointer ${selectedDriverId === driver.id ? 'bg-blue-50/50' : ''}`}
+                                        onClick={() => handleDriverClick(driver)}
+                                    >
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-2">
                                                 <Avatar className="h-6 w-6">
@@ -184,20 +285,28 @@ const FleetTracking = () => {
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-gray-600">
-                                            {driver.vehicle} <span className="text-xs text-gray-400">({driver.id})</span>
+                                            {driver.vehicle}
                                         </td>
-                                        <td className="px-4 py-3 text-gray-600">{driver.location}</td>
+                                        {/* New Columns Data */}
+                                        <td className="px-4 py-3 font-mono text-xs">{driver.speed}</td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className={`h-full ${driver.fuelLevel > 20 ? 'bg-green-500' : 'bg-red-500'}`} 
+                                                        style={{ width: `${driver.fuelLevel}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-xs text-gray-500">{driver.fuelLevel.toFixed(0)}%</span>
+                                            </div>
+                                        </td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(driver.status)}`}>
                                                 ● {driver.status}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-1 text-yellow-400">
-                                                {[...Array(4)].map((_, i) => <Star key={i} className="h-3.5 w-3.5 fill-current" />)}
-                                                <Star className="h-3.5 w-3.5 text-gray-300 fill-current" />
-                                                <span className="text-gray-700 ml-1 text-xs">4.2</span>
-                                            </div>
+                                        <td className="px-4 py-3 text-gray-500 text-xs">
+                                            {new Date(driver.lastUpdated).toLocaleTimeString()}
                                         </td>
                                     </tr>
                                 ))}
@@ -206,6 +315,120 @@ const FleetTracking = () => {
                     </div>
                 </div>
             </div>
+            
+            {/* Driver Details Dialog */}
+            <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-3">
+                            <Avatar className="h-12 w-12">
+                                <AvatarImage src={`https://i.pravatar.cc/150?u=${detailDriver?.id}`} />
+                                <AvatarFallback>{detailDriver?.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <span className="text-lg">{detailDriver?.name}</span>
+                                <Badge variant="secondary" className={`ml-2 text-xs ${getStatusColor(detailDriver?.status || '')}`}>
+                                    {detailDriver?.status?.toUpperCase()}
+                                </Badge>
+                            </div>
+                        </DialogTitle>
+                        <DialogDescription>Driver ID: {detailDriver?.id}</DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="mt-4 space-y-4">
+                        {/* Vehicle Info */}
+                        <div className="bg-gray-50 rounded-lg p-4">
+                            <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                <Truck className="h-4 w-4 text-primary" /> Vehicle Information
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <p className="text-gray-500 text-xs">Vehicle</p>
+                                    <p className="font-medium">{detailDriver?.vehicle}</p>
+                                </div>
+                                <div>
+                                    <p className="text-gray-500 text-xs">Location</p>
+                                    <p className="font-medium">{detailDriver?.location}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <Separator />
+                        
+                        {/* Live Stats */}
+                        <div>
+                            <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                <Gauge className="h-4 w-4 text-primary" /> Live Stats
+                            </h4>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                                    <Gauge className="h-5 w-5 mx-auto text-blue-600 mb-1" />
+                                    <p className="text-lg font-bold text-blue-600">{detailDriver?.speed}</p>
+                                    <p className="text-xs text-gray-500">Speed</p>
+                                </div>
+                                <div className="text-center p-3 bg-green-50 rounded-lg">
+                                    <Fuel className="h-5 w-5 mx-auto text-green-600 mb-1" />
+                                    <p className="text-lg font-bold text-green-600">{detailDriver?.fuelLevel.toFixed(0)}%</p>
+                                    <p className="text-xs text-gray-500">Fuel</p>
+                                </div>
+                                <div className="text-center p-3 bg-purple-50 rounded-lg">
+                                    <Navigation className="h-5 w-5 mx-auto text-purple-600 mb-1" />
+                                    <p className="text-lg font-bold text-purple-600">{detailDriver?.heading.toFixed(0)}°</p>
+                                    <p className="text-xs text-gray-500">Heading</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <Separator />
+                        
+                        {/* Contact & Location */}
+                        <div>
+                            <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                <User className="h-4 w-4 text-primary" /> Contact & Location
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                                    <Phone className="h-4 w-4 text-gray-400" />
+                                    <span>{detailDriver?.phone}</span>
+                                </div>
+                                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                                    <MapPinned className="h-4 w-4 text-gray-400" />
+                                    <span>Lat: {detailDriver?.lat.toFixed(4)}, Lng: {detailDriver?.lng.toFixed(4)}</span>
+                                </div>
+                                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                                    <Clock className="h-4 w-4 text-gray-400" />
+                                    <span>Last Updated: {detailDriver ? new Date(detailDriver.lastUpdated).toLocaleString() : 'N/A'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* ETA Info */}
+                        <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20">
+                            <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-primary" />
+                                <span className="text-sm font-medium">ETA</span>
+                            </div>
+                            <span className="font-bold text-primary">{detailDriver?.eta}</span>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 pt-2">
+                            <Button className="flex-1" variant="outline" onClick={() => window.open(`tel:${detailDriver?.phone}`)}>
+                                <Phone className="h-4 w-4 mr-2" /> Call Driver
+                            </Button>
+                            <Button className="flex-1" onClick={() => {
+                                if (detailDriver && map) {
+                                    map.panTo({ lat: detailDriver.lat, lng: detailDriver.lng });
+                                    map.setZoom(16);
+                                    setDetailsOpen(false);
+                                }
+                            }}>
+                                <MapPin className="h-4 w-4 mr-2" /> Track on Map
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </DashboardLayout>
     );
 };

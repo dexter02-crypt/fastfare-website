@@ -12,8 +12,7 @@ import {
   Truck,
   Clock,
 } from "lucide-react";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import DashboardLayout from "@/components/DashboardLayout";
 
 const BulkProcessing = () => {
   const navigate = useNavigate();
@@ -48,16 +47,14 @@ const BulkProcessing = () => {
 
   useEffect(() => {
     const stepInterval = Math.floor(progress / 25);
-    setCurrentStep(Math.min(stepInterval, steps.length - 1));
+    const stepsLength = 4; // Hardcoded to avoid dependency issues
+    setCurrentStep(Math.min(stepInterval, stepsLength - 1));
     setProcessedCount(Math.floor((progress / 100) * totalOrders));
-  }, [progress]);
+  }, [progress, totalOrders]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Header />
-
-      <main className="flex-1 py-8">
-        <div className="container max-w-2xl mx-auto px-4">
+    <DashboardLayout>
+      <div className="max-w-2xl mx-auto space-y-6">
           {/* Processing Animation */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -175,11 +172,8 @@ const BulkProcessing = () => {
           <p className="text-center text-sm text-muted-foreground mt-6">
             Please do not close this page while processing is in progress
           </p>
-        </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </DashboardLayout>
   );
 };
 

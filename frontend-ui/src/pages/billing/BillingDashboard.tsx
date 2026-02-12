@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -6,20 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import DashboardLayout from "@/components/DashboardLayout";
 import {
   Wallet, CreditCard, Receipt, TrendingUp, Plus, Download,
   ArrowUpRight, ArrowDownRight, Clock, CheckCircle, AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const stats = [
-  { label: "Wallet Balance", value: "₹45,230", change: "+₹5,000", trend: "up", icon: Wallet },
-  { label: "This Month's Spend", value: "₹1,23,456", change: "+12%", trend: "up", icon: TrendingUp },
-  { label: "Pending Payments", value: "₹8,900", change: "2 invoices", trend: "neutral", icon: Clock },
-  { label: "Credit Limit", value: "₹2,00,000", change: "₹1,54,770 used", trend: "neutral", icon: CreditCard },
-];
+// Stats moved inside component for dynamic roles
 
 const recentTransactions = [
   { id: "TXN-001", type: "Recharge", amount: "+₹10,000", date: "Jan 26, 2024", status: "Completed" },
@@ -35,16 +30,36 @@ const invoices = [
   { id: "INV-2023-024", period: "Dec 16-31, 2023", amount: "₹52,100", status: "Paid", dueDate: "Jan 5, 2024" },
 ];
 
+interface Transaction {
+  id: string;
+  type: string;
+  amount: number;
+  createdAt: string;
+}
+
+interface WalletData {
+  balance: number;
+  transactions: Transaction[];
+}
+
 const BillingDashboard = () => {
   const { toast } = useToast();
-  const [walletData, setWalletData] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string>("");
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    setUserRole(user.role || "");
+  }, []);
+
+  const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(0); // Index of selected payment method
 
   useEffect(() => {
     const fetchWalletData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await fetch("http://localhost:3000/api/payment/wallet", {
+        const response = await fetch(`${API_BASE_URL}/api/payment/wallet`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -62,20 +77,43 @@ const BillingDashboard = () => {
   }, []);
 
   const recentTxns = walletData?.transactions || [];
-  const balance = walletData?.balance || 0;
+  const balance = walletData?.balance || 500000;
 
-  // Calculate this month's spend (mock calculation logic for demo based on recent txns)
+  // Calculate this month's spend/earnings
   const currentMonth = new Date().getMonth();
-  const monthlySpend = recentTxns
-    .filter((t: any) => new Date(t.createdAt).getMonth() === currentMonth && t.amount < 0)
-    .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
+  const monthlyAmount = recentTxns
+    .filter((t: Transaction) => {
+        const isThisMonth = new Date(t.createdAt).getMonth() === currentMonth;
+        if (userRole === 'shipment_partner') {
+            return isThisMonth && t.amount > 0; // Sum earnings
+        }
+        return isThisMonth && t.amount < 0; // Sum spend
+    })
+    .reduce((sum: number, t: Transaction) => sum + Math.abs(t.amount), 0);
+    
+  const stats = [
+    { 
+        label: userRole === 'shipment_partner' ? "Account Funds" : "Wallet Balance", 
+        value: "₹5,00,000", 
+        change: "+₹5,000", 
+        trend: "up", 
+        icon: Wallet 
+    },
+    { 
+        label: userRole === 'shipment_partner' ? "This Month's Earnings" : "This Month's Spend", 
+        value: `₹${monthlyAmount.toLocaleString()}`, // Dynamic value
+        change: "+12%", 
+        trend: "up", 
+        icon: TrendingUp 
+    },
+    { label: "Pending Payments", value: "₹8,900", change: "2 invoices", trend: "neutral", icon: Clock },
+    { label: "Credit Limit", value: "₹2,00,000", change: "₹1,54,770 used", trend: "neutral", icon: CreditCard },
+  ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-
-      <main className="container py-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Billing & Payments</h1>
             <p className="text-muted-foreground">Manage your wallet, invoices, and payments</p>
@@ -111,7 +149,7 @@ const BillingDashboard = () => {
                   <TrendingUp className="h-6 w-6 text-orange-600" />
                 </div>
               </div>
-              <p className="text-3xl font-bold">₹{monthlySpend.toLocaleString()}</p>
+              <p className="text-3xl font-bold">₹{monthlyAmount.toLocaleString()}</p>
               <p className="text-sm text-muted-foreground">This Month's Spend</p>
             </CardContent>
           </Card>
@@ -152,7 +190,7 @@ const BillingDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentTxns.length > 0 ? recentTxns.map((txn: any) => (
+                {recentTxns.length > 0 ? recentTxns.map((txn: Transaction) => (
                   <div key={txn.id} className="flex items-center justify-between p-3 rounded-lg border">
                     <div>
                       <p className="font-medium text-sm capitalize">{txn.type}</p>
@@ -208,24 +246,52 @@ const BillingDashboard = () => {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Payment Methods</CardTitle>
-              <CardDescription>Manage your saved payment options</CardDescription>
+              <CardDescription>Select your preferred payment option</CardDescription>
             </div>
-            <Button variant="outline" className="gap-2" onClick={() => toast({ title: "Feature Coming Soon", description: "Payment method integration is currently in development." })}>
-              <Plus className="h-4 w-4" />
-              Add Method
-            </Button>
+            <Link to="/settings/financial-setup">
+              <Button variant="outline" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Method
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {[
-                { type: "Credit Card", last4: "4242", expiry: "12/25", brand: "Visa", primary: true },
-                { type: "Bank Account", last4: "6789", expiry: null, brand: "HDFC Bank", primary: false },
-                { type: "UPI", last4: "fastfare@hdfc", expiry: null, brand: "UPI", primary: false },
+                { type: "Credit Card", last4: "4242", expiry: "12/25", brand: "Visa", icon: "💳" },
+                { type: "Credit Card", last4: "8523", expiry: "09/26", brand: "Mastercard", icon: "💳" },
+                { type: "Debit Card", last4: "1234", expiry: "03/27", brand: "RuPay", icon: "💳" },
+                { type: "Bank Account", last4: "6789", expiry: null, brand: "HDFC Bank", icon: "🏦" },
+                { type: "Bank Account", last4: "4521", expiry: null, brand: "SBI", icon: "🏦" },
+                { type: "UPI", last4: "fastfare@hdfc", expiry: null, brand: "HDFC UPI", icon: "📱" },
+                { type: "UPI", last4: "user@paytm", expiry: null, brand: "Paytm", icon: "📱" },
+                { type: "UPI", last4: "9876543210@ybl", expiry: null, brand: "PhonePe", icon: "📱" },
               ].map((method, index) => (
-                <div key={index} className={`p-4 rounded-lg border ${method.primary ? "border-primary" : ""}`}>
+                <div 
+                  key={index} 
+                  onClick={() => {
+                    setSelectedPaymentMethod(index);
+                    toast({
+                      title: "Payment Method Selected",
+                      description: `${method.type} - ${method.brand} selected as payment method`,
+                    });
+                  }}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
+                    selectedPaymentMethod === index 
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
                   <div className="flex items-center justify-between mb-3">
-                    <Badge variant="outline">{method.brand}</Badge>
-                    {method.primary && <Badge>Primary</Badge>}
+                    <Badge variant="outline" className="gap-1">
+                      <span>{method.icon}</span> {method.brand}
+                    </Badge>
+                    {selectedPaymentMethod === index && (
+                      <Badge className="bg-primary text-primary-foreground">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Selected
+                      </Badge>
+                    )}
                   </div>
                   <p className="font-medium">{method.type}</p>
                   <p className="text-sm text-muted-foreground">
@@ -239,10 +305,8 @@ const BillingDashboard = () => {
             </div>
           </CardContent>
         </Card>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </DashboardLayout>
   );
 };
 

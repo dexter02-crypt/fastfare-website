@@ -287,8 +287,12 @@ const TrackingResults = () => {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 mt-6">
-            <Button variant="outline" className="flex-1">
-              <Map className="h-4 w-4 mr-2" /> View on Map
+            <Button 
+              variant="outline" 
+              className="flex-1"
+              onClick={() => navigate(`/tracking/${awb}/live`)}
+            >
+              <Map className="h-4 w-4 mr-2" /> View Live Map
             </Button>
             <Button variant="outline" className="flex-1">
               <Phone className="h-4 w-4 mr-2" /> Contact Support

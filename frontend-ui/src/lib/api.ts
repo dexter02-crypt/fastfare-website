@@ -1,4 +1,47 @@
-const API_BASE_URL = 'http://localhost:3000/api';
+import { API_BASE_URL as BASE_URL } from "@/config";
+
+const API_BASE_URL = `${BASE_URL}/api`;
+
+// Type definitions
+export interface ShipmentData {
+    pickupAddress: AddressData;
+    deliveryAddress: AddressData;
+    packageDetails: PackageDetails;
+    paymentType?: string;
+    serviceType?: string;
+}
+
+export interface AddressData {
+    name: string;
+    phone: string;
+    email?: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+    country?: string;
+}
+
+export interface PackageDetails {
+    weight: number;
+    length?: number;
+    width?: number;
+    height?: number;
+    description?: string;
+    value?: number;
+}
+
+export interface ProfileData {
+    businessName?: string;
+    contactPerson?: string;
+    phone?: string;
+    address?: string;
+}
+
+export interface ShipmentUpdate {
+    status?: string;
+    notes?: string;
+}
 
 // Get token from localStorage
 const getToken = () => localStorage.getItem('token');
@@ -81,7 +124,7 @@ export const authApi = {
 
 // Shipments API
 export const shipmentsApi = {
-    create: async (shipmentData: any) => {
+    create: async (shipmentData: ShipmentData) => {
         return apiRequest('/shipments', {
             method: 'POST',
             body: JSON.stringify(shipmentData),
@@ -102,7 +145,7 @@ export const shipmentsApi = {
         return apiRequest(`/shipments/${id}`);
     },
 
-    update: async (id: string, updates: any) => {
+    update: async (id: string, updates: ShipmentUpdate) => {
         return apiRequest(`/shipments/${id}`, {
             method: 'PUT',
             body: JSON.stringify(updates),
@@ -133,7 +176,7 @@ export const trackingApi = {
 
 // User API
 export const userApi = {
-    updateProfile: async (profileData: any) => {
+    updateProfile: async (profileData: ProfileData) => {
         const data = await apiRequest('/users/profile', {
             method: 'PUT',
             body: JSON.stringify(profileData),
@@ -148,7 +191,7 @@ export const userApi = {
         return apiRequest('/users/addresses');
     },
 
-    addAddress: async (address: any) => {
+    addAddress: async (address: AddressData) => {
         return apiRequest('/users/addresses', {
             method: 'POST',
             body: JSON.stringify(address),
@@ -200,6 +243,91 @@ export const paymentApi = {
     },
 };
 
+// ─── WMS (Warehouse Management System) API ───
+export const wmsApi = {
+    // Vehicles
+    getVehicles: async () => apiRequest('/wms/vehicles'),
+    addVehicle: async (data: any) => apiRequest('/wms/vehicles', { method: 'POST', body: JSON.stringify(data) }),
+    updateVehicle: async (id: string, data: any) => apiRequest(`/wms/vehicles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteVehicle: async (id: string) => apiRequest(`/wms/vehicles/${id}`, { method: 'DELETE' }),
+
+    // Drivers
+    getDrivers: async () => apiRequest('/wms/drivers'),
+    addDriver: async (data: any) => apiRequest('/wms/drivers', { method: 'POST', body: JSON.stringify(data) }),
+    updateDriver: async (id: string, data: any) => apiRequest(`/wms/drivers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteDriver: async (id: string) => apiRequest(`/wms/drivers/${id}`, { method: 'DELETE' }),
+
+    // Trips
+    getTrips: async (status?: string) => apiRequest(`/wms/trips${status ? `?status=${status}` : ''}`),
+    createTrip: async (data: any) => apiRequest('/wms/trips', { method: 'POST', body: JSON.stringify(data) }),
+    updateTripStatus: async (id: string, data: any) => apiRequest(`/wms/trips/${id}/status`, { method: 'PUT', body: JSON.stringify(data) }),
+
+    // Inventory
+    getInventory: async () => apiRequest('/wms/inventory'),
+    addInventoryItem: async (data: any) => apiRequest('/wms/inventory', { method: 'POST', body: JSON.stringify(data) }),
+    updateInventoryItem: async (id: string, data: any) => apiRequest(`/wms/inventory/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+    // RTD (Return to Depot)
+    getRTDReports: async () => apiRequest('/wms/rtd'),
+    createRTD: async (data: any) => apiRequest('/wms/rtd', { method: 'POST', body: JSON.stringify(data) }),
+    resolveRTD: async (id: string, data: any) => apiRequest(`/wms/rtd/${id}/resolve`, { method: 'PUT', body: JSON.stringify(data) }),
+
+    // Stats
+    getStats: async () => apiRequest('/wms/stats'),
+
+    // Reports
+    getReportSummary: async () => apiRequest('/wms/reports/summary'),
+
+    // Inbound
+    getInboundShipments: async () => apiRequest('/wms/inbound'),
+    createInbound: async (data: any) => apiRequest('/wms/inbound', { method: 'POST', body: JSON.stringify(data) }),
+    updateInboundStatus: async (id: string, status: string) => apiRequest(`/wms/inbound/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+
+    // Live Tracking
+    getTrackingSessions: async () => apiRequest('/wms/tracking'),
+    getTrackingById: async (id: string) => apiRequest(`/wms/tracking/${id}`),
+};
+
+// ─── Settlement & Tier API ───
+export const settlementApi = {
+    // Settlement
+    trigger: async (orderId: string) => apiRequest('/settlement/trigger', { method: 'POST', body: JSON.stringify({ orderId }) }),
+    getSchedule: async () => apiRequest('/settlement/schedule'),
+    getHistory: async (page = 1, limit = 20) => apiRequest(`/settlement/history?page=${page}&limit=${limit}`),
+    getLedger: async (page = 1, limit = 50, type?: string) => apiRequest(`/settlement/ledger?page=${page}&limit=${limit}${type ? `&type=${type}` : ''}`),
+    process: async () => apiRequest('/settlement/process', { method: 'POST' }),
+
+    // Seller Dashboard
+    getDashboard: async () => apiRequest('/seller/dashboard'),
+    getPerformance: async () => apiRequest('/seller/performance'),
+
+    // Tiers
+    getCurrentTier: async () => apiRequest('/tiers/current'),
+    getTierHistory: async (page = 1) => apiRequest(`/tiers/history?page=${page}`),
+    evaluateTiers: async (sellerId?: string) => apiRequest('/tiers/evaluate', { method: 'POST', body: JSON.stringify({ sellerId }) }),
+
+    // COD
+    getCodReconciliation: async (page = 1, status?: string) => apiRequest(`/cod/reconciliation?page=${page}${status ? `&status=${status}` : ''}`),
+
+    // Partner Withdrawals
+    requestWithdrawal: async (amount: number, bankDetails?: any) => apiRequest('/partner/withdraw', { method: 'POST', body: JSON.stringify({ amount, bankDetails }) }),
+    getWithdrawals: async () => apiRequest('/partner/withdrawals'),
+    getPartnerEarnings: async () => apiRequest('/partner/earnings'),
+
+    // Admin Withdrawal Management
+    getAdminWithdrawals: async (status?: string, page = 1) => apiRequest(`/partner/admin/withdrawals?page=${page}${status ? `&status=${status}` : ''}`),
+    approveWithdrawal: async (id: string, transactionRef?: string, adminNote?: string) => apiRequest(`/partner/admin/withdrawals/${id}/approve`, { method: 'PUT', body: JSON.stringify({ transactionRef, adminNote }) }),
+    rejectWithdrawal: async (id: string, rejectionReason?: string) => apiRequest(`/partner/admin/withdrawals/${id}/reject`, { method: 'PUT', body: JSON.stringify({ rejectionReason }) }),
+
+    // Admin Partner Management
+    getAdminPartners: async (page = 1, search?: string, tier?: string) => apiRequest(`/admin/partners?page=${page}${search ? `&search=${search}` : ''}${tier ? `&tier=${tier}` : ''}`),
+    getAdminPartnerDetail: async (id: string) => apiRequest(`/admin/partners/${id}`),
+    overrideTier: async (sellerId: string, newTier: string, reason: string) => apiRequest('/admin/override/tier', { method: 'POST', body: JSON.stringify({ sellerId, newTier, reason }) }),
+    holdPayout: async (partnerId: string, action: string, reason: string) => apiRequest('/admin/override/payout-hold', { method: 'POST', body: JSON.stringify({ partnerId, action, reason }) }),
+    updateAccountStatus: async (id: string, status: string, reason: string) => apiRequest(`/admin/partners/${id}/status`, { method: 'PUT', body: JSON.stringify({ status, reason }) }),
+    deleteAccount: async (id: string, reason: string) => apiRequest(`/admin/partners/${id}`, { method: 'DELETE', body: JSON.stringify({ reason }) }),
+};
+
 export default {
     auth: authApi,
     shipments: shipmentsApi,
@@ -207,4 +335,7 @@ export default {
     user: userApi,
     gstin: gstinApi,
     payment: paymentApi,
+    wms: wmsApi,
+    settlement: settlementApi,
 };
+

@@ -19,20 +19,22 @@ interface PackageItem {
   value: number;
 }
 
+interface PackageFormData {
+  packages: PackageItem[];
+  contentType: string;
+  description: string;
+  paymentMode: string;
+  codAmount: number;
+  insurance: boolean;
+}
+
 interface PackageFormProps {
-  data: {
-    packages: PackageItem[];
-    contentType: string;
-    description: string;
-    paymentMode: string;
-    codAmount: number;
-    insurance: boolean;
-  };
-  onChange: (data: any) => void;
+  data: PackageFormData;
+  onChange: (data: PackageFormData) => void;
 }
 
 const PackageForm = ({ data, onChange }: PackageFormProps) => {
-  const handleChange = (field: string, value: any) => {
+  const handleChange = <K extends keyof PackageFormData>(field: K, value: PackageFormData[K]) => {
     onChange({ ...data, [field]: value });
   };
 
@@ -57,7 +59,7 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
     );
   };
 
-  const updatePackage = (id: string, field: string, value: any) => {
+  const updatePackage = <K extends keyof PackageItem>(id: string, field: K, value: PackageItem[K]) => {
     handleChange(
       "packages",
       data.packages.map((p) =>

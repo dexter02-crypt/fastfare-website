@@ -20,8 +20,7 @@ import {
   Download,
   ArrowRight,
 } from "lucide-react";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import DashboardLayout from "@/components/DashboardLayout";
 
 const mockValidationResults = {
   total: 50,
@@ -149,11 +148,8 @@ const BulkValidation = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Header />
-
-      <main className="flex-1 py-8">
-        <div className="container mx-auto px-4">
+    <DashboardLayout>
+      <div className="space-y-6">
           {/* Page Header */}
           <div className="flex items-center gap-4 mb-8">
             <Button
@@ -304,11 +300,8 @@ const BulkValidation = () => {
               Please fix all errors before processing
             </p>
           )}
-        </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </DashboardLayout>
   );
 };
 

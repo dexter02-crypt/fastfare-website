@@ -4,25 +4,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 
+interface AddressData {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  pincode: string;
+  city: string;
+  state: string;
+  landmark: string;
+  addressType: string;
+  saveAddress: boolean;
+}
+
 interface AddressFormProps {
   type: "pickup" | "delivery";
-  data: {
-    name: string;
-    phone: string;
-    email: string;
-    address: string;
-    pincode: string;
-    city: string;
-    state: string;
-    landmark: string;
-    addressType: string;
-    saveAddress: boolean;
-  };
-  onChange: (data: any) => void;
+  data: AddressData;
+  onChange: (data: AddressData) => void;
 }
 
 const AddressForm = ({ type, data, onChange }: AddressFormProps) => {
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: keyof AddressData, value: string | boolean) => {
     onChange({ ...data, [field]: value });
   };
 
