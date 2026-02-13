@@ -1,7 +1,7 @@
+import 'dotenv/config';  // MUST be first — loads .env before any route imports use process.env
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import http from 'http';
 import { Server } from 'socket.io';
 
@@ -48,7 +48,7 @@ import partnerLedgerRoutes from './routes/partner-ledger.js';
 import adminOverrideRoutes from './routes/admin-overrides.js';
 
 
-dotenv.config();
+
 
 const app = express();
 const httpServer = http.createServer(app);
