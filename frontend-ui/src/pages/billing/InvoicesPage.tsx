@@ -20,12 +20,7 @@ interface Invoice {
     date: string;
 }
 
-const invoices: Invoice[] = [
-    { id: "INV-2024-001", period: "Jan 1-15, 2024", amount: "₹45,230", status: "Paid", dueDate: "Jan 20, 2024", date: "Jan 16, 2024" },
-    { id: "INV-2024-002", period: "Jan 16-31, 2024", amount: "₹38,900", status: "Pending", dueDate: "Feb 5, 2024", date: "Feb 1, 2024" },
-    { id: "INV-2023-024", period: "Dec 16-31, 2023", amount: "₹52,100", status: "Paid", dueDate: "Jan 5, 2024", date: "Jan 1, 2024" },
-    { id: "INV-2023-023", period: "Dec 1-15, 2023", amount: "₹48,500", status: "Paid", dueDate: "Dec 20, 2023", date: "Dec 16, 2023" },
-];
+const invoices: Invoice[] = [];
 
 const InvoicesPage = () => {
     const [searchTerm, setSearchTerm] = useState("");

@@ -40,219 +40,27 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "react-router-dom";
 
-// Mock activity data - comprehensive order history with full details
-const activityData = [
-  {
-    id: "#SHP-3021",
-    customer: "Acme Corp",
-    customerEmail: "orders@acmecorp.com",
-    customerPhone: "+91 98765 43210",
-    pickup: { 
-      city: "Mumbai", 
-      address: "123 Industrial Estate, Andheri East, Mumbai - 400069",
-      contact: "Rakesh Mehta",
-      phone: "+91 98765 44321"
-    },
-    delivery: { 
-      city: "San Francisco, CA",
-      address: "456 Tech Park, Downtown, San Francisco, CA 94102, USA",
-      contact: "John Smith",
-      phone: "+1 415-555-0123"
-    },
-    status: "in_transit",
-    date: "2026-02-09",
-    eta: "Oct 26, 2:00 PM",
-    amount: 15000,
-    truck: "MH 12 AB 1234",
-    driver: "Rajesh Kumar",
-    driverPhone: "+91 98765 11111",
-    weight: "250 kg",
-    dimensions: "120 x 80 x 100 cm",
-    packages: 5,
-    paymentMode: "Prepaid",
-    awb: "FF2026020912345"
-  },
-  {
-    id: "#SHP-3020",
-    customer: "Tech Solutions",
-    customerEmail: "logistics@techsolutions.in",
-    customerPhone: "+91 88765 43210",
-    pickup: { 
-      city: "Delhi", 
-      address: "789 IT Park, Sector 62, Noida - 201301",
-      contact: "Priya Sharma",
-      phone: "+91 88765 55432"
-    },
-    delivery: { 
-      city: "Austin, TX",
-      address: "321 Innovation Blvd, Austin, TX 78701, USA",
-      contact: "Mike Johnson",
-      phone: "+1 512-555-0456"
-    },
-    status: "delivered",
-    date: "2026-02-08",
-    eta: "Oct 26, 11:30 AM",
-    amount: 22000,
-    truck: "MH 04 CD 5678",
-    driver: "Suresh Patil",
-    driverPhone: "+91 98765 22222",
-    weight: "180 kg",
-    dimensions: "100 x 60 x 80 cm",
-    packages: 3,
-    paymentMode: "COD",
-    awb: "FF2026020812346"
-  },
-  {
-    id: "#SHP-3019",
-    customer: "Global Traders",
-    customerEmail: "shipping@globaltraders.com",
-    customerPhone: "+91 77765 43210",
-    pickup: { 
-      city: "Pune", 
-      address: "456 Hinjewadi IT Park, Phase 2, Pune - 411057",
-      contact: "Anil Deshmukh",
-      phone: "+91 77765 66543"
-    },
-    delivery: { 
-      city: "New York, NY",
-      address: "555 5th Avenue, Manhattan, NY 10017, USA",
-      contact: "Sarah Williams",
-      phone: "+1 212-555-0789"
-    },
-    status: "in_transit",
-    date: "2026-02-09",
-    eta: "Oct 26, 4:45 PM",
-    amount: 35000,
-    truck: "MH 15 EF 9012",
-    driver: "Amit Sharma",
-    driverPhone: "+91 98765 33333",
-    weight: "450 kg",
-    dimensions: "200 x 150 x 120 cm",
-    packages: 12,
-    paymentMode: "Prepaid",
-    awb: "FF2026020912347"
-  },
-  {
-    id: "#SHP-3018",
-    customer: "Swift Logistics",
-    customerEmail: "ops@swiftlogistics.in",
-    customerPhone: "+91 66765 43210",
-    pickup: { 
-      city: "Chennai", 
-      address: "101 Anna Salai, T. Nagar, Chennai - 600017",
-      contact: "Karthik Rajan",
-      phone: "+91 66765 77654"
-    },
-    delivery: { 
-      city: "Miami, FL",
-      address: "888 Ocean Drive, Miami Beach, FL 33139, USA",
-      contact: "Carlos Rodriguez",
-      phone: "+1 305-555-0321"
-    },
-    status: "delivered",
-    date: "2026-02-07",
-    eta: "Oct 25, 6:15 PM",
-    amount: 18500,
-    truck: "TN 01 GH 3456",
-    driver: "Venkat Reddy",
-    driverPhone: "+91 98765 44444",
-    weight: "320 kg",
-    dimensions: "150 x 100 x 90 cm",
-    packages: 8,
-    paymentMode: "Prepaid",
-    awb: "FF2026020712348"
-  },
-  {
-    id: "#SHP-3017",
-    customer: "Prime Exports",
-    customerEmail: "export@primeexports.com",
-    customerPhone: "+91 55765 43210",
-    pickup: { 
-      city: "Bangalore", 
-      address: "222 Electronics City, Phase 1, Bangalore - 560100",
-      contact: "Deepak Gowda",
-      phone: "+91 55765 88765"
-    },
-    delivery: { 
-      city: "Chicago, IL",
-      address: "777 Michigan Avenue, Chicago, IL 60611, USA",
-      contact: "Emily Brown",
-      phone: "+1 312-555-0654"
-    },
-    status: "in_transit",
-    date: "2026-02-09",
-    eta: "Oct 27, 9:00 AM",
-    amount: 42000,
-    truck: "KA 05 IJ 7890",
-    driver: "Prakash Gowda",
-    driverPhone: "+91 98765 55555",
-    weight: "580 kg",
-    dimensions: "250 x 180 x 150 cm",
-    packages: 15,
-    paymentMode: "Prepaid",
-    awb: "FF2026020912349"
-  },
-  {
-    id: "#SHP-3016",
-    customer: "Metro Industries",
-    customerEmail: "orders@metroindustries.in",
-    customerPhone: "+91 44765 43210",
-    pickup: { 
-      city: "Hyderabad", 
-      address: "333 HITEC City, Madhapur, Hyderabad - 500081",
-      contact: "Srinivas Rao",
-      phone: "+91 44765 99876"
-    },
-    delivery: { 
-      city: "Los Angeles, CA",
-      address: "999 Hollywood Blvd, Los Angeles, CA 90028, USA",
-      contact: "David Lee",
-      phone: "+1 213-555-0987"
-    },
-    status: "pending",
-    date: "2026-02-10",
-    eta: "Oct 28, 2:00 PM",
-    amount: 28000,
-    truck: null,
-    driver: null,
-    driverPhone: null,
-    weight: "400 kg",
-    dimensions: "180 x 120 x 100 cm",
-    packages: 10,
-    paymentMode: "COD",
-    awb: "FF2026021012350"
-  },
-  {
-    id: "#SHP-3015",
-    customer: "Eastern Corp",
-    customerEmail: "logistics@easterncorp.com",
-    customerPhone: "+91 33765 43210",
-    pickup: { 
-      city: "Kolkata", 
-      address: "444 Salt Lake, Sector V, Kolkata - 700091",
-      contact: "Sourav Das",
-      phone: "+91 33765 00987"
-    },
-    delivery: { 
-      city: "Seattle, WA",
-      address: "111 Pike Place, Downtown Seattle, WA 98101, USA",
-      contact: "Jennifer Garcia",
-      phone: "+1 206-555-0147"
-    },
-    status: "delivered",
-    date: "2026-02-06",
-    eta: "Oct 24, 10:00 AM",
-    amount: 31000,
-    truck: "WB 02 KL 1234",
-    driver: "Ravi Das",
-    driverPhone: "+91 98765 66666",
-    weight: "350 kg",
-    dimensions: "160 x 110 x 95 cm",
-    packages: 7,
-    paymentMode: "Prepaid",
-    awb: "FF2026020612351"
-  }
-];
+// Activity data — populated from API
+const activityData: {
+  id: string;
+  customer: string;
+  customerEmail: string;
+  customerPhone: string;
+  pickup: { city: string; address: string; contact: string; phone: string };
+  delivery: { city: string; address: string; contact: string; phone: string };
+  status: string;
+  date: string;
+  eta: string;
+  amount: number;
+  truck: string | null;
+  driver: string | null;
+  driverPhone: string | null;
+  weight: string;
+  dimensions: string;
+  packages: number;
+  paymentMode: string;
+  awb: string;
+}[] = [];
 
 const PartnerActivity = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -289,11 +97,11 @@ const PartnerActivity = () => {
   };
 
   const filteredActivity = activityData.filter(item => {
-    const matchesSearch = 
+    const matchesSearch =
       item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.delivery.city.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesTab = filterByTab(item);
     return matchesSearch && matchesTab;
   });
@@ -378,7 +186,7 @@ const PartnerActivity = () => {
                       <TableRow key={item.id}>
                         <TableCell>
                           <div className="flex flex-col">
-                            <button 
+                            <button
                               onClick={() => handleOrderClick(item)}
                               className="font-medium text-primary hover:underline cursor-pointer text-left"
                             >
@@ -446,7 +254,7 @@ const PartnerActivity = () => {
               Order Details - {selectedOrder?.id}
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedOrder && (
             <div className="space-y-6 mt-4">
               {/* Status and AWB */}

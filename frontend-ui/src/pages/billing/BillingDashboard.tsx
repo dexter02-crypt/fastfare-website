@@ -16,19 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 
 // Stats moved inside component for dynamic roles
 
-const recentTransactions = [
-  { id: "TXN-001", type: "Recharge", amount: "+₹10,000", date: "Jan 26, 2024", status: "Completed" },
-  { id: "TXN-002", type: "Shipment Charge", amount: "-₹2,345", date: "Jan 25, 2024", status: "Completed" },
-  { id: "TXN-003", type: "Shipment Charge", amount: "-₹1,890", date: "Jan 25, 2024", status: "Completed" },
-  { id: "TXN-004", type: "Refund", amount: "+₹450", date: "Jan 24, 2024", status: "Completed" },
-  { id: "TXN-005", type: "Shipment Charge", amount: "-₹3,210", date: "Jan 24, 2024", status: "Completed" },
-];
+const recentTransactions: { id: string; type: string; amount: string; date: string; status: string }[] = [];
 
-const invoices = [
-  { id: "INV-2024-001", period: "Jan 1-15, 2024", amount: "₹45,230", status: "Paid", dueDate: "Jan 20, 2024" },
-  { id: "INV-2024-002", period: "Jan 16-31, 2024", amount: "₹38,900", status: "Pending", dueDate: "Feb 5, 2024" },
-  { id: "INV-2023-024", period: "Dec 16-31, 2023", amount: "₹52,100", status: "Paid", dueDate: "Jan 5, 2024" },
-];
+const invoices: { id: string; period: string; amount: string; status: string; dueDate: string }[] = [];
 
 interface Transaction {
   id: string;
@@ -102,12 +92,12 @@ const BillingDashboard = () => {
     {
       label: userRole === 'shipment_partner' ? "This Month's Earnings" : "This Month's Spend",
       value: `₹${monthlyAmount.toLocaleString()}`, // Dynamic value
-      change: "+12%",
-      trend: "up",
+      change: "",
+      trend: "neutral",
       icon: TrendingUp
     },
-    { label: "Pending Payments", value: "₹8,900", change: "2 invoices", trend: "neutral", icon: Clock },
-    { label: "Credit Limit", value: "₹2,00,000", change: "₹1,54,770 used", trend: "neutral", icon: CreditCard },
+    { label: "Pending Payments", value: "₹0", change: "0 invoices", trend: "neutral", icon: Clock },
+    { label: "Credit Limit", value: "₹0", change: "₹0 used", trend: "neutral", icon: CreditCard },
   ];
 
   return (

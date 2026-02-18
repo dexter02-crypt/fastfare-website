@@ -56,74 +56,35 @@ const bottomLinks = [
 const stats = [
   {
     label: "Total Shipments",
-    value: "142",
-    change: "+5% vs last week",
-    positive: true,
+    value: "0",
+    sublabel: "No shipments yet",
     icon: Package,
     color: "bg-blue-50 text-primary",
   },
   {
     label: "In Transit",
-    value: "89",
-    sublabel: "Active deliveries",
+    value: "0",
+    sublabel: "No active deliveries",
     icon: Truck,
     color: "bg-orange-50 text-orange-600",
   },
   {
     label: "Delivered Today",
-    value: "47",
-    change: "+12% vs yesterday",
-    positive: true,
+    value: "0",
+    sublabel: "No deliveries today",
     icon: CheckCircle,
     color: "bg-green-50 text-success",
   },
   {
     label: "Wallet Balance",
-    value: "₹5,00,000",
+    value: "₹0",
     sublabel: "Available credits",
     icon: Wallet,
     color: "bg-purple-50 text-purple-600",
   },
 ];
 
-const shipments = [
-  {
-    id: "#SHP-2023-001",
-    date: "Oct 24, 2023",
-    destination: "Mumbai, MH",
-    customer: { name: "Rohan Gupta", initials: "RG" },
-    amount: "₹1,250",
-    status: "In Transit",
-    statusColor: "bg-blue-100 text-blue-700",
-  },
-  {
-    id: "#SHP-2023-002",
-    date: "Oct 24, 2023",
-    destination: "Bangalore, KA",
-    customer: { name: "Anita Sharma", initials: "AS" },
-    amount: "₹3,400",
-    status: "Delivered",
-    statusColor: "bg-green-100 text-success",
-  },
-  {
-    id: "#SHP-2023-003",
-    date: "Oct 23, 2023",
-    destination: "Delhi, DL",
-    customer: { name: "Vikram Singh", initials: "VS" },
-    amount: "₹850",
-    status: "Delivered",
-    statusColor: "bg-green-100 text-success",
-  },
-  {
-    id: "#SHP-2023-004",
-    date: "Oct 23, 2023",
-    destination: "Chennai, TN",
-    customer: { name: "Priya Thomas", initials: "PT" },
-    amount: "₹2,100",
-    status: "Pending",
-    statusColor: "bg-yellow-100 text-yellow-700",
-  },
-];
+const shipments: { id: string; date: string; destination: string; customer: { name: string; initials: string }; amount: string; status: string; statusColor: string }[] = [];
 
 const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -144,30 +105,28 @@ const Dashboard = () => {
   const stats = [
     {
       label: "Total Shipments",
-      value: "142",
-      change: "+5% vs last week",
-      positive: true,
+      value: "0",
+      sublabel: "No shipments yet",
       icon: Package,
       color: "bg-blue-50 text-primary",
     },
     {
       label: "In Transit",
-      value: "89",
-      sublabel: "Active deliveries",
+      value: "0",
+      sublabel: "No active deliveries",
       icon: Truck,
       color: "bg-orange-50 text-orange-600",
     },
     {
       label: "Delivered Today",
-      value: "47",
-      change: "+12% vs yesterday",
-      positive: true,
+      value: "0",
+      sublabel: "No deliveries today",
       icon: CheckCircle,
       color: "bg-green-50 text-success",
     },
     {
       label: userRole === 'shipment_partner' ? "Account Funds" : "Wallet Balance",
-      value: "₹5,00,000",
+      value: "₹0",
       sublabel: "Available credits",
       icon: Wallet,
       color: "bg-purple-50 text-purple-600",
@@ -379,12 +338,6 @@ const Dashboard = () => {
                       <stat.icon size={20} />
                     </div>
                   </div>
-                  {stat.change && (
-                    <div className="flex items-center gap-1 text-sm">
-                      <TrendingUp size={14} className="text-success" />
-                      <span className="text-success">{stat.change}</span>
-                    </div>
-                  )}
                   {stat.sublabel && (
                     <p className="text-sm text-muted-foreground">{stat.sublabel}</p>
                   )}

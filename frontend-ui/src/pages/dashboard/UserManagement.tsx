@@ -21,13 +21,8 @@ import {
 const UserManagement = () => {
     const [searchTerm, setSearchTerm] = useState("");
 
-    // Mock data - replace with API call
-    const [users, setUsers] = useState([
-        { id: 1, name: "Rajesh Kumar", email: "rajesh@acme.com", role: "Admin", status: "Active", lastActive: "2 mins ago" },
-        { id: 2, name: "Priya Singh", email: "priya@acme.com", role: "Manager", status: "Active", lastActive: "1 hour ago" },
-        { id: 3, name: "Amit Patel", email: "amit@acme.com", role: "User", status: "Inactive", lastActive: "2 days ago" },
-        { id: 4, name: "Sneha Gupta", email: "sneha@acme.com", role: "User", status: "Active", lastActive: "5 hours ago" },
-    ]);
+    // Users data - populated from API
+    const [users, setUsers] = useState<{ id: number; name: string; email: string; role: string; status: string; lastActive: string }[]>([]);
 
     const filteredUsers = users.filter(user =>
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -31,65 +31,30 @@ import { toast } from "sonner";
 const AnalyticsDashboard = () => {
   const [dateRange, setDateRange] = useState("7d");
   const [stats, setStats] = useState([
-    { label: "Total Shipments", value: "1,250", change: "+12%", trend: "up" },
-    { label: "Delivered", value: "1,100", change: "+8%", trend: "up" },
-    { label: "In Transit", value: "120", change: "-3%", trend: "down" },
-    { label: "RTO Rate", value: "2.4%", change: "-0.5%", trend: "up" },
+    { label: "Total Shipments", value: "0", change: "0%", trend: "up" },
+    { label: "Delivered", value: "0", change: "0%", trend: "up" },
+    { label: "In Transit", value: "0", change: "0%", trend: "up" },
+    { label: "RTO Rate", value: "0%", change: "0%", trend: "up" },
   ]);
 
-  // Mock Chart Data
-  const volumeData = [
-    { name: "Mon", shipments: 120 },
-    { name: "Tue", shipments: 145 },
-    { name: "Wed", shipments: 132 },
-    { name: "Thu", shipments: 156 },
-    { name: "Fri", shipments: 189 },
-    { name: "Sat", shipments: 102 },
-    { name: "Sun", shipments: 85 },
-  ];
+  // Chart Data — populated from API
+  const volumeData: { name: string; shipments: number }[] = [];
 
-  const statusData = [
-    { name: "Delivered", value: 85, color: "#22c55e" },
-    { name: "In Transit", value: 7, color: "#3b82f6" },
-    { name: "Out for Delivery", value: 4, color: "#eab308" },
-    { name: "RTO", value: 2, color: "#ef4444" },
-    { name: "Pending", value: 2, color: "#6b7280" },
-  ];
+  const statusData: { name: string; value: number; color: string }[] = [];
 
-  const carrierData = [
-    { name: "BlueDart", onTime: 96, volume: 3456 },
-    { name: "Delhivery", onTime: 94, volume: 2890 },
-    { name: "DTDC", onTime: 92, volume: 2345 },
-    { name: "Ecom Express", onTime: 95, volume: 1890 },
-  ];
+  const carrierData: { name: string; onTime: number; volume: number }[] = [];
 
-  const geoData = [
-    { name: "Mumbai", value: 2345 },
-    { name: "Delhi", value: 2100 },
-    { name: "Bangalore", value: 1890 },
-    { name: "Chennai", value: 1456 },
-    { name: "Hyderabad", value: 1234 },
-  ];
+  const geoData: { name: string; value: number }[] = [];
 
-  const trendData = [
-    { month: "Jan", revenue: 45000, shipments: 1200 },
-    { month: "Feb", revenue: 52000, shipments: 1350 },
-    { month: "Mar", revenue: 48000, shipments: 1280 },
-    { month: "Apr", revenue: 61000, shipments: 1500 },
-    { month: "May", revenue: 55000, shipments: 1420 },
-    { month: "Jun", revenue: 67000, shipments: 1650 },
-  ];
+  const trendData: { month: string; revenue: number; shipments: number }[] = [];
 
-  // Mock data update based on filter
+  // Data update based on filter
   useEffect(() => {
-    // Simulate API call/Data change
-    const multiplier = dateRange === "7d" ? 1 : dateRange === "30d" ? 4 : dateRange === "90d" ? 12 : 50;
-
     setStats([
-      { label: "Total Shipments", value: (1250 * multiplier).toLocaleString(), change: "+12%", trend: "up" },
-      { label: "Delivered", value: (1100 * multiplier).toLocaleString(), change: "+8%", trend: "up" },
-      { label: "In Transit", value: (120 * multiplier).toLocaleString(), change: "-3%", trend: "down" },
-      { label: "RTO Rate", value: "2.4%", change: "-0.5%", trend: "up" },
+      { label: "Total Shipments", value: "0", change: "0%", trend: "up" },
+      { label: "Delivered", value: "0", change: "0%", trend: "up" },
+      { label: "In Transit", value: "0", change: "0%", trend: "up" },
+      { label: "RTO Rate", value: "0%", change: "0%", trend: "up" },
     ]);
   }, [dateRange]);
 
@@ -106,20 +71,9 @@ const AnalyticsDashboard = () => {
     toast.success("Report downloaded successfully");
   };
 
-  const carrierPerformance = [
-    { name: "BlueDart", deliveries: 3456, onTime: 96, rating: 4.8 },
-    { name: "Delhivery", deliveries: 2890, onTime: 94, rating: 4.6 },
-    { name: "DTDC", deliveries: 2345, onTime: 92, rating: 4.5 },
-    { name: "Ecom Express", deliveries: 1890, onTime: 95, rating: 4.7 },
-  ];
+  const carrierPerformance: { name: string; deliveries: number; onTime: number; rating: number }[] = [];
 
-  const topCities = [
-    { city: "Mumbai", shipments: 2345, revenue: "₹12.5L" },
-    { city: "Delhi", shipments: 2100, revenue: "₹11.2L" },
-    { city: "Bangalore", shipments: 1890, revenue: "₹9.8L" },
-    { city: "Chennai", shipments: 1456, revenue: "₹7.6L" },
-    { city: "Hyderabad", shipments: 1234, revenue: "₹6.4L" },
-  ];
+  const topCities: { city: string; shipments: number; revenue: string }[] = [];
 
   return (
     <div className="min-h-screen bg-background">

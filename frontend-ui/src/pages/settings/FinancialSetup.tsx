@@ -27,10 +27,10 @@ const paymentMethods = [
 
 const FinancialSetup = () => {
   const navigate = useNavigate();
-  const [accountHolder, setAccountHolder] = useState("Rahul Sharma");
-  const [accountNumber, setAccountNumber] = useState("482910002918");
-  const [ifscCode, setIfscCode] = useState("HDFC0001234");
-  const [bankVerified, setBankVerified] = useState(true);
+  const [accountHolder, setAccountHolder] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [ifscCode, setIfscCode] = useState("");
+  const [bankVerified, setBankVerified] = useState(false);
   const [selectedRecharge, setSelectedRecharge] = useState(2000);
   const [customAmount, setCustomAmount] = useState("");
   const [selectedPayment, setSelectedPayment] = useState("upi");
@@ -57,29 +57,26 @@ const FinancialSetup = () => {
             <div key={step.id} className="flex items-center">
               <div className="flex flex-col items-center">
                 <div
-                  className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold ${
-                    step.completed
+                  className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold ${step.completed
                       ? "bg-green-500 text-white"
                       : step.current
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground border-2"
-                  }`}
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground border-2"
+                    }`}
                 >
                   {step.completed ? <CheckCircle className="h-5 w-5" /> : step.id}
                 </div>
                 <span
-                  className={`text-xs mt-2 font-medium ${
-                    step.current ? "text-primary" : step.completed ? "text-green-600" : "text-muted-foreground"
-                  }`}
+                  className={`text-xs mt-2 font-medium ${step.current ? "text-primary" : step.completed ? "text-green-600" : "text-muted-foreground"
+                    }`}
                 >
                   {step.name}
                 </span>
               </div>
               {index < steps.length - 1 && (
                 <div
-                  className={`h-0.5 w-20 mx-2 ${
-                    step.completed ? "bg-green-500" : "bg-muted"
-                  }`}
+                  className={`h-0.5 w-20 mx-2 ${step.completed ? "bg-green-500" : "bg-muted"
+                    }`}
                 />
               )}
             </div>
@@ -243,13 +240,12 @@ const FinancialSetup = () => {
                       setSelectedRecharge(option.amount);
                       setCustomAmount("");
                     }}
-                    className={`gap-1 ${
-                      selectedRecharge === option.amount
+                    className={`gap-1 ${selectedRecharge === option.amount
                         ? option.popular
                           ? "bg-amber-500 hover:bg-amber-600"
                           : ""
                         : ""
-                    }`}
+                      }`}
                   >
                     {option.popular && option.bonus > 0 && (
                       <span className="text-xs">₹{option.amount.toLocaleString()} + ₹{option.bonus} Bonus</span>
@@ -268,9 +264,8 @@ const FinancialSetup = () => {
                     <Button
                       key={method.id}
                       variant={selectedPayment === method.id ? "default" : "outline"}
-                      className={`flex flex-col h-auto py-4 ${
-                        selectedPayment === method.id ? "" : "hover:border-primary"
-                      }`}
+                      className={`flex flex-col h-auto py-4 ${selectedPayment === method.id ? "" : "hover:border-primary"
+                        }`}
                       onClick={() => setSelectedPayment(method.id)}
                     >
                       {selectedPayment === method.id && (

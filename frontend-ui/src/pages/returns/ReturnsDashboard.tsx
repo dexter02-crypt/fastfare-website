@@ -14,19 +14,13 @@ import {
 } from "lucide-react";
 
 const stats = [
-  { label: "Total Returns", value: "234", change: "+12", trend: "up", icon: RotateCcw },
-  { label: "Pending Pickup", value: "45", change: "+5", trend: "neutral", icon: Clock },
-  { label: "In Transit", value: "89", change: "+8", trend: "up", icon: Package },
-  { label: "Completed", value: "100", change: "+15", trend: "up", icon: CheckCircle },
+  { label: "Total Returns", value: "0", change: "", trend: "neutral", icon: RotateCcw },
+  { label: "Pending Pickup", value: "0", change: "", trend: "neutral", icon: Clock },
+  { label: "In Transit", value: "0", change: "", trend: "neutral", icon: Package },
+  { label: "Completed", value: "0", change: "", trend: "neutral", icon: CheckCircle },
 ];
 
-const returns = [
-  { id: "RET-001", awb: "FF123456789", reason: "Product Damaged", status: "Pickup Scheduled", created: "Jan 26, 2024" },
-  { id: "RET-002", awb: "FF123456790", reason: "Wrong Item", status: "In Transit", created: "Jan 25, 2024" },
-  { id: "RET-003", awb: "FF123456791", reason: "Size Issue", status: "Delivered", created: "Jan 24, 2024" },
-  { id: "RET-004", awb: "FF123456792", reason: "Customer Request", status: "Pending", created: "Jan 24, 2024" },
-  { id: "RET-005", awb: "FF123456793", reason: "Quality Issue", status: "RTO", created: "Jan 23, 2024" },
-];
+const returns: { id: string; awb: string; reason: string; status: string; created: string }[] = [];
 
 const ReturnsDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -169,19 +163,19 @@ const ReturnsDashboard = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="p-4 rounded-lg border text-center">
-                <p className="text-3xl font-bold text-red-500">4.2%</p>
+                <p className="text-3xl font-bold text-red-500">0%</p>
                 <p className="text-sm text-muted-foreground">RTO Rate</p>
               </div>
               <div className="p-4 rounded-lg border text-center">
-                <p className="text-3xl font-bold">₹1.2L</p>
+                <p className="text-3xl font-bold">₹0</p>
                 <p className="text-sm text-muted-foreground">RTO Cost (Monthly)</p>
               </div>
               <div className="p-4 rounded-lg border text-center">
-                <p className="text-3xl font-bold">156</p>
+                <p className="text-3xl font-bold">0</p>
                 <p className="text-sm text-muted-foreground">RTO Shipments</p>
               </div>
               <div className="p-4 rounded-lg border text-center">
-                <p className="text-3xl font-bold">3.2 days</p>
+                <p className="text-3xl font-bold">0 days</p>
                 <p className="text-sm text-muted-foreground">Avg. Return Time</p>
               </div>
             </div>

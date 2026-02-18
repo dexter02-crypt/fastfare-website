@@ -12,10 +12,10 @@ import {
 import { authApi } from "@/lib/api";
 
 const stats = [
-    { label: "Total Shipments", value: "142", icon: Package, bg: "bg-blue-100", text: "text-blue-600" },
-    { label: "In Transit", value: "89", icon: Truck, bg: "bg-orange-100", text: "text-orange-600" },
-    { label: "Delivered Today", value: "47", icon: CheckCircle, bg: "bg-green-100", text: "text-green-600" },
-    { label: "Wallet Balance", value: "₹5,00,000", icon: Wallet, bg: "bg-purple-100", text: "text-purple-600" },
+    { label: "Total Shipments", value: "0", icon: Package, bg: "bg-blue-100", text: "text-blue-600" },
+    { label: "In Transit", value: "0", icon: Truck, bg: "bg-orange-100", text: "text-orange-600" },
+    { label: "Delivered Today", value: "0", icon: CheckCircle, bg: "bg-green-100", text: "text-green-600" },
+    { label: "Wallet Balance", value: "₹0", icon: Wallet, bg: "bg-purple-100", text: "text-purple-600" },
 ];
 
 const wmsActions = [
@@ -28,13 +28,7 @@ const wmsActions = [
     { label: "WMS Reports", desc: "Analytics", icon: TrendingUp, href: "/wms/reports", color: "from-indigo-500 to-indigo-600" },
 ];
 
-const activity = [
-    { id: "#SHP-3021", dest: "San Francisco, CA", status: "In Transit", eta: "Oct 26, 2:00 PM" },
-    { id: "#SHP-3020", dest: "Austin, TX", status: "Delivered", eta: "Oct 26, 11:30 AM" },
-    { id: "#SHP-3019", dest: "New York, NY", status: "In Transit", eta: "Oct 26, 4:45 PM" },
-    { id: "#SHP-3018", dest: "Miami, FL", status: "Delivered", eta: "Oct 25, 6:15 PM" },
-    { id: "#SHP-3017", dest: "Chicago, IL", status: "In Transit", eta: "Oct 27, 9:00 AM" },
-];
+const activity: { id: string; dest: string; status: string; eta: string }[] = [];
 
 const PartnerDashboard = () => {
     const user = authApi.getCurrentUser();

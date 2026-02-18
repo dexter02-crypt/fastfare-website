@@ -12,68 +12,7 @@ import {
   Trash2, CheckCheck, Filter, Settings
 } from "lucide-react";
 
-const notifications = [
-  {
-    id: 1,
-    type: "shipment",
-    title: "Shipment Delivered",
-    message: "Order #FF123456789 has been successfully delivered to Mumbai.",
-    time: "2 minutes ago",
-    read: false,
-    icon: CheckCircle,
-    color: "text-green-500",
-  },
-  {
-    id: 2,
-    type: "alert",
-    title: "Delivery Delayed",
-    message: "Order #FF123456790 is delayed due to weather conditions. New ETA: Jan 28.",
-    time: "15 minutes ago",
-    read: false,
-    icon: AlertTriangle,
-    color: "text-yellow-500",
-  },
-  {
-    id: 3,
-    type: "shipment",
-    title: "Shipment Picked Up",
-    message: "Order #FF123456791 has been picked up from your warehouse.",
-    time: "1 hour ago",
-    read: false,
-    icon: Truck,
-    color: "text-blue-500",
-  },
-  {
-    id: 4,
-    type: "system",
-    title: "New Feature Available",
-    message: "Try our new bulk upload feature for faster order processing.",
-    time: "3 hours ago",
-    read: true,
-    icon: Info,
-    color: "text-primary",
-  },
-  {
-    id: 5,
-    type: "billing",
-    title: "Low Wallet Balance",
-    message: "Your wallet balance is below ₹5,000. Recharge to continue shipping.",
-    time: "5 hours ago",
-    read: true,
-    icon: AlertTriangle,
-    color: "text-red-500",
-  },
-  {
-    id: 6,
-    type: "shipment",
-    title: "Shipment Out for Delivery",
-    message: "Order #FF123456792 is out for delivery and will arrive today.",
-    time: "Yesterday",
-    read: true,
-    icon: Package,
-    color: "text-purple-500",
-  },
-];
+const notifications: { id: number; type: string; title: string; message: string; time: string; read: boolean; icon: typeof CheckCircle; color: string }[] = [];
 
 const NotificationCenter = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -104,7 +43,7 @@ const NotificationCenter = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container py-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
@@ -149,9 +88,8 @@ const NotificationCenter = () => {
                 <button
                   key={item.value}
                   onClick={() => setFilter(item.value)}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${
-                    filter === item.value ? "bg-primary/10 text-primary" : "hover:bg-muted"
-                  }`}
+                  className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${filter === item.value ? "bg-primary/10 text-primary" : "hover:bg-muted"
+                    }`}
                 >
                   <span className="text-sm font-medium">{item.label}</span>
                   <Badge variant="secondary">{item.count}</Badge>
@@ -170,7 +108,7 @@ const NotificationCenter = () => {
                     onCheckedChange={selectAll}
                   />
                   <CardTitle className="text-base">
-                    {selectedIds.length > 0 
+                    {selectedIds.length > 0
                       ? `${selectedIds.length} selected`
                       : `${filteredNotifications.length} notifications`}
                   </CardTitle>
@@ -196,18 +134,16 @@ const NotificationCenter = () => {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className={`flex items-start gap-4 p-4 rounded-lg border transition-colors cursor-pointer ${
-                        notification.read ? "bg-background" : "bg-primary/5 border-primary/20"
-                      } hover:bg-muted/50`}
+                      className={`flex items-start gap-4 p-4 rounded-lg border transition-colors cursor-pointer ${notification.read ? "bg-background" : "bg-primary/5 border-primary/20"
+                        } hover:bg-muted/50`}
                     >
                       <Checkbox
                         checked={selectedIds.includes(notification.id)}
                         onCheckedChange={() => toggleSelect(notification.id)}
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${
-                        notification.read ? "bg-muted" : "bg-primary/10"
-                      }`}>
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${notification.read ? "bg-muted" : "bg-primary/10"
+                        }`}>
                         <notification.icon className={`h-5 w-5 ${notification.color}`} />
                       </div>
                       <div className="flex-1 min-w-0">

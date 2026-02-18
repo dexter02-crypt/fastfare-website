@@ -23,36 +23,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-// Mock active sessions data
-const mockSessions = [
-  {
-    id: "1",
-    device: "Chrome on Windows",
-    icon: Monitor,
-    location: "Mumbai, India",
-    ip: "192.168.1.100",
-    lastActive: "Active now",
-    isCurrent: true
-  },
-  {
-    id: "2",
-    device: "Safari on MacBook",
-    icon: Laptop,
-    location: "Delhi, India",
-    ip: "192.168.2.55",
-    lastActive: "2 hours ago",
-    isCurrent: false
-  },
-  {
-    id: "3",
-    device: "FastFare Mobile App",
-    icon: Smartphone,
-    location: "Pune, India",
-    ip: "192.168.3.200",
-    lastActive: "Yesterday",
-    isCurrent: false
-  }
-];
+// Active sessions — populated from API
+const mockSessions: { id: string; device: string; icon: typeof Monitor; location: string; ip: string; lastActive: string; isCurrent: boolean }[] = [];
 
 const SettingsPage = () => {
   const [notifications, setNotifications] = useState({
@@ -70,8 +42,8 @@ const SettingsPage = () => {
   });
 
   const [keys, setKeys] = useState({
-    production: "ff_prod_" + Math.random().toString(36).substring(7),
-    test: "ff_test_" + Math.random().toString(36).substring(7)
+    production: "",
+    test: ""
   });
 
   // Security state

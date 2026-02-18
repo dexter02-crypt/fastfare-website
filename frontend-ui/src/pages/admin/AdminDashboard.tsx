@@ -14,25 +14,15 @@ import {
 } from "lucide-react";
 
 const stats = [
-  { label: "Total Organizations", value: "2,345", change: "+123", icon: Building2 },
-  { label: "Active Users", value: "12,456", change: "+567", icon: Users },
-  { label: "Shipments Today", value: "45,678", change: "+2,345", icon: Package },
-  { label: "Active Carriers", value: "15", change: "+2", icon: Truck },
+  { label: "Total Organizations", value: "0", change: "+0", icon: Building2 },
+  { label: "Active Users", value: "0", change: "+0", icon: Users },
+  { label: "Shipments Today", value: "0", change: "+0", icon: Package },
+  { label: "Active Carriers", value: "0", change: "+0", icon: Truck },
 ];
 
-const organizations = [
-  { id: 1, name: "Acme Corp", plan: "Business", shipments: 12456, status: "Active", joined: "Jan 2023" },
-  { id: 2, name: "TechStart Inc", plan: "Professional", shipments: 5678, status: "Active", joined: "Mar 2023" },
-  { id: 3, name: "Fashion Hub", plan: "Starter", shipments: 890, status: "Active", joined: "Jun 2023" },
-  { id: 4, name: "Electronics Plus", plan: "Enterprise", shipments: 34567, status: "Active", joined: "Dec 2022" },
-  { id: 5, name: "Health Goods", plan: "Professional", shipments: 2345, status: "Suspended", joined: "Aug 2023" },
-];
+const organizations: { id: number; name: string; plan: string; shipments: number; status: string; joined: string }[] = [];
 
-const recentAlerts = [
-  { type: "error", message: "High RTO rate for BlueDart in Mumbai zone", time: "2 hours ago" },
-  { type: "warning", message: "Carrier DTDC API experiencing delays", time: "4 hours ago" },
-  { type: "info", message: "New carrier integration pending approval", time: "1 day ago" },
-];
+const recentAlerts: { type: string; message: string; time: string }[] = [];
 
 const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,7 +30,7 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container py-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
@@ -91,11 +81,10 @@ const AdminDashboard = () => {
                 {recentAlerts.map((alert, index) => (
                   <div
                     key={index}
-                    className={`p-3 rounded-lg border ${
-                      alert.type === "error" ? "border-red-500/20 bg-red-500/5" :
-                      alert.type === "warning" ? "border-yellow-500/20 bg-yellow-500/5" :
-                      "border-blue-500/20 bg-blue-500/5"
-                    }`}
+                    className={`p-3 rounded-lg border ${alert.type === "error" ? "border-red-500/20 bg-red-500/5" :
+                        alert.type === "warning" ? "border-yellow-500/20 bg-yellow-500/5" :
+                          "border-blue-500/20 bg-blue-500/5"
+                      }`}
                   >
                     <p className="text-sm font-medium">{alert.message}</p>
                     <p className="text-xs text-muted-foreground mt-1">{alert.time}</p>

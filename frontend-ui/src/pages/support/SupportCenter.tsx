@@ -24,11 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const tickets = [
-  { id: "TKT-001", subject: "Shipment delayed for 3 days", status: "Open", priority: "High", created: "2 hours ago" },
-  { id: "TKT-002", subject: "Invoice discrepancy", status: "In Progress", priority: "Medium", created: "1 day ago" },
-  { id: "TKT-003", subject: "API integration help needed", status: "Resolved", priority: "Low", created: "3 days ago" },
-];
+const tickets: { id: string; subject: string; status: string; priority: string; created: string }[] = [];
 
 const faqs = [
   { question: "How do I track my shipment?", category: "Tracking" },
@@ -55,24 +51,24 @@ const documentationItems = [
 
 // Video tutorials
 const videoTutorials = [
-  { title: "FastFare Platform Overview", duration: "5:30", thumbnail: "📹", views: "1.2K" },
-  { title: "Creating Your First Shipment", duration: "8:45", thumbnail: "📦", views: "890" },
-  { title: "Tracking Shipments in Real-Time", duration: "6:15", thumbnail: "🗺️", views: "756" },
-  { title: "Managing Fleet & Drivers", duration: "12:00", thumbnail: "🚚", views: "543" },
-  { title: "Wallet Recharge & Billing", duration: "4:20", thumbnail: "💳", views: "432" },
-  { title: "Generating Reports & Analytics", duration: "7:30", thumbnail: "📊", views: "321" },
+  { title: "FastFare Platform Overview", duration: "5:30", thumbnail: "📹", views: "0" },
+  { title: "Creating Your First Shipment", duration: "8:45", thumbnail: "📦", views: "0" },
+  { title: "Tracking Shipments in Real-Time", duration: "6:15", thumbnail: "🗺️", views: "0" },
+  { title: "Managing Fleet & Drivers", duration: "12:00", thumbnail: "🚚", views: "0" },
+  { title: "Wallet Recharge & Billing", duration: "4:20", thumbnail: "💳", views: "0" },
+  { title: "Generating Reports & Analytics", duration: "7:30", thumbnail: "📊", views: "0" },
 ];
 
 // Knowledge base articles
 const knowledgeBaseArticles = [
-  { title: "Why is my shipment delayed?", category: "Troubleshooting", helpful: 145 },
-  { title: "How to change delivery address", category: "Shipping", helpful: 98 },
-  { title: "Understanding shipping charges", category: "Billing", helpful: 87 },
-  { title: "How to cancel a shipment", category: "Shipping", helpful: 76 },
-  { title: "Wallet recharge not reflecting", category: "Troubleshooting", helpful: 65 },
-  { title: "Setting up 2FA authentication", category: "Security", helpful: 54 },
-  { title: "Download shipping labels", category: "Shipping", helpful: 43 },
-  { title: "Invoice and GST queries", category: "Billing", helpful: 32 },
+  { title: "Why is my shipment delayed?", category: "Troubleshooting", helpful: 0 },
+  { title: "How to change delivery address", category: "Shipping", helpful: 0 },
+  { title: "Understanding shipping charges", category: "Billing", helpful: 0 },
+  { title: "How to cancel a shipment", category: "Shipping", helpful: 0 },
+  { title: "Wallet recharge not reflecting", category: "Troubleshooting", helpful: 0 },
+  { title: "Setting up 2FA authentication", category: "Security", helpful: 0 },
+  { title: "Download shipping labels", category: "Shipping", helpful: 0 },
+  { title: "Invoice and GST queries", category: "Billing", helpful: 0 },
 ];
 
 const SupportCenter = () => {
@@ -131,7 +127,7 @@ const SupportCenter = () => {
         "I can help you with that! Let me check our records."
       ];
       const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
-      
+
       const botMessage = {
         id: chatMessages.length + 2,
         sender: "bot",
@@ -150,27 +146,27 @@ const SupportCenter = () => {
   };
 
   const contactOptions = [
-    { 
-      icon: MessageSquare, 
-      title: "Live Chat", 
-      description: "Chat with our support team", 
-      action: "Start Chat", 
+    {
+      icon: MessageSquare,
+      title: "Live Chat",
+      description: "Chat with our support team",
+      action: "Start Chat",
       color: "bg-blue-500",
       onClick: handleStartChat
     },
-    { 
-      icon: Phone, 
-      title: "Call Us", 
-      description: phoneNumber, 
-      action: "Call Now", 
+    {
+      icon: Phone,
+      title: "Call Us",
+      description: phoneNumber,
+      action: "Call Now",
       color: "bg-green-500",
       onClick: handleCallNow
     },
-    { 
-      icon: Mail, 
-      title: "Email Support", 
-      description: emailAddress, 
-      action: "Send Email", 
+    {
+      icon: Mail,
+      title: "Email Support",
+      description: emailAddress,
+      action: "Send Email",
       color: "bg-purple-500",
       onClick: handleSendEmail
     },
@@ -179,7 +175,7 @@ const SupportCenter = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container py-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
@@ -249,13 +245,12 @@ const SupportCenter = () => {
                   {tickets.map((ticket) => (
                     <div key={ticket.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
                       <div className="flex items-center gap-4">
-                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                          ticket.status === "Open" ? "bg-blue-500/10" :
-                          ticket.status === "In Progress" ? "bg-yellow-500/10" : "bg-green-500/10"
-                        }`}>
+                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${ticket.status === "Open" ? "bg-blue-500/10" :
+                            ticket.status === "In Progress" ? "bg-yellow-500/10" : "bg-green-500/10"
+                          }`}>
                           {ticket.status === "Open" ? <AlertCircle className="h-5 w-5 text-blue-500" /> :
-                           ticket.status === "In Progress" ? <Clock className="h-5 w-5 text-yellow-500" /> :
-                           <CheckCircle className="h-5 w-5 text-green-500" />}
+                            ticket.status === "In Progress" ? <Clock className="h-5 w-5 text-yellow-500" /> :
+                              <CheckCircle className="h-5 w-5 text-green-500" />}
                         </div>
                         <div>
                           <p className="font-medium">{ticket.subject}</p>
@@ -401,9 +396,9 @@ const SupportCenter = () => {
                 <p className="text-xs opacity-80">Usually responds in a few minutes</p>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="text-white hover:bg-white/20"
               onClick={() => setChatOpen(false)}
             >
@@ -414,16 +409,15 @@ const SupportCenter = () => {
           {/* Chat Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {chatMessages.map((msg) => (
-              <div 
-                key={msg.id} 
+              <div
+                key={msg.id}
                 className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div 
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    msg.sender === 'user' 
-                      ? 'bg-primary text-primary-foreground' 
+                <div
+                  className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.sender === 'user'
+                      ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'
-                  }`}
+                    }`}
                 >
                   <p className="text-sm">{msg.text}</p>
                   <p className={`text-xs mt-1 ${msg.sender === 'user' ? 'opacity-70' : 'text-muted-foreground'}`}>
@@ -477,8 +471,8 @@ const SupportCenter = () => {
           </DialogHeader>
           <div className="space-y-3 mt-4">
             {documentationItems.map((doc, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
                 onClick={() => toast.info(`Opening ${doc.title}...`)}
               >
@@ -512,8 +506,8 @@ const SupportCenter = () => {
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             {videoTutorials.map((video, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="rounded-lg border hover:border-primary transition-colors cursor-pointer overflow-hidden"
                 onClick={() => toast.info(`Playing: ${video.title}`)}
               >
@@ -548,8 +542,8 @@ const SupportCenter = () => {
           </DialogHeader>
           <div className="space-y-3 mt-4">
             {knowledgeBaseArticles.map((article, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
                 onClick={() => toast.info(`Reading: ${article.title}`)}
               >

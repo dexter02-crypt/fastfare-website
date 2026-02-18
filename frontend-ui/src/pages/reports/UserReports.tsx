@@ -24,7 +24,7 @@ const UserReports = () => {
     const [dateRange, setDateRange] = useState("30days");
     const [loading, setLoading] = useState(true);
     const [userRole, setUserRole] = useState<string>("");
-    
+
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem("user") || "{}");
         setUserRole(user.role || "");
@@ -49,48 +49,24 @@ const UserReports = () => {
     const fetchUserReports = async () => {
         setLoading(true);
         try {
-            // Simulate API call - replace with actual API
+            // Production: replace with actual API call
             await new Promise(resolve => setTimeout(resolve, 800));
-            
-            // Mock data for user's shipments - more comprehensive sample
+
+            // Empty production state
             setStats({
-                totalShipments: 156,
-                activeShipments: 23,
-                deliveredShipments: 118,
-                pendingShipments: 15,
-                totalAmount: 487500,
-                avgDeliveryTime: 2.8,
+                totalShipments: 0,
+                activeShipments: 0,
+                deliveredShipments: 0,
+                pendingShipments: 0,
+                totalAmount: 0,
+                avgDeliveryTime: 0,
             });
 
-            setShipmentsByStatus([
-                { name: "Delivered", value: 118, color: "#22c55e" },
-                { name: "In Transit", value: 23, color: "#3b82f6" },
-                { name: "Pending", value: 15, color: "#f59e0b" },
-            ]);
+            setShipmentsByStatus([]);
 
-            setShipmentsOverTime([
-                { date: "Jan", count: 18 },
-                { date: "Feb", count: 24 },
-                { date: "Mar", count: 31 },
-                { date: "Apr", count: 28 },
-                { date: "May", count: 35 },
-                { date: "Jun", count: 20 },
-            ]);
+            setShipmentsOverTime([]);
 
-            setRecentShipments([
-                { id: "FF2026020815", destination: "Mumbai, MH", status: "delivered", date: "2026-02-08", cost: 4500, origin: "Delhi, DL", carrier: "FastFare Express" },
-                { id: "FF2026020814", destination: "Bangalore, KA", status: "in_transit", date: "2026-02-08", cost: 3800, origin: "Chennai, TN", carrier: "FastFare Standard" },
-                { id: "FF2026020712", destination: "Hyderabad, TG", status: "in_transit", date: "2026-02-07", cost: 2950, origin: "Pune, MH", carrier: "FastFare Express" },
-                { id: "FF2026020711", destination: "Kolkata, WB", status: "pending", date: "2026-02-07", cost: 5200, origin: "Mumbai, MH", carrier: "FastFare Premium" },
-                { id: "FF2026020608", destination: "Ahmedabad, GJ", status: "delivered", date: "2026-02-06", cost: 2100, origin: "Surat, GJ", carrier: "FastFare Standard" },
-                { id: "FF2026020607", destination: "Jaipur, RJ", status: "delivered", date: "2026-02-06", cost: 3450, origin: "Delhi, DL", carrier: "FastFare Express" },
-                { id: "FF2026020504", destination: "Lucknow, UP", status: "delivered", date: "2026-02-05", cost: 2800, origin: "Kanpur, UP", carrier: "FastFare Standard" },
-                { id: "FF2026020503", destination: "Indore, MP", status: "delivered", date: "2026-02-05", cost: 4100, origin: "Bhopal, MP", carrier: "FastFare Express" },
-                { id: "FF2026020402", destination: "Nagpur, MH", status: "delivered", date: "2026-02-04", cost: 1950, origin: "Raipur, CG", carrier: "FastFare Standard" },
-                { id: "FF2026020401", destination: "Chandigarh, CH", status: "pending", date: "2026-02-04", cost: 3650, origin: "Ludhiana, PB", carrier: "FastFare Premium" },
-                { id: "FF2026020315", destination: "Coimbatore, TN", status: "delivered", date: "2026-02-03", cost: 2750, origin: "Madurai, TN", carrier: "FastFare Express" },
-                { id: "FF2026020214", destination: "Visakhapatnam, AP", status: "delivered", date: "2026-02-02", cost: 4200, origin: "Vijayawada, AP", carrier: "FastFare Standard" },
-            ]);
+            setRecentShipments([]);
         } catch (error) {
             console.error("Error fetching reports:", error);
         } finally {
@@ -103,7 +79,7 @@ const UserReports = () => {
         recentShipments.forEach(s => {
             csv += `${s.id},${s.destination},${s.status},${s.date},${s.cost}\n`;
         });
-        
+
         const blob = new Blob([csv], { type: "text/csv" });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -120,7 +96,7 @@ const UserReports = () => {
             "Date": s.date,
             "Cost (₹)": s.cost
         }));
-        
+
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "My Shipments");
@@ -133,13 +109,13 @@ const UserReports = () => {
         doc.text("My Shipments Report", 14, 22);
         doc.setFontSize(11);
         doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
-        
+
         autoTable(doc, {
             startY: 40,
             head: [["Shipment ID", "Destination", "Status", "Date", "Cost (₹)"]],
             body: recentShipments.map(s => [s.id, s.destination, s.status, s.date, `₹${s.cost}`]),
         });
-        
+
         doc.save(`my_shipments_report_${new Date().toISOString().split('T')[0]}.pdf`);
     };
 

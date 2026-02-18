@@ -14,23 +14,10 @@ import {
 } from "lucide-react";
 
 const searchResults = {
-  shipments: [
-    { id: "FF123456789", status: "In Transit", origin: "Mumbai", destination: "Delhi", date: "Jan 25, 2024" },
-    { id: "FF123456790", status: "Delivered", origin: "Bangalore", destination: "Chennai", date: "Jan 24, 2024" },
-    { id: "FF123456791", status: "Processing", origin: "Pune", destination: "Hyderabad", date: "Jan 26, 2024" },
-  ],
-  addresses: [
-    { id: 1, name: "Mumbai Warehouse", address: "123 Industrial Area, Mumbai 400001", type: "Pickup" },
-    { id: 2, name: "Delhi Office", address: "456 Business Park, New Delhi 110001", type: "Delivery" },
-  ],
-  customers: [
-    { id: 1, name: "John Doe", email: "john@example.com", orders: 45 },
-    { id: 2, name: "Jane Smith", email: "jane@example.com", orders: 32 },
-  ],
-  invoices: [
-    { id: "INV-2024-001", amount: "₹15,230", date: "Jan 25, 2024", status: "Paid" },
-    { id: "INV-2024-002", amount: "₹8,450", date: "Jan 20, 2024", status: "Pending" },
-  ],
+  shipments: [] as { id: string; status: string; origin: string; destination: string; date: string }[],
+  addresses: [] as { id: number; name: string; address: string; type: string }[],
+  customers: [] as { id: number; name: string; email: string; orders: number }[],
+  invoices: [] as { id: string; amount: string; date: string; status: string }[],
 };
 
 const SearchResults = () => {
@@ -48,7 +35,7 @@ const SearchResults = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container py-8">
         {/* Search Header */}
         <div className="mb-8">

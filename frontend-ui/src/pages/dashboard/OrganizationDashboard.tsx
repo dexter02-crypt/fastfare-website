@@ -19,13 +19,7 @@ import {
 
 import { authApi, alertsApi } from "@/lib/api";
 
-const recentShipments = [
-  { id: "FF123456789", status: "In Transit", origin: "Mumbai", destination: "Delhi", eta: "Today, 6 PM" },
-  { id: "FF123456790", status: "Out for Delivery", origin: "Bangalore", destination: "Chennai", eta: "Today, 2 PM" },
-  { id: "FF123456791", status: "Picked Up", origin: "Pune", destination: "Hyderabad", eta: "Tomorrow, 10 AM" },
-  { id: "FF123456792", status: "Delivered", origin: "Delhi", destination: "Jaipur", eta: "Completed" },
-  { id: "FF123456793", status: "Processing", origin: "Mumbai", destination: "Kolkata", eta: "Jan 28, 4 PM" },
-];
+const recentShipments: { id: string; status: string; origin: string; destination: string; eta: string }[] = [];
 
 const OrganizationDashboard = () => {
   const navigate = useNavigate();
@@ -63,25 +57,24 @@ const OrganizationDashboard = () => {
   }, [kycCompleted, walletRecharged, firstOrderPlaced]);
 
   const [stats, setStats] = useState([
-    { label: "Total Shipments", value: "1,234", change: "+12%", trend: "up", icon: Package },
-    { label: "In Transit", value: "156", change: "+5%", trend: "up", icon: Truck },
-    { label: "Delivered Today", value: "89", change: "+18%", trend: "up", icon: CheckCircle },
-    { label: "Pending Pickup", value: "23", change: "-8%", trend: "down", icon: Clock },
+    { label: "Total Shipments", value: "0", change: "0%", trend: "up", icon: Package },
+    { label: "In Transit", value: "0", change: "0%", trend: "up", icon: Truck },
+    { label: "Delivered Today", value: "0", change: "0%", trend: "up", icon: CheckCircle },
+    { label: "Pending Pickup", value: "0", change: "0%", trend: "up", icon: Clock },
   ]);
 
   const user = authApi.getCurrentUser();
   const isAdmin = user?.role === 'admin';
 
-  // Mock data update on date change
+  // Data update on date change
   useEffect(() => {
-    const multiplier = dateRange === "today" ? 1 : dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : 1;
     const labelSuffix = dateRange === "today" ? "Today" : "Total";
 
     setStats([
-      { label: "Total Shipments", value: (1234 * multiplier).toLocaleString(), change: "+12%", trend: "up", icon: Package },
-      { label: "In Transit", value: (156 * multiplier).toLocaleString(), change: "+5%", trend: "up", icon: Truck },
-      { label: "Delivered " + labelSuffix, value: (89 * multiplier).toLocaleString(), change: "+18%", trend: "up", icon: CheckCircle },
-      { label: "Pending Pickup", value: (23 * multiplier).toLocaleString(), change: "-8%", trend: "down", icon: Clock },
+      { label: "Total Shipments", value: "0", change: "0%", trend: "up", icon: Package },
+      { label: "In Transit", value: "0", change: "0%", trend: "up", icon: Truck },
+      { label: "Delivered " + labelSuffix, value: "0", change: "0%", trend: "up", icon: CheckCircle },
+      { label: "Pending Pickup", value: "0", change: "0%", trend: "up", icon: Clock },
     ]);
   }, [dateRange]);
 

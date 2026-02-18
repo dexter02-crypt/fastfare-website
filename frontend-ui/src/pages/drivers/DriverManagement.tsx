@@ -14,19 +14,13 @@ import {
 } from "lucide-react";
 
 const stats = [
-  { label: "Total Drivers", value: "156", icon: User },
-  { label: "Active Now", value: "89", icon: Truck },
-  { label: "On Delivery", value: "45", icon: Package },
-  { label: "Available", value: "44", icon: CheckCircle },
+  { label: "Total Drivers", value: "0", icon: User },
+  { label: "Active Now", value: "0", icon: Truck },
+  { label: "On Delivery", value: "0", icon: Package },
+  { label: "Available", value: "0", icon: CheckCircle },
 ];
 
-const drivers = [
-  { id: 1, name: "Rahul Sharma", phone: "+91 98765 43210", status: "On Delivery", vehicle: "Tata Ace", rating: 4.8, deliveries: 1234, location: "Mumbai" },
-  { id: 2, name: "Amit Kumar", phone: "+91 98765 43211", status: "Available", vehicle: "Mahindra Bolero", rating: 4.6, deliveries: 987, location: "Delhi" },
-  { id: 3, name: "Vijay Singh", phone: "+91 98765 43212", status: "On Delivery", vehicle: "Tata 407", rating: 4.9, deliveries: 2345, location: "Bangalore" },
-  { id: 4, name: "Suresh Patel", phone: "+91 98765 43213", status: "Offline", vehicle: "Ashok Leyland", rating: 4.5, deliveries: 567, location: "Chennai" },
-  { id: 5, name: "Manoj Verma", phone: "+91 98765 43214", status: "Available", vehicle: "Eicher Pro", rating: 4.7, deliveries: 890, location: "Pune" },
-];
+const drivers: { id: number; name: string; phone: string; status: string; vehicle: string; rating: number; deliveries: number; location: string }[] = [];
 
 const DriverManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -111,7 +105,7 @@ const DriverManagement = () => {
                     <Badge
                       variant={
                         driver.status === "Available" ? "default" :
-                        driver.status === "On Delivery" ? "secondary" : "outline"
+                          driver.status === "On Delivery" ? "secondary" : "outline"
                       }
                     >
                       {driver.status}

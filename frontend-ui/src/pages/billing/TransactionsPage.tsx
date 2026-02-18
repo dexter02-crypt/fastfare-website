@@ -9,15 +9,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Search, Download, ArrowUpRight, ArrowDownRight, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const transactions = [
-    { id: "TXN-001", type: "Recharge", amount: "+₹10,000", date: "Jan 26, 2024", status: "Completed", method: "UPI" },
-    { id: "TXN-002", type: "Shipment Charge", amount: "-₹2,345", date: "Jan 25, 2024", status: "Completed", method: "Wallet" },
-    { id: "TXN-003", type: "Shipment Charge", amount: "-₹1,890", date: "Jan 25, 2024", status: "Completed", method: "Wallet" },
-    { id: "TXN-004", type: "Refund", amount: "+₹450", date: "Jan 24, 2024", status: "Completed", method: "Wallet" },
-    { id: "TXN-005", type: "Shipment Charge", amount: "-₹3,210", date: "Jan 24, 2024", status: "Completed", method: "Wallet" },
-    { id: "TXN-006", type: "Recharge", amount: "+₹5,000", date: "Jan 20, 2024", status: "Completed", method: "Credit Card" },
-    { id: "TXN-007", type: "Subscription", amount: "-₹999", date: "Jan 15, 2024", status: "Completed", method: "Wallet" },
-];
+const transactions: { id: string; type: string; amount: string; date: string; status: string; method: string }[] = [];
 
 const TransactionsPage = () => {
     const [searchTerm, setSearchTerm] = useState("");
