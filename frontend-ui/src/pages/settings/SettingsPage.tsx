@@ -575,7 +575,7 @@ const SettingsPage = () => {
                       <Button
                         className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
                         onClick={() => {
-                          window.open(`${API_BASE_URL}/downloads/FastFare-Driver-App.apk`, '_blank');
+                          window.open('/downloads/FastFare-Driver-App.apk', '_blank');
                           toast.success("Download started \u2014 FastFare Driver App");
                         }}
                       >
@@ -607,7 +607,7 @@ const SettingsPage = () => {
                       <Button
                         className="w-full gap-2 bg-purple-600 hover:bg-purple-700"
                         onClick={() => {
-                          window.open(`${API_BASE_URL}/downloads/FastFare-Partner-Scanner.apk`, '_blank');
+                          window.open('/downloads/FastFare-Partner-Scanner.apk', '_blank');
                           toast.success("Download started \u2014 FastFare Partner Scanner");
                         }}
                       >
