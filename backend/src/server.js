@@ -37,6 +37,10 @@ import driverLocationsRoutes from './routes/driver-locations.js';
 import partnerTeamRoutes from './routes/partner-team.js';
 import scanPartnerAuthRoutes from './routes/scan-partner-auth.js';
 
+// Carrier routes
+import carrierAuthRoutes from './routes/carrier-auth.js';
+import carrierRoutes from './routes/carriers.js';
+
 // Socket handler
 import { locationSocket } from './socket/location.socket.js';
 
@@ -133,6 +137,10 @@ app.use('/api/trips', mobileTripsRoutes);
 app.use('/api/driver-locations', driverLocationsRoutes);
 app.use('/api/partner-team', partnerTeamRoutes);
 app.use('/api/scan-partner-auth', scanPartnerAuthRoutes);
+
+// ─── Carrier Routes ───
+app.use('/api/carrier-auth', carrierAuthRoutes);
+app.use('/api/carriers', carrierRoutes);
 
 // ─── Settlement Engine Routes ───
 app.use('/api/settlement', settlementRoutes);

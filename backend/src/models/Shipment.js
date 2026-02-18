@@ -59,6 +59,11 @@ const shipmentSchema = new mongoose.Schema({
         default: 'standard'
     },
     carrier: String,
+    carrierId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Carrier',
+        default: null
+    },
     insurance: { type: Boolean, default: false },
     fragileHandling: { type: Boolean, default: false },
     signatureRequired: { type: Boolean, default: false },
@@ -70,7 +75,7 @@ const shipmentSchema = new mongoose.Schema({
     assignedVehicle: { type: String, default: null },
     status: {
         type: String,
-        enum: ['pending', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled', 'returned'],
+        enum: ['pending', 'pending_acceptance', 'accepted', 'rejected_by_carrier', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled', 'returned'],
         default: 'pending'
     },
     trackingHistory: [{

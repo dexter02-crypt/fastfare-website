@@ -58,6 +58,7 @@ const initialPackageData = {
 const initialServiceData = {
   serviceType: "express",
   carrier: "",
+  carrierId: "",
   insurance: false,
   fragileHandling: false,
   signatureRequired: false,
@@ -106,6 +107,7 @@ const NewShipmentBooking = () => {
           // Service Details (Flattened)
           serviceType: serviceData.serviceType,
           carrier: serviceData.carrier,
+          carrierId: serviceData.carrierId || undefined,
           insurance: serviceData.insurance,
           fragileHandling: serviceData.fragileHandling,
           signatureRequired: serviceData.signatureRequired,

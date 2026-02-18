@@ -1,6 +1,9 @@
 import express from 'express';
 import Shipment from '../models/Shipment.js';
+import Carrier from '../models/Carrier.js';
 import { protect } from '../middleware/auth.js';
+import { fireWebhook } from '../services/webhookService.js';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
@@ -22,7 +25,7 @@ const calculateShippingCost = (shipment) => {
 router.post('/', protect, async (req, res) => {
     try {
         const { pickup, delivery, packages, contentType, description, paymentMode, codAmount,
-            serviceType, carrier, insurance, fragileHandling, signatureRequired,
+            serviceType, carrier, carrierId, insurance, fragileHandling, signatureRequired,
             scheduledPickup, pickupDate, pickupSlot } = req.body;
 
         const shipmentData = {
@@ -36,27 +39,34 @@ router.post('/', protect, async (req, res) => {
             codAmount: paymentMode === 'cod' ? codAmount : 0,
             serviceType,
             carrier,
+            carrierId: carrierId || null,
             insurance,
             fragileHandling,
             signatureRequired,
             scheduledPickup,
             pickupDate,
             pickupSlot,
+            status: carrierId ? 'pending_acceptance' : 'pending',
             trackingHistory: [{
-                status: 'pending',
+                status: carrierId ? 'pending_acceptance' : 'pending',
                 location: pickup.city || 'Origin',
-                description: 'Shipment created'
+                description: carrierId ? 'Shipment assigned to carrier — awaiting acceptance' : 'Shipment created'
             }]
         };
 
         const shipment = await Shipment.create(shipmentData);
         shipment.shippingCost = calculateShippingCost(shipment);
 
-        // Set estimated delivery (3-7 days based on service)
         const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
         shipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-
         await shipment.save();
+
+        // Fire webhook to carrier if assigned
+        if (carrierId) {
+            fireWebhook(carrierId, 'shipment.assigned', shipment.toObject()).catch(err => {
+                console.error('Webhook fire error:', err);
+            });
+        }
 
         res.status(201).json({
             success: true,
@@ -72,7 +82,7 @@ router.post('/', protect, async (req, res) => {
 router.post('/create', protect, async (req, res) => {
     try {
         const { pickup, delivery, packages, contentType, description, paymentMode, codAmount,
-            serviceType, carrier, insurance, fragileHandling, signatureRequired,
+            serviceType, carrier, carrierId, insurance, fragileHandling, signatureRequired,
             scheduledPickup, pickupDate, pickupSlot } = req.body;
 
         const shipmentData = {
@@ -86,27 +96,33 @@ router.post('/create', protect, async (req, res) => {
             codAmount: paymentMode === 'cod' ? codAmount : 0,
             serviceType,
             carrier,
+            carrierId: carrierId || null,
             insurance,
             fragileHandling,
             signatureRequired,
             scheduledPickup,
             pickupDate,
             pickupSlot,
+            status: carrierId ? 'pending_acceptance' : 'pending',
             trackingHistory: [{
-                status: 'pending',
+                status: carrierId ? 'pending_acceptance' : 'pending',
                 location: pickup.city || 'Origin',
-                description: 'Shipment created'
+                description: carrierId ? 'Shipment assigned to carrier — awaiting acceptance' : 'Shipment created'
             }]
         };
 
         const shipment = await Shipment.create(shipmentData);
         shipment.shippingCost = calculateShippingCost(shipment);
 
-        // Set estimated delivery (3-7 days based on service)
         const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
         shipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-
         await shipment.save();
+
+        if (carrierId) {
+            fireWebhook(carrierId, 'shipment.assigned', shipment.toObject()).catch(err => {
+                console.error('Webhook fire error:', err);
+            });
+        }
 
         res.status(201).json({
             success: true,
@@ -325,7 +341,7 @@ router.post('/:id/cancel', protect, async (req, res) => {
             return res.status(404).json({ error: 'Shipment not found' });
         }
 
-        if (!['pending', 'pickup_scheduled'].includes(shipment.status)) {
+        if (!['pending', 'pending_acceptance', 'pickup_scheduled'].includes(shipment.status)) {
             return res.status(400).json({ error: 'Cannot cancel shipment after pickup' });
         }
 
@@ -339,6 +355,124 @@ router.post('/:id/cancel', protect, async (req, res) => {
         res.json({ success: true, message: 'Shipment cancelled' });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// ══════════════════════════════════════════════════════════════
+// CARRIER-SIDE ENDPOINTS
+// ══════════════════════════════════════════════════════════════
+
+// Middleware: authenticate carrier from JWT
+const protectCarrier = async (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, message: 'Not authorized' });
+        }
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.role !== 'carrier') {
+            return res.status(403).json({ success: false, message: 'Carrier access required' });
+        }
+        req.carrierId = decoded.id;
+        next();
+    } catch (error) {
+        return res.status(401).json({ success: false, message: 'Token invalid' });
+    }
+};
+
+// GET /api/shipments/carrier/incoming — list pending shipments for carrier
+router.get('/carrier/incoming', protectCarrier, async (req, res) => {
+    try {
+        const { status } = req.query;
+        const query = { carrierId: req.carrierId };
+
+        if (status) {
+            query.status = status;
+        } else {
+            query.status = { $in: ['pending_acceptance', 'accepted', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery'] };
+        }
+
+        const shipments = await Shipment.find(query)
+            .sort({ createdAt: -1 })
+            .lean();
+
+        res.json({ success: true, shipments });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// GET /api/shipments/carrier/stats — carrier dashboard stats
+router.get('/carrier/stats', protectCarrier, async (req, res) => {
+    try {
+        const cid = req.carrierId;
+        const [pending, accepted, inTransit, delivered, total] = await Promise.all([
+            Shipment.countDocuments({ carrierId: cid, status: 'pending_acceptance' }),
+            Shipment.countDocuments({ carrierId: cid, status: { $in: ['accepted', 'pickup_scheduled', 'picked_up'] } }),
+            Shipment.countDocuments({ carrierId: cid, status: 'in_transit' }),
+            Shipment.countDocuments({ carrierId: cid, status: 'delivered' }),
+            Shipment.countDocuments({ carrierId: cid })
+        ]);
+
+        res.json({
+            success: true,
+            stats: { pending, accepted, inTransit, delivered, total }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// PUT /api/shipments/carrier/:id/accept — carrier accepts shipment
+router.put('/carrier/:id/accept', protectCarrier, async (req, res) => {
+    try {
+        const shipment = await Shipment.findOne({
+            _id: req.params.id,
+            carrierId: req.carrierId,
+            status: 'pending_acceptance'
+        });
+
+        if (!shipment) {
+            return res.status(404).json({ success: false, message: 'Shipment not found or already processed' });
+        }
+
+        shipment.status = 'accepted';
+        shipment.trackingHistory.push({
+            status: 'accepted',
+            description: 'Carrier accepted the shipment'
+        });
+        await shipment.save();
+
+        res.json({ success: true, message: 'Shipment accepted', shipment });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// PUT /api/shipments/carrier/:id/reject — carrier rejects shipment
+router.put('/carrier/:id/reject', protectCarrier, async (req, res) => {
+    try {
+        const shipment = await Shipment.findOne({
+            _id: req.params.id,
+            carrierId: req.carrierId,
+            status: 'pending_acceptance'
+        });
+
+        if (!shipment) {
+            return res.status(404).json({ success: false, message: 'Shipment not found or already processed' });
+        }
+
+        shipment.status = 'rejected_by_carrier';
+        shipment.trackingHistory.push({
+            status: 'rejected_by_carrier',
+            description: `Carrier rejected: ${req.body.reason || 'No reason provided'}`
+        });
+        await shipment.save();
+
+        res.json({ success: true, message: 'Shipment rejected', shipment });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 });
 

@@ -149,6 +149,13 @@ import WMSInboundPage from "./pages/wms/InboundPage";
 import WMSReportsPage from "./pages/wms/WMSReportsPage";
 import WMSTrackingPage from "./pages/wms/WMSTrackingPage";
 
+// Carrier
+import RegisterCarrier from "./pages/auth/RegisterCarrier";
+import CarrierLogin from "./pages/carrier/CarrierLogin";
+import CarrierDashboard from "./pages/carrier/CarrierDashboard";
+import CarrierOrders from "./pages/carrier/CarrierOrders";
+import AdminCarriers from "./pages/admin/AdminCarriers";
+
 const queryClient = new QueryClient();
 
 import { WalletProvider } from "./contexts/WalletContext";
@@ -287,6 +294,13 @@ const App = () => (
             {/* Admin */}
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/partners" element={<ProtectedRoute><PartnerManagement /></ProtectedRoute>} />
+            <Route path="/admin/carriers" element={<ProtectedRoute><AdminCarriers /></ProtectedRoute>} />
+
+            {/* Carrier */}
+            <Route path="/register/carrier" element={<RegisterCarrier />} />
+            <Route path="/carrier/login" element={<CarrierLogin />} />
+            <Route path="/carrier/dashboard" element={<CarrierDashboard />} />
+            <Route path="/carrier/orders" element={<CarrierOrders />} />
 
             {/* Settlement & Tier System */}
             <Route path="/settlement" element={<ProtectedRoute><SettlementDashboard /></ProtectedRoute>} />
