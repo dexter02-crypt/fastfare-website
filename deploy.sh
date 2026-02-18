@@ -93,7 +93,7 @@ cd $APP_DIR/frontend-ui
 npm install
 
 cat > .env.production << FEENVEOF
-VITE_API_URL=https://$DOMAIN/api
+VITE_API_URL=https://$DOMAIN
 VITE_GOOGLE_MAPS_API_KEY=AIzaSyAa1oV7WmW3CvLvDzvdWLUzO3FzahBzhZk
 FEENVEOF
 
