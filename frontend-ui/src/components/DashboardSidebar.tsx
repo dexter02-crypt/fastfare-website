@@ -58,6 +58,7 @@ const primaryNavItems: NavItem[] = [
     { label: "Reports", href: "/reports", icon: FileBarChart2 },
     { label: "Analytics", href: "/analytics", icon: BarChart3 },
     { label: "Partner Mgmt", href: "/admin/partners", icon: Users },
+    { label: "Team", href: "/partner/team", icon: Users },
     // WMS Items (visible to partners)
     { label: "Warehouse Hub", href: "/wms", icon: Warehouse },
     { label: "WMS Fleet", href: "/wms/fleet", icon: Truck },
@@ -171,7 +172,7 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                         // Partner specific filtering - show limited menu + WMS items
                         if (user?.role === 'shipment_partner') {
                             const partnerAllowed = [
-                                "Dashboard", "Orders", "Fleet", "Fleet Tracking", "Tracking", "Wallet", "Settlement", "My Reports", "Settings", "Help Center",
+                                "Dashboard", "Orders", "Fleet", "Fleet Tracking", "Tracking", "Wallet", "Settlement", "My Reports", "Team", "Settings", "Help Center",
                                 // WMS items
                                 "Warehouse Hub", "WMS Fleet", "Inventory", "Inbound", "RTD Returns", "Live Tracking", "WMS Reports"
                             ];
