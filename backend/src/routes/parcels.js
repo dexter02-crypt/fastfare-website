@@ -96,13 +96,23 @@ router.post('/scan', protect, async (req, res) => {
     }
 });
 
-// ─── GET /api/parcels/partner/my-scans ─── Get parcels scanned by current partner
+// ─── GET /api/parcels/partner/my-scans ─── Get parcels scanned by current partner + their scan partners
 router.get('/partner/my-scans', protect, async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 100;
         const status = req.query.status;
 
-        const filter = { 'scannedBy.partnerId': req.user._id };
+        // Collect all IDs: the partner's own ID + all their scan partners' IDs
+        const partnerIds = [req.user._id];
+
+        // If this is a shipment_partner, also include their scan partners' scans
+        if (req.user.role === 'shipment_partner') {
+            const ScanPartner = (await import('../models/ScanPartner.js')).default;
+            const scanPartners = await ScanPartner.find({ createdBy: req.user._id }).select('_id');
+            partnerIds.push(...scanPartners.map(sp => sp._id));
+        }
+
+        const filter = { 'scannedBy.partnerId': { $in: partnerIds } };
         if (status) filter.status = status;
 
         const parcels = await Parcel.find(filter)

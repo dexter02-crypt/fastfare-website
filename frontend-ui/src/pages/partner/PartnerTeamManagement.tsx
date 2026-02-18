@@ -250,6 +250,21 @@ const PartnerTeamManagement = () => {
         }
     };
 
+    // ─── View Credentials ───
+    const viewCredentials = async (scanPartnerId: string) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/partner-team/scan-partners/${scanPartnerId}/credentials`, {
+                headers: headers()
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            setShowCredentials({ credentials: data.credentials, type: "Scan Partner" });
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : "Failed to load credentials";
+            toast({ title: "Error", description: msg, variant: "destructive" });
+        }
+    };
+
     const statCards = [
         { label: "Total Drivers", value: stats?.totalDrivers ?? 0, icon: Truck, color: "text-blue-600", bg: "bg-blue-100" },
         { label: "Active Drivers", value: stats?.activeDrivers ?? 0, icon: Users, color: "text-green-600", bg: "bg-green-100" },
@@ -424,6 +439,13 @@ const PartnerTeamManagement = () => {
                                             <Badge variant={s.status === "active" ? "default" : "secondary"}>
                                                 {s.status}
                                             </Badge>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => viewCredentials(s._id)}
+                                            >
+                                                <Eye className="h-3 w-3 mr-1" /> Credentials
+                                            </Button>
                                             <Button
                                                 size="sm"
                                                 variant={s.status === "active" ? "destructive" : "outline"}
