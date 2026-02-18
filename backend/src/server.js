@@ -98,6 +98,9 @@ app.use(express.json());
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
 
+// Serve downloadable files (APKs etc.)
+app.use('/downloads', express.static('public/downloads'));
+
 // ─── Existing Website Routes ───
 app.use('/api/auth', authRoutes);
 app.use('/api/shipments', shipmentRoutes);

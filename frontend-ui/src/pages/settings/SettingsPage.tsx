@@ -19,9 +19,11 @@ import DashboardLayout from "@/components/DashboardLayout";
 import {
   Settings, Bell, Shield, Key, Globe, Building2, Users,
   CreditCard, Package, Truck, Save, RefreshCw, Smartphone,
-  Lock, Monitor, Laptop, AlertTriangle, CheckCircle, X, Loader2
+  Lock, Monitor, Laptop, AlertTriangle, CheckCircle, X, Loader2,
+  Download
 } from "lucide-react";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/config";
 
 // Active sessions — populated from API
 const mockSessions: { id: string; device: string; icon: typeof Monitor; location: string; ip: string; lastActive: string; isCurrent: boolean }[] = [];
@@ -183,6 +185,10 @@ const SettingsPage = () => {
             <TabsTrigger value="api" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
               <Key className="h-4 w-4" />
               API
+            </TabsTrigger>
+            <TabsTrigger value="mobile-apps" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+              <Smartphone className="h-4 w-4" />
+              Mobile Apps
             </TabsTrigger>
           </TabsList>
 
@@ -700,6 +706,95 @@ const SettingsPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Mobile Apps Tab */}
+      <TabsContent value="mobile-apps">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Mobile Applications</CardTitle>
+              <CardDescription>Download FastFare mobile apps for your team</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Driver App */}
+                <div className="border rounded-xl p-6 space-y-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center">
+                      <Truck className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">FastFare Driver App</h3>
+                      <p className="text-sm text-muted-foreground">For delivery drivers</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Drivers use this app to receive delivery assignments, navigate to destinations, update parcel status, and capture proof of delivery.
+                  </p>
+                  <ul className="text-sm space-y-1">
+                    <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Real-time delivery assignments</li>
+                    <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> GPS navigation & tracking</li>
+                    <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Proof of delivery capture</li>
+                    <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Status updates in real-time</li>
+                  </ul>
+                  <Button
+                    className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+                    onClick={() => {
+                      window.open(`${API_BASE_URL}/downloads/FastFare-Driver-App.apk`, '_blank');
+                      toast.success("Download started — FastFare Driver App");
+                    }}
+                  >
+                    <Download className="h-4 w-4" /> Download APK
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">Android • v1.0</p>
+                </div>
+
+                {/* Partner Scanner App */}
+                <div className="border rounded-xl p-6 space-y-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-purple-600 flex items-center justify-center">
+                      <Smartphone className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">FastFare Partner Scanner</h3>
+                      <p className="text-sm text-muted-foreground">For scan partners</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Scan partners use this app to scan parcel barcodes at pickup and warehouse points. Scanned data syncs live to the website dashboard.
+                  </p>
+                  <ul className="text-sm space-y-1">
+                    <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Barcode scanning</li>
+                    <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Parcel details entry</li>
+                    <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Live sync to dashboard</li>
+                    <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Scan history & stats</li>
+                  </ul>
+                  <Button
+                    className="w-full gap-2 bg-purple-600 hover:bg-purple-700"
+                    onClick={() => {
+                      window.open(`${API_BASE_URL}/downloads/FastFare-Partner-Scanner.apk`, '_blank');
+                      toast.success("Download started — FastFare Partner Scanner");
+                    }}
+                  >
+                    <Download className="h-4 w-4" /> Download APK
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">Android • v1.0</p>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 border rounded-lg bg-muted/50">
+                <p className="text-sm font-medium mb-1">Installation Instructions</p>
+                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>Download the APK file to your Android device</li>
+                  <li>Open the downloaded file and tap <strong>Install</strong></li>
+                  <li>If prompted, enable "Install from Unknown Sources" in your device settings</li>
+                  <li>Open the app and log in with your credentials from Team Management</li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </TabsContent>
+
     </DashboardLayout>
   );
 };
