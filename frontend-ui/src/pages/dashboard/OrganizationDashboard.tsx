@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Package, TrendingUp, Clock, CheckCircle, AlertTriangle, Truck,
   Plus, Search, Bell, ArrowUpRight, ArrowDownRight, BarChart3,
-  Calendar, MapPin, Users, Wallet
+  Calendar, MapPin, Users, Wallet, Shield, Mail, Undo2, Loader2
 } from "lucide-react";
 
-import { authApi } from "@/lib/api";
+import { authApi, alertsApi } from "@/lib/api";
 
 const recentShipments = [
   { id: "FF123456789", status: "In Transit", origin: "Mumbai", destination: "Delhi", eta: "Today, 6 PM" },
@@ -28,12 +28,32 @@ const recentShipments = [
 ];
 
 const OrganizationDashboard = () => {
+  const navigate = useNavigate();
   // Onboarding progress — auto-hide when all steps completed
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [kycCompleted] = useState(false);
   const [walletRecharged] = useState(false);
   const [firstOrderPlaced] = useState(false);
   const [dateRange, setDateRange] = useState("today");
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+
+  // Fetch real alerts from API
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const data = await alertsApi.getAlerts();
+        if (data.success) {
+          setAlerts(data.alerts);
+        }
+      } catch (err) {
+        console.error('Failed to fetch alerts:', err);
+      } finally {
+        setAlertsLoading(false);
+      }
+    };
+    fetchAlerts();
+  }, []);
 
   // Auto-remove Getting Started when all steps are completed
   useEffect(() => {
@@ -103,6 +123,34 @@ const OrganizationDashboard = () => {
             </Link>
           </div>
         </div>
+
+        {/* KYC Alert — show when GSTIN is missing or KYC is not verified */}
+        {user && (!user.gstin || user.kyc?.status !== 'verified') && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-lg border-2 border-red-500 bg-red-50 dark:bg-red-950/30 p-4"
+          >
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-red-800 dark:text-red-200">
+                  ⚠️ KYC Verification Incomplete
+                </h3>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  Your GSTIN and KYC verification is pending. Please complete it to unlock all features including shipment booking, wallet recharge, and more.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                className="bg-red-600 hover:bg-red-700 text-white font-medium flex-shrink-0"
+                onClick={() => navigate('/settings/kyc')}
+              >
+                Complete KYC →
+              </Button>
+            </div>
+          </motion.div>
+        )}
 
         {/* Quick Actions — at top for easy access */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -227,32 +275,72 @@ const OrganizationDashboard = () => {
             </Card>
           </div>
 
-          {/* Alerts */}
+          {/* Real-Time Alerts */}
           <div className="space-y-6">
-
-
-
-            {/* Alerts */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-base">Alerts</CardTitle>
-                <Badge variant="destructive">3</Badge>
+                {alerts.length > 0 && (
+                  <Badge variant="destructive">{alerts.length}</Badge>
+                )}
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium">2 shipments delayed</p>
-                    <p className="text-xs text-muted-foreground">Due to weather conditions</p>
+                {alertsLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Loading alerts…</span>
                   </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                  <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium">Low wallet balance</p>
-                    <p className="text-xs text-muted-foreground">Recharge to continue shipping</p>
+                ) : alerts.length === 0 ? (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-green-700 dark:text-green-300">All clear!</p>
+                      <p className="text-xs text-muted-foreground">No pending alerts at this time.</p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  alerts.map((alert) => {
+                    const colorMap: Record<string, { bg: string; border: string; text: string }> = {
+                      critical: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-500' },
+                      warning: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-500' },
+                      info: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-500' },
+                    };
+                    const iconMap: Record<string, React.ElementType> = {
+                      shield: Shield,
+                      mail: Mail,
+                      wallet: Wallet,
+                      clock: Clock,
+                      package: Package,
+                      undo: Undo2,
+                      plus: Plus,
+                    };
+                    const colors = colorMap[alert.type] || colorMap.info;
+                    const IconComponent = iconMap[alert.icon] || AlertTriangle;
+
+                    return (
+                      <div
+                        key={alert.id}
+                        className={`flex items-start gap-3 p-3 rounded-lg ${colors.bg} border ${colors.border}`}
+                      >
+                        <IconComponent className={`h-5 w-5 ${colors.text} shrink-0 mt-0.5`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{alert.title}</p>
+                          <p className="text-xs text-muted-foreground">{alert.description}</p>
+                        </div>
+                        {alert.action && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs shrink-0"
+                            onClick={() => navigate(alert.action.href)}
+                          >
+                            {alert.action.label}
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </CardContent>
             </Card>
           </div>

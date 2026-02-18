@@ -107,10 +107,10 @@ const IntegrationsSection = () => {
                 </div>
                 <span className="text-xs text-white/50 ml-2">API Quick Start</span>
               </div>
-              
+
               {/* Code Content */}
-              <div className="p-4 overflow-x-auto">
-                <pre className="text-sm text-white/90 font-mono leading-relaxed">
+              <div className="p-4 overflow-x-auto max-w-[calc(100vw-4rem)]">
+                <pre className="text-xs sm:text-sm text-white/90 font-mono leading-relaxed">
                   <code>{codeSnippet}</code>
                 </pre>
               </div>

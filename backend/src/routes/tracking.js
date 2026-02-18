@@ -8,10 +8,10 @@ const router = express.Router();
 router.get('/:awb', async (req, res) => {
     try {
         const shipment = await Shipment.findOne({ awb: req.params.awb.toUpperCase() })
-            .select('awb status pickup.city delivery.city delivery.name estimatedDelivery actualDelivery trackingHistory createdAt serviceType');
+            .select('awb status pickup delivery estimatedDelivery actualDelivery trackingHistory createdAt serviceType carrier');
 
         if (!shipment) {
-            return res.status(404).json({ error: 'Shipment not found' });
+            return res.status(404).json({ success: false, error: 'Shipment not found' });
         }
 
         res.json({
@@ -22,14 +22,33 @@ router.get('/:awb', async (req, res) => {
                 origin: shipment.pickup?.city || 'Origin',
                 destination: shipment.delivery?.city || 'Destination',
                 recipientName: shipment.delivery?.name,
+                senderName: shipment.pickup?.name,
+                pickup: {
+                    name: shipment.pickup?.name,
+                    phone: shipment.pickup?.phone,
+                    address: shipment.pickup?.address,
+                    city: shipment.pickup?.city,
+                    state: shipment.pickup?.state,
+                    pincode: shipment.pickup?.pincode,
+                },
+                delivery: {
+                    name: shipment.delivery?.name,
+                    phone: shipment.delivery?.phone,
+                    address: shipment.delivery?.address,
+                    city: shipment.delivery?.city,
+                    state: shipment.delivery?.state,
+                    pincode: shipment.delivery?.pincode,
+                },
                 estimatedDelivery: shipment.estimatedDelivery,
                 actualDelivery: shipment.actualDelivery,
                 serviceType: shipment.serviceType,
-                history: shipment.trackingHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                carrier: shipment.carrier || 'FastFare',
+                createdAt: shipment.createdAt,
+                history: (shipment.trackingHistory || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
             }
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

@@ -129,9 +129,33 @@ const NewShipmentBooking = () => {
           throw new Error(data.error || "Failed to create shipment");
         }
 
+        // Save addresses if user checked "Save this address"
+        const addressHeaders = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
+        if (pickupData.saveAddress) {
+          const { saveAddress, ...addrToSave } = pickupData;
+          fetch(`${API_BASE_URL}/api/users/addresses`, {
+            method: "POST",
+            headers: addressHeaders,
+            body: JSON.stringify(addrToSave),
+          }).catch(() => { }); // Fire-and-forget
+        }
+
+        if (deliveryData.saveAddress) {
+          const { saveAddress, ...addrToSave } = deliveryData;
+          fetch(`${API_BASE_URL}/api/users/addresses`, {
+            method: "POST",
+            headers: addressHeaders,
+            body: JSON.stringify(addrToSave),
+          }).catch(() => { }); // Fire-and-forget
+        }
+
         toast({
           title: "Shipment Created Successfully",
-          description: `Tracking ID: ${data.shipment?.trackingId}`,
+          description: `AWB: ${data.shipment?.awb || data.shipment?._id}`,
         });
 
         navigate("/shipment/success", { state: { shipment: data.shipment } });

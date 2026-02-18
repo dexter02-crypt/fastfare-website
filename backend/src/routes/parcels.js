@@ -1,8 +1,53 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import Parcel from '../models/Parcel.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Auth middleware for drivers (uses JWT directly, not the protect middleware)
+const authDriver = (req, res, next) => {
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith('Bearer')) {
+        return res.status(401).json({ success: false, message: 'No token' });
+    }
+    try {
+        const decoded = jwt.verify(auth.split(' ')[1], process.env.JWT_SECRET);
+        req.driverId = decoded.id;
+        next();
+    } catch (e) {
+        res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+};
+
+// ─── GET /api/parcels/user/my-parcels ─── Get parcels linked to current user (by phone match)
+router.get('/user/my-parcels', protect, async (req, res) => {
+    try {
+        const userPhone = req.user.phone;
+        const userId = req.user._id;
+
+        // Find parcels where user is either the sender/receiver (by phone) or scanned by them
+        const filter = userPhone
+            ? {
+                $or: [
+                    { 'receiver.phone': userPhone },
+                    { 'sender.phone': userPhone },
+                    { 'scannedBy.partnerId': userId }
+                ]
+            }
+            : { 'scannedBy.partnerId': userId };
+
+        const parcels = await Parcel.find(filter)
+            .sort({ createdAt: -1 })
+            .limit(50)
+            .lean();
+
+        res.json({ success: true, parcels, total: parcels.length });
+    } catch (error) {
+        console.error('Fetch user parcels error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 // ─── POST /api/parcels/scan ─── Mobile app scans a parcel barcode
 router.post('/scan', protect, async (req, res) => {
@@ -87,6 +132,62 @@ router.get('/track/:awb', async (req, res) => {
 
         res.json({ success: true, parcel });
     } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ─── GET /api/parcels/driver/my-parcels ─── Get parcels assigned to current driver
+router.get('/driver/my-parcels', authDriver, async (req, res) => {
+    try {
+        const parcels = await Parcel.find({
+            assignedDriver: req.driverId,
+            status: { $nin: ['delivered', 'returned'] }
+        })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        res.json({ success: true, parcels });
+    } catch (error) {
+        console.error('Driver parcels error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ─── PUT /api/parcels/:id/deliver ─── Driver marks parcel as delivered
+router.put('/:id/deliver', authDriver, async (req, res) => {
+    try {
+        const parcel = await Parcel.findById(req.params.id);
+        if (!parcel) {
+            return res.status(404).json({ success: false, message: 'Parcel not found' });
+        }
+
+        if (parcel.assignedDriver?.toString() !== req.driverId) {
+            return res.status(403).json({ success: false, message: 'Not assigned to you' });
+        }
+
+        const { deliveredTo, relationToReceiver, notes, photoProof } = req.body;
+
+        parcel.status = 'delivered';
+        parcel.deliveredAt = new Date();
+        parcel.deliveredTo = deliveredTo || 'Receiver';
+        parcel.deliveryNotes = notes || '';
+        parcel.photoProof = photoProof || '';
+
+        await parcel.save();
+
+        res.json({
+            success: true,
+            message: 'Parcel delivered successfully',
+            parcel: {
+                parcelId: parcel._id,
+                barcode: parcel.barcode,
+                packageName: parcel.packageName,
+                status: parcel.status,
+                receiver: parcel.receiver
+            }
+        });
+    } catch (error) {
+        console.error('Deliver parcel error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

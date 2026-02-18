@@ -59,6 +59,14 @@ export const useFleetData = () => {
       }
     });
 
+    // Driver stopped tracking — remove from map
+    socket.on('driver_went_offline', (data: any) => {
+      if (data && data.driverId) {
+        liveDriversRef.current.delete(data.driverId);
+        mergeDrivers();
+      }
+    });
+
     // Also fetch initial positions via REST
     fetch(`${API_BASE_URL}/api/driver-locations`)
       .then(res => res.json())

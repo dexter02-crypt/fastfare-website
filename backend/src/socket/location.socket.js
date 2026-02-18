@@ -79,14 +79,27 @@ export const locationSocket = (io) => {
             io.to('dashboard').emit('driver_status_update', data);
         });
 
+        // Driver explicitly stops tracking
+        socket.on('driver_offline', (data) => {
+            if (data && data.driverId) {
+                driverPositions.delete(data.driverId);
+                io.to('dashboard').emit('driver_went_offline', { driverId: data.driverId });
+                io.emit('driver_went_offline', { driverId: data.driverId });
+            }
+        });
+
         socket.on('disconnect', () => {
-            // Optionally mark driver as offline
             if (clientType === 'driver' && driverId) {
-                const pos = driverPositions.get(driverId);
-                if (pos && pos.socketId === socket.id) {
-                    pos.online = false;
-                    pos.disconnectedAt = Date.now();
-                }
+                // Remove after a short grace period (driver may reconnect)
+                setTimeout(() => {
+                    const pos = driverPositions.get(driverId);
+                    // Only remove if this socket was the last one for this driver
+                    if (pos && pos.socketId === socket.id) {
+                        driverPositions.delete(driverId);
+                        io.to('dashboard').emit('driver_went_offline', { driverId });
+                        io.emit('driver_went_offline', { driverId });
+                    }
+                }, 30000); // 30s grace period
             }
         });
     });

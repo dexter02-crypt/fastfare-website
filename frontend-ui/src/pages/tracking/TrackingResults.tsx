@@ -17,7 +17,9 @@ import {
   Calendar,
   AlertTriangle,
   Loader2,
+  Copy,
 } from "lucide-react";
+import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 import { API_BASE_URL } from "@/config";
 
@@ -47,74 +49,149 @@ const TrackingResults = () => {
   const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    toast.success(`${field} copied to clipboard`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   useEffect(() => {
     const fetchTracking = async () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`${API_BASE_URL}/api/parcels/track/${awb}`);
+
+        // Try shipment tracking endpoint first (the main tracking API)
+        const res = await fetch(`${API_BASE_URL}/api/tracking/${awb}`);
         const data = await res.json();
 
-        if (!res.ok || !data.success) {
-          setError(data.message || "Shipment not found");
+        if (res.ok && data.success && data.tracking) {
+          const t = data.tracking;
+
+          // Build timeline from trackingHistory
+          const statusOrder = ['pending', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered'];
+          const statusLabels: Record<string, string> = {
+            pending: 'Order Created',
+            pickup_scheduled: 'Pickup Scheduled',
+            picked_up: 'Picked Up',
+            in_transit: 'In Transit',
+            out_for_delivery: 'Out for Delivery',
+            delivered: 'Delivered',
+          };
+          const statusDescriptions: Record<string, string> = {
+            pending: 'Shipment has been booked and is awaiting pickup',
+            pickup_scheduled: 'Pickup has been scheduled by the carrier',
+            picked_up: 'Package picked up from sender',
+            in_transit: 'Package is in transit to destination',
+            out_for_delivery: 'Package is out for delivery',
+            delivered: 'Package delivered successfully',
+          };
+
+          const currentIdx = statusOrder.indexOf(t.status);
+          const timeline = statusOrder.map((s, i) => {
+            // Find matching history entry
+            const historyEntry = t.history?.find((h: any) => h.status === s);
+            return {
+              status: statusLabels[s] || s,
+              description: historyEntry?.description || statusDescriptions[s] || '',
+              time: historyEntry ? new Date(historyEntry.timestamp).toLocaleString() : (i <= currentIdx ? 'Completed' : 'Pending'),
+              location: historyEntry?.location || (i <= currentIdx ? t.origin || '—' : '—'),
+              completed: i <= currentIdx,
+              current: i === currentIdx,
+            };
+          });
+
+          setTrackingData({
+            awb: t.awb || awb || "",
+            orderId: t.awb,
+            status: t.status || "pending",
+            carrier: t.carrier || "FastFare",
+            estimatedDelivery: t.estimatedDelivery
+              ? new Date(t.estimatedDelivery).toLocaleDateString()
+              : "—",
+            deliveryTime: "",
+            pickup: t.pickup ? {
+              city: t.pickup.city || t.origin || "Origin",
+              address: [t.pickup.address, t.pickup.city, t.pickup.state, t.pickup.pincode].filter(Boolean).join(", "),
+              date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : undefined,
+            } : { city: t.origin || "Origin", address: "" },
+            delivery: t.delivery ? {
+              city: t.delivery.city || t.destination || "Destination",
+              address: [t.delivery.address, t.delivery.city, t.delivery.state, t.delivery.pincode].filter(Boolean).join(", "),
+              name: t.delivery.name || t.recipientName || "",
+            } : { city: t.destination || "Destination", address: "", name: t.recipientName || "" },
+            currentLocation: t.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || "Pending",
+            timeline,
+          });
           return;
         }
 
-        const parcel = data.parcel;
-        setTrackingData({
-          awb: parcel.awb || awb || "",
-          orderId: parcel.orderId,
-          status: parcel.status || "unknown",
-          carrier: "FastFare",
-          estimatedDelivery: parcel.estimatedDelivery || "—",
-          deliveryTime: "",
-          pickup: parcel.sender ? {
-            city: parcel.sender.city || "Origin",
-            address: parcel.sender.address || "",
-          } : undefined,
-          delivery: parcel.receiver ? {
-            city: parcel.receiver.city || "Destination",
-            address: parcel.receiver.address || "",
-            name: parcel.receiver.name,
-          } : undefined,
-          currentLocation: parcel.currentLocation || parcel.status,
-          timeline: [
-            {
-              status: "Scanned",
-              description: "Package scanned at origin",
-              time: parcel.scannedAt ? new Date(parcel.scannedAt).toLocaleString() : "—",
-              location: parcel.sender?.city || "Origin",
-              completed: true,
-              current: parcel.status === "scanned",
-            },
-            {
-              status: "Dispatched",
-              description: "Package dispatched for delivery",
-              time: parcel.status === "dispatched" || parcel.status === "in-transit" || parcel.status === "delivered"
-                ? "Completed" : "Pending",
-              location: "—",
-              completed: ["dispatched", "in-transit", "delivered"].includes(parcel.status),
-              current: parcel.status === "dispatched",
-            },
-            {
-              status: "In Transit",
-              description: "Package in transit to destination",
-              time: parcel.status === "in-transit" || parcel.status === "delivered" ? "Completed" : "Pending",
-              location: "—",
-              completed: ["in-transit", "delivered"].includes(parcel.status),
-              current: parcel.status === "in-transit",
-            },
-            {
-              status: "Delivered",
-              description: "Package delivered successfully",
-              time: parcel.deliveredAt ? new Date(parcel.deliveredAt).toLocaleString() : "Pending",
-              location: parcel.receiver?.city || "Destination",
-              completed: parcel.status === "delivered",
-              current: parcel.status === "delivered",
-            },
-          ],
-        });
+        // Fallback: try parcel tracking
+        const parcelRes = await fetch(`${API_BASE_URL}/api/parcels/track/${awb}`);
+        const parcelData = await parcelRes.json();
+
+        if (parcelRes.ok && parcelData.success && parcelData.parcel) {
+          const parcel = parcelData.parcel;
+          setTrackingData({
+            awb: parcel.awb || awb || "",
+            orderId: parcel.orderId,
+            status: parcel.status || "unknown",
+            carrier: "FastFare",
+            estimatedDelivery: parcel.estimatedDelivery || "—",
+            deliveryTime: "",
+            pickup: parcel.sender ? {
+              city: parcel.sender.city || "Origin",
+              address: parcel.sender.address || "",
+            } : undefined,
+            delivery: parcel.receiver ? {
+              city: parcel.receiver.city || "Destination",
+              address: parcel.receiver.address || "",
+              name: parcel.receiver.name,
+            } : undefined,
+            currentLocation: parcel.currentLocation || parcel.status,
+            timeline: [
+              {
+                status: "Scanned",
+                description: "Package scanned at origin",
+                time: parcel.scannedAt ? new Date(parcel.scannedAt).toLocaleString() : "—",
+                location: parcel.sender?.city || "Origin",
+                completed: true,
+                current: parcel.status === "scanned",
+              },
+              {
+                status: "Dispatched",
+                description: "Package dispatched for delivery",
+                time: ["dispatched", "in-transit", "delivered"].includes(parcel.status) ? "Completed" : "Pending",
+                location: "—",
+                completed: ["dispatched", "in-transit", "delivered"].includes(parcel.status),
+                current: parcel.status === "dispatched",
+              },
+              {
+                status: "In Transit",
+                description: "Package in transit to destination",
+                time: ["in-transit", "delivered"].includes(parcel.status) ? "Completed" : "Pending",
+                location: "—",
+                completed: ["in-transit", "delivered"].includes(parcel.status),
+                current: parcel.status === "in-transit",
+              },
+              {
+                status: "Delivered",
+                description: "Package delivered successfully",
+                time: parcel.deliveredAt ? new Date(parcel.deliveredAt).toLocaleString() : "Pending",
+                location: parcel.receiver?.city || "Destination",
+                completed: parcel.status === "delivered",
+                current: parcel.status === "delivered",
+              },
+            ],
+          });
+          return;
+        }
+
+        // Both failed
+        setError(data.error || data.message || "Shipment not found");
       } catch (err) {
         setError("Failed to fetch tracking information");
       } finally {
@@ -216,7 +293,36 @@ const TrackingResults = () => {
                   <p className="text-sm text-muted-foreground mb-1">
                     Tracking Number
                   </p>
-                  <p className="text-xl font-bold font-mono">{trackingData.awb}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xl font-bold font-mono">{trackingData.awb}</p>
+                    <button
+                      onClick={() => copyToClipboard(trackingData.awb, 'Tracking Number')}
+                      className="h-7 w-7 rounded-md hover:bg-muted transition-colors inline-flex items-center justify-center"
+                      title="Copy Tracking Number"
+                    >
+                      {copiedField === 'Tracking Number' ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
+                  </div>
+                  {trackingData.orderId && trackingData.orderId !== trackingData.awb && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-xs text-muted-foreground">Order ID: <span className="font-mono">{trackingData.orderId}</span></p>
+                      <button
+                        onClick={() => copyToClipboard(trackingData.orderId!, 'Order ID')}
+                        className="h-5 w-5 rounded hover:bg-muted transition-colors inline-flex items-center justify-center"
+                        title="Copy Order ID"
+                      >
+                        {copiedField === 'Order ID' ? (
+                          <CheckCircle className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <Badge className={`${getStatusColor(trackingData.status)} text-sm px-4 py-1`}>
                   <Truck className="h-4 w-4 mr-2" />
@@ -318,10 +424,10 @@ const TrackingResults = () => {
                       <div className="relative flex flex-col items-center">
                         <div
                           className={`w-10 h-10 rounded-full flex items-center justify-center ${event.completed
-                              ? event.current
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-green-100 text-green-600"
-                              : "bg-muted text-muted-foreground"
+                            ? event.current
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-green-100 text-green-600"
+                            : "bg-muted text-muted-foreground"
                             }`}
                         >
                           {event.completed ? (

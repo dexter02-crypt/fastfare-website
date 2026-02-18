@@ -9,8 +9,9 @@ const userSchema = new mongoose.Schema({
     },
     gstin: {
         type: String,
-        required: true,
+        required: false,
         unique: true,
+        sparse: true,
         uppercase: true
     },
     businessType: {
@@ -47,6 +48,7 @@ const userSchema = new mongoose.Schema({
         default: 'user'
     },
     savedAddresses: [{
+        label: String,
         name: String,
         phone: String,
         email: String,
@@ -57,7 +59,7 @@ const userSchema = new mongoose.Schema({
         landmark: String,
         addressType: {
             type: String,
-            enum: ['home', 'office', 'warehouse'],
+            enum: ['home', 'office', 'warehouse', 'other'],
             default: 'office'
         }
     }],
@@ -100,6 +102,9 @@ const userSchema = new mongoose.Schema({
     },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
+    emailVerificationCode: String,
+    emailVerificationExpires: Date,
+    emailVerified: { type: Boolean, default: false },
     notificationPreferences: {
         emailShipmentUpdates: { type: Boolean, default: true },
         emailBilling: { type: Boolean, default: true },

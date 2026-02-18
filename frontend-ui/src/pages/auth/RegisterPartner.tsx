@@ -137,27 +137,35 @@ const RegisterPartner = () => {
             return;
         }
 
-        setIsLoading(true);
+        // Generate a placeholder GSTIN if not provided
+        const gstin = formData.gstin || `99${formData.phone.slice(0, 5)}00000A1Z${Math.floor(Math.random() * 10)}`;
 
+        // ⚠️ TODO: RE-ENABLE email verification once domain email propagation is complete
+        // navigate("/verify-email", {
+        //     state: {
+        //         registrationData: { ... },
+        //     },
+        // });
+
+        // Direct registration without email verification (temporary)
+        setIsLoading(true);
         try {
-            // Generate a placeholder GSTIN if not provided
-            const gstin = formData.gstin || `99${formData.phone.slice(0, 5)}00000A1Z${Math.floor(Math.random() * 10)}`;
+            const registrationData = {
+                businessName: formData.businessName,
+                gstin: gstin,
+                businessType: "logistics",
+                contactPerson: formData.contactPerson,
+                email: formData.email,
+                phone: formData.phone,
+                password: formData.password,
+                role: "shipment_partner",
+            };
 
             const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    businessName: formData.businessName,
-                    gstin: gstin,
-                    businessType: "logistics",
-                    contactPerson: formData.contactPerson,
-                    email: formData.email,
-                    phone: formData.phone,
-                    password: formData.password,
-                    role: "shipment_partner",
-                }),
+                body: JSON.stringify(registrationData),
             });
-
             const data = await response.json();
 
             if (!response.ok) {
@@ -167,25 +175,18 @@ const RegisterPartner = () => {
             // Store token and user info
             localStorage.setItem("token", data.token);
             localStorage.setItem("user", JSON.stringify(data.user));
-
-            toast({
-                title: "Registration Successful",
-                description: "Welcome to FastFare! You can complete KYC later.",
-            });
-
-            // Store KYC pending status
             localStorage.setItem("kycStatus", "pending");
             localStorage.setItem("kycSkippedAt", new Date().toISOString());
 
-            // Navigate to dashboard
-            navigate("/dashboard");
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Registration failed';
             toast({
-                title: "Registration Failed",
-                description: errorMessage,
-                variant: "destructive",
+                title: "Registration Successful! 🎉",
+                description: "Welcome to FastFare!",
             });
+
+            navigate("/dashboard", { replace: true });
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Registration failed";
+            toast({ title: "Error", description: msg, variant: "destructive" });
         } finally {
             setIsLoading(false);
         }

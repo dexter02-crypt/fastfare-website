@@ -55,7 +55,7 @@ const HeroSection = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight"
             >
               Your Complete B2B{" "}
               <br className="hidden md:block" />
@@ -68,7 +68,7 @@ const HeroSection = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="text-lg text-muted-foreground max-w-xl"
+              className="text-base sm:text-lg text-muted-foreground max-w-xl"
             >
               Ship faster, cheaper, and smarter. Access AI-driven courier selection, automated workflows, and real-time tracking in one dashboard.
             </motion.p>
@@ -133,11 +133,11 @@ const HeroSection = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <p className="text-xs text-muted-foreground">
                       Calculate rates across <span className="text-primary font-medium">15+ carriers</span> instantly.
                     </p>
-                    <Button onClick={handleCheckRates} className="gradient-primary gap-2">
+                    <Button onClick={handleCheckRates} className="gradient-primary gap-2 w-full sm:w-auto">
                       Check Rates
                       <ArrowRight className="h-4 w-4" />
                     </Button>
@@ -151,7 +151,7 @@ const HeroSection = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="flex flex-wrap items-center gap-6 md:gap-8 pt-4"
+              className="flex flex-wrap items-center gap-4 sm:gap-6 md:gap-8 pt-4"
             >
               <div className="flex items-center gap-3">
                 <div className="flex -space-x-2">

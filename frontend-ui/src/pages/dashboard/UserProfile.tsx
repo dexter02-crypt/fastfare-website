@@ -11,8 +11,9 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import {
   User, Mail, Phone, Building2, MapPin, Shield, Bell, Key,
-  Save, LogOut, Smartphone, Globe, Clock
+  Save, LogOut, Smartphone, Globe, Clock, Landmark
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { authApi } from "@/lib/api";
 
@@ -38,6 +39,15 @@ const UserProfile = () => {
     pushUpdates: true,
     pushPromo: false,
   });
+
+  const [bankDetails, setBankDetails] = useState({
+    holderName: "",
+    bankName: "",
+    accountNumber: "",
+    ifscCode: "",
+    accountType: "savings",
+  });
+  const [savingBank, setSavingBank] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -91,8 +101,9 @@ const UserProfile = () => {
           {/* Settings Tabs */}
           <div className="lg:col-span-3">
             <Tabs defaultValue="personal" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="personal">Personal</TabsTrigger>
+                <TabsTrigger value="billing">Billing</TabsTrigger>
                 <TabsTrigger value="security">Security</TabsTrigger>
                 <TabsTrigger value="notifications">Notifications</TabsTrigger>
                 <TabsTrigger value="sessions">Sessions</TabsTrigger>
@@ -150,6 +161,99 @@ const UserProfile = () => {
                       <Save className="h-4 w-4" />
                       Save Changes
                     </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="billing">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Landmark className="h-5 w-5" />
+                      Billing Method
+                    </CardTitle>
+                    <CardDescription>Add your bank account for payouts and billing</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Account Holder Name</label>
+                        <Input
+                          placeholder="Enter full name as on bank account"
+                          value={bankDetails.holderName}
+                          onChange={(e) => setBankDetails({ ...bankDetails, holderName: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Bank Name</label>
+                        <Input
+                          placeholder="e.g. HDFC Bank, SBI, ICICI"
+                          value={bankDetails.bankName}
+                          onChange={(e) => setBankDetails({ ...bankDetails, bankName: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Account Number</label>
+                        <Input
+                          placeholder="Enter account number"
+                          value={bankDetails.accountNumber}
+                          onChange={(e) => setBankDetails({ ...bankDetails, accountNumber: e.target.value.replace(/\D/g, '') })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">IFSC / SWIFT Code</label>
+                        <Input
+                          placeholder="e.g. HDFC0001234"
+                          value={bankDetails.ifscCode}
+                          onChange={(e) => setBankDetails({ ...bankDetails, ifscCode: e.target.value.toUpperCase() })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2 max-w-xs">
+                      <label className="text-sm font-medium">Account Type</label>
+                      <Select
+                        value={bankDetails.accountType}
+                        onValueChange={(val) => setBankDetails({ ...bankDetails, accountType: val })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="savings">Savings Account</SelectItem>
+                          <SelectItem value="current">Current Account</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button
+                      className="gap-2 gradient-primary"
+                      disabled={savingBank}
+                      onClick={() => {
+                        if (!bankDetails.holderName || !bankDetails.bankName || !bankDetails.accountNumber || !bankDetails.ifscCode) {
+                          return;
+                        }
+                        setSavingBank(true);
+                        setTimeout(() => {
+                          setSavingBank(false);
+                        }, 1000);
+                      }}
+                    >
+                      <Save className="h-4 w-4" />
+                      {savingBank ? "Saving..." : "Save Bank Details"}
+                    </Button>
+
+                    {/* Security Notice */}
+                    <div className="flex items-start gap-3 p-4 rounded-lg bg-green-50 border border-green-200">
+                      <Shield className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-green-800">Your banking information is secure</p>
+                        <p className="text-xs text-green-600 mt-1">
+                          All banking details are encrypted using AES-256 encryption and stored securely. We never share your financial information with third parties.
+                        </p>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>

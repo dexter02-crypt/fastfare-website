@@ -30,6 +30,17 @@ import PricingPage from "./pages/public/PricingPage";
 import AboutPage from "./pages/public/AboutPage";
 import ContactPage from "./pages/public/ContactPage";
 import ServicesPage from "./pages/public/ServicesPage";
+import FeaturesPage from "./pages/public/FeaturesPage";
+import IntegrationsPage from "./pages/public/IntegrationsPage";
+import ApiReferencePage from "./pages/public/ApiReferencePage";
+import ChangelogPage from "./pages/public/ChangelogPage";
+import DocumentationPage from "./pages/public/DocumentationPage";
+import HelpCenterPage from "./pages/public/HelpCenterPage";
+import LogisticsGuidePage from "./pages/public/LogisticsGuidePage";
+import CommunityPage from "./pages/public/CommunityPage";
+import CareersPage from "./pages/public/CareersPage";
+import PressPage from "./pages/public/PressPage";
+import CookiePolicyPage from "./pages/public/CookiePolicyPage";
 
 // Shipment Management
 import NewShipmentBooking from "./pages/shipment/NewShipmentBooking";
@@ -141,6 +152,7 @@ import WMSTrackingPage from "./pages/wms/WMSTrackingPage";
 const queryClient = new QueryClient();
 
 import { WalletProvider } from "./contexts/WalletContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -150,103 +162,36 @@ const App = () => (
       <WalletProvider>
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
+            {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/dashboard" element={<DashboardWrapper />} />
-
-            {/* Auth */}
+            <Route path="/register/user" element={<RegisterUser />} />
+            <Route path="/register/partner" element={<RegisterPartner />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify-email" element={<EmailVerification />} />
-            <Route path="/organization-setup" element={<OrganizationSetup />} />
-            <Route path="/register/user" element={<RegisterUser />} />
-            <Route path="/register/partner" element={<RegisterPartner />} />
-            <Route path="/users" element={<UserManagement />} />
-
-            {/* Dashboard */}
-            <Route path="/profile" element={<UserProfile />} />
-            <Route path="/notifications" element={<NotificationCenter />} />
-            <Route path="/search" element={<SearchResults />} />
-
-            {/* Public Pages */}
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/services" element={<ServicesPage />} />
-
-            {/* Shipment Management */}
-            <Route path="/shipment/new" element={<NewShipmentBooking />} />
-            <Route path="/shipment/success" element={<ShipmentSuccess />} />
-            <Route path="/shipments" element={<ShipmentsList />} />
-            <Route path="/shipment/:id" element={<ShipmentDetails />} />
-            <Route path="/shipment/:id/edit" element={<EditShipment />} />
-
-            {/* Bulk Operations */}
-            <Route path="/bulk/upload" element={<BulkUpload />} />
-            <Route path="/bulk/validation" element={<BulkValidation />} />
-            <Route path="/bulk/processing" element={<BulkProcessing />} />
-            <Route path="/bulk/success" element={<BulkSuccess />} />
-
-            {/* Tracking */}
-            <Route path="/fleet-tracking" element={<FleetTracking />} />
             <Route path="/track" element={<PublicTracking />} />
             <Route path="/track/:awb" element={<TrackingResults />} />
-            <Route path="/tracking/:awb/live" element={<LiveMapTracking />} />
-            <Route path="/tracking/:awb/pod" element={<ProofOfDelivery />} />
-            <Route path="/track-live/:awb" element={<UserLiveTracking />} />
-            <Route path="/partner/fleet-view" element={<PartnerFleetView />} />
-
-            {/* Rates */}
             <Route path="/rates" element={<RateCalculator />} />
             <Route path="/rate-calculator" element={<RateCalculator />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/api-reference" element={<ApiReferencePage />} />
+            <Route path="/changelog" element={<ChangelogPage />} />
+            <Route path="/documentation" element={<DocumentationPage />} />
+            <Route path="/help-center" element={<HelpCenterPage />} />
+            <Route path="/logistics-guide" element={<LogisticsGuidePage />} />
+            <Route path="/community" element={<CommunityPage />} />
+            <Route path="/careers" element={<CareersPage />} />
+            <Route path="/press" element={<PressPage />} />
+            <Route path="/cookie-policy" element={<CookiePolicyPage />} />
 
-            {/* Warehouse */}
-            <Route path="/warehouse" element={<WarehouseDashboard />} />
-            <Route path="/warehouse/inventory" element={<InventoryManagement />} />
-
-            {/* Drivers */}
-            <Route path="/drivers" element={<DriverManagement />} />
-
-            {/* Fleet */}
-            <Route path="/fleet" element={<FleetManagement />} />
-            <Route path="/partner/orders" element={<PartnerOrders />} />
-            <Route path="/partner/activity" element={<PartnerActivity />} />
-            <Route path="/partner/team" element={<PartnerTeamManagement />} />
-            <Route path="/my-orders" element={<UserOrders />} />
-
-            {/* Analytics */}
-            <Route path="/analytics" element={<AnalyticsDashboard />} />
-
-            {/* Reports */}
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/my-reports" element={<UserReports />} />
-
-            {/* Billing */}
-            <Route path="/billing" element={<BillingDashboard />} />
-            <Route path="/billing/recharge" element={<WalletRecharge />} />
-            <Route path="/billing/transactions" element={<TransactionsPage />} />
-            <Route path="/billing/invoices" element={<InvoicesPage />} />
-
-            {/* Support */}
-            <Route path="/support" element={<SupportCenter />} />
-
-            {/* Settings */}
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/settings/kyc" element={<KYCVerification />} />
-            <Route path="/settings/financial-setup" element={<FinancialSetup />} />
-
-            {/* Returns */}
-            <Route path="/returns" element={<ReturnsDashboard />} />
-
-            {/* Admin */}
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/partners" element={<PartnerManagement />} />
-
-            {/* Settlement & Tier System */}
-            <Route path="/settlement" element={<SettlementDashboard />} />
-
-            {/* Legal — Seller/User Policies */}
+            {/* Legal — Seller/User Policies (Public) */}
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/acceptable-use" element={<AcceptableUsePolicy />} />
@@ -257,7 +202,7 @@ const App = () => (
             <Route path="/shipping-delivery" element={<ShippingDeliveryPolicy />} />
             <Route path="/rto-cancellation" element={<RTOCancellationPolicy />} />
 
-            {/* Legal — Partner Policies */}
+            {/* Legal — Partner Policies (Public) */}
             <Route path="/partner-agreement" element={<PartnerAgreement />} />
             <Route path="/partner-privacy" element={<PartnerPrivacyPolicy />} />
             <Route path="/partner-onboarding" element={<PartnerOnboardingPolicy />} />
@@ -265,24 +210,100 @@ const App = () => (
             <Route path="/partner-code-of-conduct" element={<PartnerCodeOfConduct />} />
             <Route path="/partner-dispute" element={<PartnerDisputePolicy />} />
 
-            {/* Legal — Platform-Wide Policies */}
+            {/* Legal — Platform-Wide Policies (Public) */}
             <Route path="/anti-fraud" element={<AntiFraudPolicy />} />
             <Route path="/grievance-redressal" element={<GrievanceRedressalPolicy />} />
             <Route path="/data-retention" element={<DataRetentionPolicy />} />
 
+            {/* ═══ Protected Routes (require login) ═══ */}
+
+            {/* Dashboard */}
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
+            <Route path="/organization-setup" element={<ProtectedRoute><OrganizationSetup /></ProtectedRoute>} />
+            <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><NotificationCenter /></ProtectedRoute>} />
+            <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
+
+            {/* Shipment Management */}
+            <Route path="/shipment/new" element={<ProtectedRoute><NewShipmentBooking /></ProtectedRoute>} />
+            <Route path="/shipment/success" element={<ProtectedRoute><ShipmentSuccess /></ProtectedRoute>} />
+            <Route path="/shipments" element={<ProtectedRoute><ShipmentsList /></ProtectedRoute>} />
+            <Route path="/shipment/:id" element={<ProtectedRoute><ShipmentDetails /></ProtectedRoute>} />
+            <Route path="/shipment/:id/edit" element={<ProtectedRoute><EditShipment /></ProtectedRoute>} />
+
+            {/* Bulk Operations */}
+            <Route path="/bulk/upload" element={<ProtectedRoute><BulkUpload /></ProtectedRoute>} />
+            <Route path="/bulk/validation" element={<ProtectedRoute><BulkValidation /></ProtectedRoute>} />
+            <Route path="/bulk/processing" element={<ProtectedRoute><BulkProcessing /></ProtectedRoute>} />
+            <Route path="/bulk/success" element={<ProtectedRoute><BulkSuccess /></ProtectedRoute>} />
+
+            {/* Tracking (authenticated) */}
+            <Route path="/fleet-tracking" element={<ProtectedRoute><FleetTracking /></ProtectedRoute>} />
+            <Route path="/tracking/:awb/live" element={<ProtectedRoute><LiveMapTracking /></ProtectedRoute>} />
+            <Route path="/tracking/:awb/pod" element={<ProtectedRoute><ProofOfDelivery /></ProtectedRoute>} />
+            <Route path="/track-live/:awb" element={<ProtectedRoute><UserLiveTracking /></ProtectedRoute>} />
+            <Route path="/partner/fleet-view" element={<ProtectedRoute><PartnerFleetView /></ProtectedRoute>} />
+
+            {/* Warehouse */}
+            <Route path="/warehouse" element={<ProtectedRoute><WarehouseDashboard /></ProtectedRoute>} />
+            <Route path="/warehouse/inventory" element={<ProtectedRoute><InventoryManagement /></ProtectedRoute>} />
+
+            {/* Drivers */}
+            <Route path="/drivers" element={<ProtectedRoute><DriverManagement /></ProtectedRoute>} />
+
+            {/* Fleet & Partners */}
+            <Route path="/fleet" element={<ProtectedRoute><FleetManagement /></ProtectedRoute>} />
+            <Route path="/partner/orders" element={<ProtectedRoute><PartnerOrders /></ProtectedRoute>} />
+            <Route path="/partner/activity" element={<ProtectedRoute><PartnerActivity /></ProtectedRoute>} />
+            <Route path="/partner/team" element={<ProtectedRoute><PartnerTeamManagement /></ProtectedRoute>} />
+            <Route path="/my-orders" element={<ProtectedRoute><UserOrders /></ProtectedRoute>} />
+
+            {/* Analytics */}
+            <Route path="/analytics" element={<ProtectedRoute><AnalyticsDashboard /></ProtectedRoute>} />
+
+            {/* Reports */}
+            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/my-reports" element={<ProtectedRoute><UserReports /></ProtectedRoute>} />
+
+            {/* Billing */}
+            <Route path="/billing" element={<ProtectedRoute><BillingDashboard /></ProtectedRoute>} />
+            <Route path="/billing/recharge" element={<ProtectedRoute><WalletRecharge /></ProtectedRoute>} />
+            <Route path="/billing/transactions" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />
+            <Route path="/billing/invoices" element={<ProtectedRoute><InvoicesPage /></ProtectedRoute>} />
+
+            {/* Support */}
+            <Route path="/support" element={<ProtectedRoute><SupportCenter /></ProtectedRoute>} />
+
+            {/* Settings */}
+            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/settings/kyc" element={<ProtectedRoute><KYCVerification /></ProtectedRoute>} />
+            <Route path="/settings/financial-setup" element={<ProtectedRoute><FinancialSetup /></ProtectedRoute>} />
+
+            {/* Returns */}
+            <Route path="/returns" element={<ProtectedRoute><ReturnsDashboard /></ProtectedRoute>} />
+
+            {/* Admin */}
+            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/partners" element={<ProtectedRoute><PartnerManagement /></ProtectedRoute>} />
+
+            {/* Settlement & Tier System */}
+            <Route path="/settlement" element={<ProtectedRoute><SettlementDashboard /></ProtectedRoute>} />
+
             {/* Onboarding */}
-            <Route path="/onboarding/business-stage" element={<BusinessStage />} />
-            <Route path="/onboarding/channels" element={<SellingChannels />} />
-            <Route path="/onboarding/kyc" element={<KYCVerification />} />
+            <Route path="/onboarding/business-stage" element={<ProtectedRoute><BusinessStage /></ProtectedRoute>} />
+            <Route path="/onboarding/channels" element={<ProtectedRoute><SellingChannels /></ProtectedRoute>} />
+            <Route path="/onboarding/kyc" element={<ProtectedRoute><KYCVerification /></ProtectedRoute>} />
 
             {/* WMS (Warehouse Management System) */}
-            <Route path="/wms" element={<WMSDashboard />} />
-            <Route path="/wms/fleet" element={<WMSFleetManagement />} />
-            <Route path="/wms/inventory" element={<WMSInventoryPage />} />
-            <Route path="/wms/rtd" element={<WMSRTDDashboard />} />
-            <Route path="/wms/inbound" element={<WMSInboundPage />} />
-            <Route path="/wms/reports" element={<WMSReportsPage />} />
-            <Route path="/wms/tracking" element={<WMSTrackingPage />} />
+            <Route path="/wms" element={<ProtectedRoute><WMSDashboard /></ProtectedRoute>} />
+            <Route path="/wms/fleet" element={<ProtectedRoute><WMSFleetManagement /></ProtectedRoute>} />
+            <Route path="/wms/inventory" element={<ProtectedRoute><WMSInventoryPage /></ProtectedRoute>} />
+            <Route path="/wms/rtd" element={<ProtectedRoute><WMSRTDDashboard /></ProtectedRoute>} />
+            <Route path="/wms/inbound" element={<ProtectedRoute><WMSInboundPage /></ProtectedRoute>} />
+            <Route path="/wms/reports" element={<ProtectedRoute><WMSReportsPage /></ProtectedRoute>} />
+            <Route path="/wms/tracking" element={<ProtectedRoute><WMSTrackingPage /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
@@ -293,3 +314,4 @@ const App = () => (
 );
 
 export default App;
+

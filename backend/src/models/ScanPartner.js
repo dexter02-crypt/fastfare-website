@@ -23,8 +23,7 @@ const scanPartnerSchema = new mongoose.Schema({
     visiblePassword: { type: String }, // Stored for partner convenience
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        ref: 'User'
     },
     status: {
         type: String,

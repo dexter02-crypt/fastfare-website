@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Wallet, Shield, Package, Plus, ArrowRight, Gift
+  Wallet, Package, Plus, ArrowRight, Gift
 } from "lucide-react";
 
 interface ActionItem {
@@ -21,14 +21,12 @@ interface ActionItem {
 
 interface GettingStartedProps {
   showWelcomeOffer?: boolean;
-  kycCompleted?: boolean;
   walletRecharged?: boolean;
   firstOrderPlaced?: boolean;
 }
 
 const GettingStarted = ({
   showWelcomeOffer = true,
-  kycCompleted = false,
   walletRecharged = false,
   firstOrderPlaced = false,
 }: GettingStartedProps) => {
@@ -43,15 +41,6 @@ const GettingStarted = ({
       variant: "highlight",
       badge: "+4 More Offers",
       completed: walletRecharged,
-    },
-    {
-      id: "kyc",
-      title: "Complete your KYC",
-      description: "Complete your KYC verification to start shipping orders",
-      buttonText: "Verify KYC",
-      href: "/settings/kyc",
-      icon: Shield,
-      completed: kycCompleted,
     },
     {
       id: "order",
@@ -107,7 +96,7 @@ const GettingStarted = ({
       {/* Getting Started Section */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Getting Started</h2>
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 gap-4">
           {activeActions.map((action, index) => (
             <motion.div
               key={action.id}

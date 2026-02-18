@@ -2,12 +2,77 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import ScanPartner from '../models/ScanPartner.js';
 import Parcel from '../models/Parcel.js';
+import Sequence from '../models/Sequence.js';
 
 const router = express.Router();
 
 const generateToken = (id) => {
     return jwt.sign({ id, role: 'scan_partner' }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
+
+// Helper: generate next scan partner ID (SCN-0001, SCN-0002, ...)
+const getNextScanPartnerId = async () => {
+    const seq = await Sequence.findOneAndUpdate(
+        { _id: 'scanPartner' },
+        { $inc: { seq: 1 } },
+        { upsert: true, new: true }
+    );
+    return `SCN-${String(seq.seq).padStart(4, '0')}`;
+};
+
+// POST /api/scan-partner-auth/register — Self-registration from Partner App
+router.post('/register', async (req, res) => {
+    try {
+        const { name, phone, email, password, businessName, city, state, address, zone, aadhaar } = req.body;
+
+        if (!name || !phone || !password) {
+            return res.status(400).json({ success: false, message: 'Name, phone, and password are required' });
+        }
+
+        // Check if phone already registered
+        const existing = await ScanPartner.findOne({ phone });
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Phone number already registered' });
+        }
+
+        const scanPartnerId = await getNextScanPartnerId();
+
+        const scanPartner = await ScanPartner.create({
+            scanPartnerId,
+            name,
+            phone,
+            password, // Will be hashed by pre-save hook
+            visiblePassword: password,
+            email: email || undefined,
+            businessName: businessName || undefined,
+            city: city || undefined,
+            state: state || undefined,
+            address: address || undefined,
+            zone: zone || undefined,
+            aadhaar: aadhaar || undefined,
+            status: 'active'
+        });
+
+        const token = generateToken(scanPartner._id);
+
+        res.status(201).json({
+            success: true,
+            message: `Registration successful! Your Partner ID is ${scanPartnerId}`,
+            token,
+            partner: {
+                id: scanPartner._id,
+                partnerId: scanPartner.scanPartnerId,
+                name: scanPartner.name,
+                phone: scanPartner.phone,
+                status: scanPartner.status,
+                totalScans: 0
+            }
+        });
+    } catch (error) {
+        console.error('Scan partner register error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 // POST /api/scan-partner-auth/login
 router.post('/login', async (req, res) => {
@@ -90,3 +155,4 @@ router.get('/me', async (req, res) => {
 });
 
 export default router;
+

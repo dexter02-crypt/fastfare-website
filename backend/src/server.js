@@ -15,6 +15,7 @@ import paymentRoutes from './routes/payment.js';
 import kycRoutes from './routes/kyc.js';
 import fleetRoutes from './routes/fleet.js';
 import reportsRoutes from './routes/reports.js';
+import alertsRoutes from './routes/alerts.js';
 
 // WMS routes (from PC software)
 import wmsVehicleRoutes from './routes/wms-vehicles.js';
@@ -57,13 +58,23 @@ const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Socket.io setup with CORS
-const ALLOWED_ORIGINS = process.env.NODE_ENV === 'production'
-  ? ['https://fastfare.org', 'https://www.fastfare.org']
+const WEB_ORIGINS = ['https://fastfare.org', 'https://www.fastfare.org'];
+
+// CORS handler: allows web origins + native mobile apps (no Origin header)
+const corsHandler = process.env.NODE_ENV === 'production'
+  ? (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin || WEB_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
   : true; // Allow all origins in development
 
 const io = new Server(httpServer, {
   cors: {
-    origin: ALLOWED_ORIGINS,
+    origin: corsHandler,
     methods: ["GET", "POST"]
   }
 });
@@ -79,7 +90,7 @@ locationSocket(io);
 
 // Middleware
 app.use(cors({
-  origin: ALLOWED_ORIGINS,
+  origin: corsHandler,
   credentials: true
 }));
 app.use(express.json());
@@ -97,6 +108,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/kyc', kycRoutes);
 app.use('/api/fleet', fleetRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/alerts', alertsRoutes);
 
 // ─── WMS Routes (Warehouse Management System) ───
 app.use('/api/wms/vehicles', wmsVehicleRoutes);
@@ -116,7 +128,6 @@ app.use('/api/driver-auth', wmsDriverAuthRoutes);
 app.use('/api/parcels', parcelRoutes);
 app.use('/api/trips', mobileTripsRoutes);
 app.use('/api/driver-locations', driverLocationsRoutes);
-app.use('/api/tracking', driverLocationsRoutes);
 app.use('/api/partner-team', partnerTeamRoutes);
 app.use('/api/scan-partner-auth', scanPartnerAuthRoutes);
 

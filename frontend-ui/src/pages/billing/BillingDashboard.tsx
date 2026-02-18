@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   Wallet, CreditCard, Receipt, TrendingUp, Plus, Download,
-  ArrowUpRight, ArrowDownRight, Clock, CheckCircle, AlertTriangle
+  ArrowUpRight, ArrowDownRight, Clock, AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -53,7 +53,7 @@ const BillingDashboard = () => {
 
   const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(0); // Index of selected payment method
+
 
   useEffect(() => {
     const fetchWalletData = async () => {
@@ -129,52 +129,51 @@ const BillingDashboard = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Wallet className="h-6 w-6 text-primary" />
+                <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Wallet className="h-7 w-7 text-primary" />
                 </div>
               </div>
-              <p className="text-3xl font-bold">₹{balance.toLocaleString()}</p>
-              <p className="text-sm text-muted-foreground">Wallet Balance</p>
+              <p className="text-4xl font-bold tracking-tight">₹{balance.toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground mt-1">Wallet Balance</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <div className="h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-orange-600" />
+                <div className="h-14 w-14 rounded-xl bg-orange-100 flex items-center justify-center">
+                  <TrendingUp className="h-7 w-7 text-orange-600" />
                 </div>
               </div>
-              <p className="text-3xl font-bold">₹{monthlyAmount.toLocaleString()}</p>
-              <p className="text-sm text-muted-foreground">This Month's Spend</p>
+              <p className="text-4xl font-bold tracking-tight">₹{monthlyAmount.toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground mt-1">This Month's Spend</p>
             </CardContent>
           </Card>
 
-          {/* Placeholders for Credit/Pending */}
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-blue-600" />
+                <div className="h-14 w-14 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Clock className="h-7 w-7 text-blue-600" />
                 </div>
               </div>
-              <p className="text-3xl font-bold">₹0</p>
-              <p className="text-sm text-muted-foreground">Pending Payments</p>
+              <p className="text-4xl font-bold tracking-tight">₹0</p>
+              <p className="text-sm text-muted-foreground mt-1">Pending Payments</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <div className="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <CreditCard className="h-6 w-6 text-purple-600" />
+                <div className="h-14 w-14 rounded-xl bg-purple-100 flex items-center justify-center">
+                  <CreditCard className="h-7 w-7 text-purple-600" />
                 </div>
               </div>
-              <p className="text-3xl font-bold">--</p>
-              <p className="text-sm text-muted-foreground">Credit Limit</p>
+              <p className="text-4xl font-bold tracking-tight">--</p>
+              <p className="text-sm text-muted-foreground mt-1">Credit Limit</p>
             </CardContent>
           </Card>
         </div>
@@ -241,69 +240,6 @@ const BillingDashboard = () => {
           </Card>
         </div>
 
-        {/* Payment Methods */}
-        <Card className="mt-6">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Payment Methods</CardTitle>
-              <CardDescription>Select your preferred payment option</CardDescription>
-            </div>
-            <Link to="/settings/financial-setup">
-              <Button variant="outline" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Method
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[
-                { type: "Credit Card", last4: "4242", expiry: "12/25", brand: "Visa", icon: "💳" },
-                { type: "Credit Card", last4: "8523", expiry: "09/26", brand: "Mastercard", icon: "💳" },
-                { type: "Debit Card", last4: "1234", expiry: "03/27", brand: "RuPay", icon: "💳" },
-                { type: "Bank Account", last4: "6789", expiry: null, brand: "HDFC Bank", icon: "🏦" },
-                { type: "Bank Account", last4: "4521", expiry: null, brand: "SBI", icon: "🏦" },
-                { type: "UPI", last4: "fastfare@hdfc", expiry: null, brand: "HDFC UPI", icon: "📱" },
-                { type: "UPI", last4: "user@paytm", expiry: null, brand: "Paytm", icon: "📱" },
-                { type: "UPI", last4: "9876543210@ybl", expiry: null, brand: "PhonePe", icon: "📱" },
-              ].map((method, index) => (
-                <div
-                  key={index}
-                  onClick={() => {
-                    setSelectedPaymentMethod(index);
-                    toast({
-                      title: "Payment Method Selected",
-                      description: `${method.type} - ${method.brand} selected as payment method`,
-                    });
-                  }}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${selectedPaymentMethod === index
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                      : "border-border hover:border-primary/50"
-                    }`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <Badge variant="outline" className="gap-1">
-                      <span>{method.icon}</span> {method.brand}
-                    </Badge>
-                    {selectedPaymentMethod === index && (
-                      <Badge className="bg-primary text-primary-foreground">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Selected
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="font-medium">{method.type}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {method.type === "UPI" ? method.last4 : `•••• ${method.last4}`}
-                  </p>
-                  {method.expiry && (
-                    <p className="text-xs text-muted-foreground mt-1">Expires {method.expiry}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   );

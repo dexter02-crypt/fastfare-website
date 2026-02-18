@@ -18,7 +18,7 @@ const calculateShippingCost = (shipment) => {
     return Math.round((baseRate + (weight * weightRate)) * expressMultiplier + insuranceCost + fragileCost);
 };
 
-// Create shipment
+// Create shipment (POST /api/shipments/)
 router.post('/', protect, async (req, res) => {
     try {
         const { pickup, delivery, packages, contentType, description, paymentMode, codAmount,
@@ -60,13 +60,57 @@ router.post('/', protect, async (req, res) => {
 
         res.status(201).json({
             success: true,
-            shipment: {
-                id: shipment._id,
-                awb: shipment.awb,
-                status: shipment.status,
-                shippingCost: shipment.shippingCost,
-                estimatedDelivery: shipment.estimatedDelivery
-            }
+            shipment
+        });
+    } catch (error) {
+        console.error('Create shipment error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Also accept POST /api/shipments/create (alias for frontend compatibility)
+router.post('/create', protect, async (req, res) => {
+    try {
+        const { pickup, delivery, packages, contentType, description, paymentMode, codAmount,
+            serviceType, carrier, insurance, fragileHandling, signatureRequired,
+            scheduledPickup, pickupDate, pickupSlot } = req.body;
+
+        const shipmentData = {
+            user: req.user._id,
+            pickup,
+            delivery,
+            packages,
+            contentType,
+            description,
+            paymentMode,
+            codAmount: paymentMode === 'cod' ? codAmount : 0,
+            serviceType,
+            carrier,
+            insurance,
+            fragileHandling,
+            signatureRequired,
+            scheduledPickup,
+            pickupDate,
+            pickupSlot,
+            trackingHistory: [{
+                status: 'pending',
+                location: pickup.city || 'Origin',
+                description: 'Shipment created'
+            }]
+        };
+
+        const shipment = await Shipment.create(shipmentData);
+        shipment.shippingCost = calculateShippingCost(shipment);
+
+        // Set estimated delivery (3-7 days based on service)
+        const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
+        shipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+        await shipment.save();
+
+        res.status(201).json({
+            success: true,
+            shipment
         });
     } catch (error) {
         console.error('Create shipment error:', error);
@@ -113,83 +157,7 @@ router.get('/', protect, async (req, res) => {
     }
 });
 
-// Get single shipment
-router.get('/:id', protect, async (req, res) => {
-    try {
-        const shipment = await Shipment.findOne({
-            _id: req.params.id,
-            user: req.user._id
-        });
-
-        if (!shipment) {
-            return res.status(404).json({ error: 'Shipment not found' });
-        }
-
-        res.json({ success: true, shipment });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Update shipment
-router.put('/:id', protect, async (req, res) => {
-    try {
-        const shipment = await Shipment.findOne({
-            _id: req.params.id,
-            user: req.user._id
-        });
-
-        if (!shipment) {
-            return res.status(404).json({ error: 'Shipment not found' });
-        }
-
-        // Only allow updates if not yet picked up
-        if (!['pending', 'pickup_scheduled'].includes(shipment.status)) {
-            return res.status(400).json({ error: 'Cannot update shipment after pickup' });
-        }
-
-        const updates = req.body;
-        Object.keys(updates).forEach(key => {
-            if (key !== '_id' && key !== 'user' && key !== 'awb') {
-                shipment[key] = updates[key];
-            }
-        });
-
-        await shipment.save();
-        res.json({ success: true, shipment });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Cancel shipment
-router.post('/:id/cancel', protect, async (req, res) => {
-    try {
-        const shipment = await Shipment.findOne({
-            _id: req.params.id,
-            user: req.user._id
-        });
-
-        if (!shipment) {
-            return res.status(404).json({ error: 'Shipment not found' });
-        }
-
-        if (!['pending', 'pickup_scheduled'].includes(shipment.status)) {
-            return res.status(400).json({ error: 'Cannot cancel shipment after pickup' });
-        }
-
-        shipment.status = 'cancelled';
-        shipment.trackingHistory.push({
-            status: 'cancelled',
-            description: 'Shipment cancelled by user'
-        });
-
-        await shipment.save();
-        res.json({ success: true, message: 'Shipment cancelled' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+// ─── NAMED ROUTES MUST come BEFORE /:id to avoid being caught by the wildcard ───
 
 // Get dashboard stats
 router.get('/stats/dashboard', protect, async (req, res) => {
@@ -290,6 +258,86 @@ router.get('/my-orders', protect, async (req, res) => {
         res.json({ success: true, orders: enriched });
     } catch (error) {
         console.error('My orders error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ─── PARAMETERIZED ROUTES (/:id) come LAST ───
+
+// Get single shipment
+router.get('/:id', protect, async (req, res) => {
+    try {
+        const shipment = await Shipment.findOne({
+            _id: req.params.id,
+            user: req.user._id
+        });
+
+        if (!shipment) {
+            return res.status(404).json({ error: 'Shipment not found' });
+        }
+
+        res.json({ success: true, shipment });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update shipment
+router.put('/:id', protect, async (req, res) => {
+    try {
+        const shipment = await Shipment.findOne({
+            _id: req.params.id,
+            user: req.user._id
+        });
+
+        if (!shipment) {
+            return res.status(404).json({ error: 'Shipment not found' });
+        }
+
+        // Only allow updates if not yet picked up
+        if (!['pending', 'pickup_scheduled'].includes(shipment.status)) {
+            return res.status(400).json({ error: 'Cannot update shipment after pickup' });
+        }
+
+        const updates = req.body;
+        Object.keys(updates).forEach(key => {
+            if (key !== '_id' && key !== 'user' && key !== 'awb') {
+                shipment[key] = updates[key];
+            }
+        });
+
+        await shipment.save();
+        res.json({ success: true, shipment });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Cancel shipment
+router.post('/:id/cancel', protect, async (req, res) => {
+    try {
+        const shipment = await Shipment.findOne({
+            _id: req.params.id,
+            user: req.user._id
+        });
+
+        if (!shipment) {
+            return res.status(404).json({ error: 'Shipment not found' });
+        }
+
+        if (!['pending', 'pickup_scheduled'].includes(shipment.status)) {
+            return res.status(400).json({ error: 'Cannot cancel shipment after pickup' });
+        }
+
+        shipment.status = 'cancelled';
+        shipment.trackingHistory.push({
+            status: 'cancelled',
+            description: 'Shipment cancelled by user'
+        });
+
+        await shipment.save();
+        res.json({ success: true, message: 'Shipment cancelled' });
+    } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });

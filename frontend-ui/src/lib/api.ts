@@ -222,6 +222,13 @@ export const gstinApi = {
     },
 };
 
+// Alerts API
+export const alertsApi = {
+    getAlerts: async () => {
+        return apiRequest('/alerts');
+    },
+};
+
 // Payment API
 export const paymentApi = {
     createOrder: async (amount: number) => {
@@ -334,6 +341,7 @@ export default {
     tracking: trackingApi,
     user: userApi,
     gstin: gstinApi,
+    alerts: alertsApi,
     payment: paymentApi,
     wms: wmsApi,
     settlement: settlementApi,

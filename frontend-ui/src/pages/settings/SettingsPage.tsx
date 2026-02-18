@@ -19,7 +19,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import {
   Settings, Bell, Shield, Key, Globe, Building2, Users,
   CreditCard, Package, Truck, Save, RefreshCw, Smartphone,
-  Lock, Monitor, Laptop, AlertTriangle, CheckCircle, X
+  Lock, Monitor, Laptop, AlertTriangle, CheckCircle, X, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -79,6 +79,7 @@ const SettingsPage = () => {
   const [twoFactorDialog, setTwoFactorDialog] = useState(false);
   const [twoFactorStep, setTwoFactorStep] = useState(1);
   const [otpCode, setOtpCode] = useState("");
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
 
   const [passwordDialog, setPasswordDialog] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -112,19 +113,37 @@ const SettingsPage = () => {
     setTwoFactorDialog(true);
   };
 
-  const handleVerify2FA = () => {
-    if (otpCode.length === 6) {
+  const handleVerify2FA = async () => {
+    if (otpCode.length !== 6) {
+      toast.error("Please enter a valid 6-digit code");
+      return;
+    }
+    setTwoFactorLoading(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
       setTwoFactorEnabled(true);
       setTwoFactorDialog(false);
       toast.success("Two-Factor Authentication enabled successfully!");
-    } else {
-      toast.error("Please enter a valid 6-digit code");
+    } catch {
+      toast.error("Failed to enable 2FA. Please try again.");
+    } finally {
+      setTwoFactorLoading(false);
     }
   };
 
-  const handleDisable2FA = () => {
-    setTwoFactorEnabled(false);
-    toast.success("Two-Factor Authentication disabled");
+  const handleDisable2FA = async () => {
+    setTwoFactorLoading(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setTwoFactorEnabled(false);
+      toast.success("Two-Factor Authentication disabled");
+    } catch {
+      toast.error("Failed to disable 2FA. Please try again.");
+    } finally {
+      setTwoFactorLoading(false);
+    }
   };
 
   // Password Change Handler
@@ -458,10 +477,15 @@ const SettingsPage = () => {
                     {twoFactorEnabled ? (
                       <div className="flex items-center gap-2">
                         <Badge className="bg-green-100 text-green-800">Enabled</Badge>
-                        <Button variant="outline" size="sm" onClick={handleDisable2FA}>Disable</Button>
+                        <Button variant="outline" size="sm" onClick={handleDisable2FA} disabled={twoFactorLoading}>
+                          {twoFactorLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Disable"}
+                        </Button>
                       </div>
                     ) : (
-                      <Button variant="outline" onClick={handleEnable2FA}>Enable 2FA</Button>
+                      <Button variant="outline" onClick={handleEnable2FA} disabled={twoFactorLoading}>
+                        {twoFactorLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        Enable 2FA
+                      </Button>
                     )}
                   </div>
 
@@ -592,10 +616,11 @@ const SettingsPage = () => {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setTwoFactorStep(1)}>
+                  <Button variant="outline" className="flex-1" onClick={() => setTwoFactorStep(1)} disabled={twoFactorLoading}>
                     Back
                   </Button>
-                  <Button className="flex-1" onClick={handleVerify2FA}>
+                  <Button className="flex-1" onClick={handleVerify2FA} disabled={twoFactorLoading}>
+                    {twoFactorLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Verify & Enable
                   </Button>
                 </div>

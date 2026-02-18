@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from "react";
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from "@react-google-maps/api";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ const center = {
 };
 
 const FleetTracking = () => {
+    const navigate = useNavigate();
     const { drivers } = useFleetData();
     const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
     const [filter, setFilter] = useState("All");
@@ -56,7 +57,7 @@ const FleetTracking = () => {
     }, []);
 
     const selectedDriver = drivers.find(d => d.id === selectedDriverId);
-    
+
     // ... existing filter logic ...
     const filteredDrivers = drivers.filter(d => {
         const matchesStatus = filter === "All" || d.status === filter;
@@ -81,7 +82,7 @@ const FleetTracking = () => {
             map.setZoom(14);
         }
     };
-    
+
     if (loadError) {
         return <div>Map cannot be loaded</div>
     }
@@ -136,7 +137,7 @@ const FleetTracking = () => {
                                             </Badge>
                                         </div>
                                         <p className="text-xs text-gray-500 mt-0.5">{driver.vehicle}</p>
-                                        
+
                                         {/* New Metadata in List */}
                                         <div className="flex items-center gap-3 mt-1.5">
                                             <div className="flex items-center text-[10px] text-gray-500 gap-1">
@@ -212,7 +213,7 @@ const FleetTracking = () => {
                                         <div className="p-2 min-w-[200px]">
                                             <h3 className="font-bold text-sm mb-1">{selectedDriver.name}</h3>
                                             <p className="text-xs text-gray-500 mb-2">{selectedDriver.vehicle}</p>
-                                            
+
                                             <div className="grid grid-cols-2 gap-2 text-xs">
                                                 <div className="flex items-center gap-1">
                                                     <Gauge className="h-3 w-3 text-gray-400" />
@@ -226,11 +227,11 @@ const FleetTracking = () => {
                                                     Heading: {selectedDriver.heading.toFixed(0)}°
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="mt-2 pt-2 border-t flex justify-end">
-                                                <Button 
-                                                    size="sm" 
-                                                    className="h-6 text-xs" 
+                                                <Button
+                                                    size="sm"
+                                                    className="h-6 text-xs"
                                                     variant="outline"
                                                     onClick={() => {
                                                         setDetailDriver(selectedDriver);
@@ -255,7 +256,7 @@ const FleetTracking = () => {
                     <div className="hidden lg:block absolute bottom-0 left-0 right-0 bg-white border-t p-4 z-10 max-h-64 overflow-auto">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-gray-900">Driver Performance</h3>
-                            <Button variant="ghost" className="text-blue-600 text-sm h-8">View Full Report</Button>
+                            <Button variant="ghost" className="text-blue-600 text-sm h-8" onClick={() => navigate('/reports')}>View Full Report</Button>
                         </div>
                         <table className="w-full text-sm">
                             <thead className="text-xs text-gray-500 bg-gray-50 uppercase tracking-wider">
@@ -270,8 +271,8 @@ const FleetTracking = () => {
                             </thead>
                             <tbody className="divide-y">
                                 {filteredDrivers.map(driver => (
-                                    <tr 
-                                        key={driver.id} 
+                                    <tr
+                                        key={driver.id}
                                         className={`hover:bg-gray-50/50 cursor-pointer ${selectedDriverId === driver.id ? 'bg-blue-50/50' : ''}`}
                                         onClick={() => handleDriverClick(driver)}
                                     >
@@ -292,8 +293,8 @@ const FleetTracking = () => {
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div 
-                                                        className={`h-full ${driver.fuelLevel > 20 ? 'bg-green-500' : 'bg-red-500'}`} 
+                                                    <div
+                                                        className={`h-full ${driver.fuelLevel > 20 ? 'bg-green-500' : 'bg-red-500'}`}
                                                         style={{ width: `${driver.fuelLevel}%` }}
                                                     />
                                                 </div>
@@ -315,7 +316,7 @@ const FleetTracking = () => {
                     </div>
                 </div>
             </div>
-            
+
             {/* Driver Details Dialog */}
             <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
                 <DialogContent className="sm:max-w-[500px]">
@@ -334,7 +335,7 @@ const FleetTracking = () => {
                         </DialogTitle>
                         <DialogDescription>Driver ID: {detailDriver?.id}</DialogDescription>
                     </DialogHeader>
-                    
+
                     <div className="mt-4 space-y-4">
                         {/* Vehicle Info */}
                         <div className="bg-gray-50 rounded-lg p-4">
@@ -352,9 +353,9 @@ const FleetTracking = () => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <Separator />
-                        
+
                         {/* Live Stats */}
                         <div>
                             <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
@@ -378,9 +379,9 @@ const FleetTracking = () => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <Separator />
-                        
+
                         {/* Contact & Location */}
                         <div>
                             <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
@@ -401,7 +402,7 @@ const FleetTracking = () => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         {/* ETA Info */}
                         <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20">
                             <div className="flex items-center gap-2">
@@ -410,7 +411,7 @@ const FleetTracking = () => {
                             </div>
                             <span className="font-bold text-primary">{detailDriver?.eta}</span>
                         </div>
-                        
+
                         {/* Action Buttons */}
                         <div className="flex gap-2 pt-2">
                             <Button className="flex-1" variant="outline" onClick={() => window.open(`tel:${detailDriver?.phone}`)}>

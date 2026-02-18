@@ -25,7 +25,7 @@ import {
   MoreVertical,
   Shield,
   AlertCircle,
-  X,
+
 } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/logo.png";
@@ -135,10 +135,8 @@ const Dashboard = () => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     setUserRole(user.role || "");
 
-    const kycStatus = localStorage.getItem("kycStatus");
-    const kycSkippedAt = localStorage.getItem("kycSkippedAt");
-
-    if (kycStatus === "pending" && kycSkippedAt) {
+    // Show KYC reminder if GSTIN is missing or KYC not verified
+    if (!user.gstin || user.kyc?.status === 'pending') {
       setShowKycReminder(true);
     }
   }, []);
@@ -180,10 +178,7 @@ const Dashboard = () => {
     setShowKycReminder(false);
   };
 
-  const kycSkippedAt = localStorage.getItem("kycSkippedAt");
-  const daysSinceSkip = kycSkippedAt
-    ? Math.floor((Date.now() - new Date(kycSkippedAt).getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
+
 
   return (
     <div className="min-h-screen bg-muted/30 flex w-full">
@@ -197,9 +192,8 @@ const Dashboard = () => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-64 bg-card border-r border-border flex flex-col transition-transform duration-300 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
+        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-64 bg-card border-r border-border flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          }`}
       >
         {/* Logo */}
         <div className="p-4 border-b border-border flex items-center justify-between">
@@ -222,11 +216,10 @@ const Dashboard = () => {
               <Link
                 key={link.label}
                 to={link.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
               >
                 <link.icon size={20} />
                 {link.label}
@@ -325,47 +318,41 @@ const Dashboard = () => {
                 exit={{ opacity: 0, y: -10 }}
                 className="mb-6"
               >
-                <Alert className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 dark:from-amber-950/20 dark:to-orange-950/20 dark:border-amber-800">
-                  <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <Alert className="bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-800">
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <AlertCircle className="h-4 w-4 inline mr-2 text-amber-600 dark:text-amber-400" />
-                        <strong className="text-amber-900 dark:text-amber-100">Complete KYC Verification</strong>
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        <strong className="text-red-800 dark:text-red-100">Complete KYC Verification</strong>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-amber-600 hover:text-amber-800 dark:text-amber-400"
+                        className="h-6 w-6 text-red-600 hover:text-red-800 dark:text-red-400"
                         onClick={handleDismissKycReminder}
                       >
                         <X size={14} />
                       </Button>
                     </div>
-                    <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
-                      Your KYC is still pending. Complete it to unlock all features and start shipping.
-                      {daysSinceSkip > 0 && (
-                        <span className="ml-2 font-medium">
-                          (Skipped {daysSinceSkip} {daysSinceSkip === 1 ? 'day' : 'days'} ago)
-                        </span>
-                      )}
+                    <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                      Your GSTIN/KYC verification is incomplete. Complete it to unlock all features and start shipping.
                     </p>
                     <div className="mt-3 flex gap-2">
                       <Button
                         size="sm"
-                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                        className="bg-red-600 hover:bg-red-700 text-white"
                         onClick={() => {
                           handleDismissKycReminder();
                         }}
                       >
-                        <Link to="/settings/kyc" className="flex items-center gap-1">
+                        <Link to="/dashboard/settings" className="flex items-center gap-1">
                           Complete KYC Now <ChevronRight size={14} />
                         </Link>
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/30"
+                        className="border-red-300 text-red-700 hover:bg-red-100 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950/30"
                         onClick={handleDismissKycReminder}
                       >
                         Remind Later

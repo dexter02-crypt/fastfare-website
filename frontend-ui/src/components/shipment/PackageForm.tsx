@@ -249,7 +249,7 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
         <RadioGroup
           value={data.paymentMode}
           onValueChange={(value) => handleChange("paymentMode", value)}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4"
+          className="grid grid-cols-1 gap-4"
         >
           <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'prepaid' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
             <RadioGroupItem value="prepaid" id="prepaid" />
@@ -260,40 +260,8 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
               </span>
             </Label>
           </div>
-          <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'cod' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
-            <RadioGroupItem value="cod" id="cod" />
-            <Label htmlFor="cod" className="cursor-pointer">
-              <span className="font-medium">Cash on Delivery</span>
-              <span className="text-sm text-muted-foreground block">
-                Collect payment on delivery
-              </span>
-            </Label>
-          </div>
-          <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'to-pay' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
-            <RadioGroupItem value="to-pay" id="to-pay" />
-            <Label htmlFor="to-pay" className="cursor-pointer">
-              <span className="font-medium">To Pay</span>
-              <span className="text-sm text-muted-foreground block">
-                Receiver pays shipping
-              </span>
-            </Label>
-          </div>
         </RadioGroup>
       </div>
-
-      {data.paymentMode === "cod" && (
-        <div className="space-y-2">
-          <Label htmlFor="cod-amount">COD Amount (₹) *</Label>
-          <Input
-            id="cod-amount"
-            type="number"
-            min={0}
-            placeholder="Enter amount to collect"
-            value={data.codAmount}
-            onChange={(e) => handleChange("codAmount", parseInt(e.target.value) || 0)}
-          />
-        </div>
-      )}
     </div>
   );
 };

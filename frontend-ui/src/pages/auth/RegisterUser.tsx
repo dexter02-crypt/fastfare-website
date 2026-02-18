@@ -163,24 +163,32 @@ const RegisterUser = () => {
             return;
         }
 
-        setIsLoading(true);
+        // ⚠️ TODO: RE-ENABLE email verification once domain email propagation is complete
+        // navigate("/verify-email", {
+        //     state: {
+        //         registrationData: { ... },
+        //     },
+        // });
 
+        // Direct registration without email verification (temporary)
+        setIsLoading(true);
         try {
+            const registrationData = {
+                businessName: formData.businessName,
+                gstin: formData.gstin,
+                businessType: formData.businessType,
+                contactPerson: formData.contactPerson,
+                email: formData.email,
+                phone: formData.phone,
+                password: formData.password,
+                role: "user",
+            };
+
             const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    businessName: formData.businessName,
-                    gstin: formData.gstin,
-                    businessType: formData.businessType,
-                    contactPerson: formData.contactPerson,
-                    email: formData.email,
-                    phone: formData.phone,
-                    password: formData.password,
-                    role: "user",
-                }),
+                body: JSON.stringify(registrationData),
             });
-
             const data = await response.json();
 
             if (!response.ok) {
@@ -190,25 +198,18 @@ const RegisterUser = () => {
             // Store token and user info
             localStorage.setItem("token", data.token);
             localStorage.setItem("user", JSON.stringify(data.user));
-
-            toast({
-                title: "Registration Successful",
-                description: "Welcome to FastFare! You can complete KYC later.",
-            });
-
-            // Store KYC pending status
             localStorage.setItem("kycStatus", "pending");
             localStorage.setItem("kycSkippedAt", new Date().toISOString());
 
-            // Navigate to dashboard
-            navigate("/dashboard");
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Registration failed';
             toast({
-                title: "Registration Failed",
-                description: errorMessage,
-                variant: "destructive",
+                title: "Registration Successful! 🎉",
+                description: "Welcome to FastFare!",
             });
+
+            navigate("/dashboard", { replace: true });
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Registration failed";
+            toast({ title: "Error", description: msg, variant: "destructive" });
         } finally {
             setIsLoading(false);
         }
@@ -311,7 +312,7 @@ const RegisterUser = () => {
 
                         {/* GSTIN with Verification */}
                         <div className="space-y-2">
-                            <Label htmlFor="gstin">GSTIN</Label>
+                            <Label htmlFor="gstin">GSTIN <span className="text-muted-foreground font-normal">(Optional)</span></Label>
                             <div className="flex gap-2">
                                 <div className="relative flex-1">
                                     <Input
@@ -330,7 +331,7 @@ const RegisterUser = () => {
                                         }}
                                         maxLength={15}
                                         className={`font-mono ${gstinVerified ? 'border-green-500 pr-10' : gstinError ? 'border-red-500' : ''}`}
-                                        required
+
                                     />
                                     {gstinVerified && (
                                         <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
@@ -358,7 +359,7 @@ const RegisterUser = () => {
                                 </p>
                             )}
                             {!gstinVerified && !gstinError && (
-                                <p className="text-xs text-muted-foreground">15-character alphanumeric GSTIN — click Verify to validate</p>
+                                <p className="text-xs text-muted-foreground">You can add and verify GSTIN later from Settings → KYC</p>
                             )}
                             {/* Verified GSTIN Details */}
                             {gstinVerified && gstinData && (
@@ -433,7 +434,7 @@ const RegisterUser = () => {
                         {/* Email & Phone */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
+                                <Label htmlFor="email">Email Address</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
@@ -466,9 +467,9 @@ const RegisterUser = () => {
                                         required
                                     />
                                 </div>
-                                <p className="text-xs text-muted-foreground text-right mt-1">
-                                    {formData.phone.length}/10 digits
-                                </p>
+                                {formData.phone.length > 0 && formData.phone.length !== 10 && (
+                                    <p className="text-xs text-red-500">Must be exactly 10 digits</p>
+                                )}
                             </div>
                         </div>
 

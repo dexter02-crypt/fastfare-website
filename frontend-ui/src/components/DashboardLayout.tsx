@@ -12,7 +12,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, Search, Menu, X, User, Settings, LogOut } from "lucide-react";
+import { Bell, Search, Menu, X, User, Settings, LogOut, AlertTriangle } from "lucide-react";
 import DashboardSidebar from "./DashboardSidebar";
 import Header from "./Header";
 import { authApi } from "@/lib/api";
@@ -28,6 +28,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const user = authApi.getCurrentUser();
+
+    // Check if KYC/GSTIN is incomplete
+    const needsKyc = user && (!user.gstin || user.kyc?.status === 'pending');
 
     // Sidebar expands on hover, collapses when mouse leaves
     const effectiveCollapsed = sidebarCollapsed && !sidebarHovered;
@@ -102,6 +105,27 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     effectiveCollapsed ? "lg:pl-[72px]" : "lg:pl-[260px]"
                 )}
             >
+                {/* KYC Alert Banner */}
+                {needsKyc && (
+                    <div className="mb-4 mx-4 lg:mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 dark:bg-red-950/30 dark:border-red-800">
+                        <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                            <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                                KYC Verification Incomplete
+                            </p>
+                            <p className="text-sm text-red-700 dark:text-red-300 mt-0.5">
+                                Please complete your KYC and GSTIN verification to unlock all features.
+                            </p>
+                        </div>
+                        <Link
+                            to="/settings/kyc"
+                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md transition-colors flex-shrink-0"
+                        >
+                            Complete KYC
+                        </Link>
+                    </div>
+                )}
+
                 {/* Page Content */}
                 <main className="p-4 lg:p-6 pt-2">{children}</main>
             </div>

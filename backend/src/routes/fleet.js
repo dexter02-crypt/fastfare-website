@@ -22,8 +22,8 @@ const driversUploadDir = 'uploads/drivers';
 // Multer storage configuration
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const dir = req.baseUrl.includes('trucks') || req.path.includes('trucks') 
-            ? trucksUploadDir 
+        const dir = req.baseUrl.includes('trucks') || req.path.includes('trucks')
+            ? trucksUploadDir
             : driversUploadDir;
         cb(null, dir);
     },
@@ -91,7 +91,7 @@ router.get('/trucks', protect, async (req, res) => {
     try {
         const query = req.user.role === 'admin' ? {} : { createdBy: req.user._id };
         const { status } = req.query;
-        
+
         if (status && status !== 'all') {
             query.status = status;
         }
@@ -133,7 +133,7 @@ router.get('/trucks/:id', protect, async (req, res) => {
 router.post('/trucks/:id/approve', protect, admin, async (req, res) => {
     try {
         const truck = await Truck.findById(req.params.id);
-        
+
         if (!truck) {
             return res.status(404).json({ error: 'Truck not found' });
         }
@@ -158,13 +158,13 @@ router.post('/trucks/:id/approve', protect, admin, async (req, res) => {
 router.post('/trucks/:id/reject', protect, admin, async (req, res) => {
     try {
         const { reason } = req.body;
-        
+
         if (!reason) {
             return res.status(400).json({ error: 'Rejection reason is required' });
         }
 
         const truck = await Truck.findById(req.params.id);
-        
+
         if (!truck) {
             return res.status(404).json({ error: 'Truck not found' });
         }
@@ -189,7 +189,7 @@ router.post('/trucks/:id/reject', protect, admin, async (req, res) => {
 router.delete('/trucks/:id', protect, admin, async (req, res) => {
     try {
         const truck = await Truck.findById(req.params.id);
-        
+
         if (!truck) {
             return res.status(404).json({ error: 'Truck not found' });
         }
@@ -260,7 +260,7 @@ router.get('/drivers', protect, async (req, res) => {
 router.delete('/drivers/:id', protect, async (req, res) => {
     try {
         const driver = await Driver.findById(req.params.id);
-        
+
         if (!driver) {
             return res.status(404).json({ error: 'Driver not found' });
         }
