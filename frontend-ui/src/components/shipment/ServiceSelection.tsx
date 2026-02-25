@@ -23,6 +23,8 @@ interface ServiceFormData {
 interface ServiceSelectionProps {
   data: ServiceFormData;
   onChange: (data: ServiceFormData) => void;
+  pickupPincode?: string;
+  deliveryPincode?: string;
 }
 
 interface CarrierOption {
@@ -43,7 +45,7 @@ const serviceTypes = [
 
 const logoColors = ["🔵", "🔴", "🟣", "🟠", "🟢", "🟤", "⚫"];
 
-const ServiceSelection = ({ data, onChange }: ServiceSelectionProps) => {
+const ServiceSelection = ({ data, onChange, pickupPincode, deliveryPincode }: ServiceSelectionProps) => {
   const [carriers, setCarriers] = useState<CarrierOption[]>([]);
   const [loadingCarriers, setLoadingCarriers] = useState(true);
 
@@ -51,10 +53,24 @@ const ServiceSelection = ({ data, onChange }: ServiceSelectionProps) => {
     const fetchCarriers = async () => {
       setLoadingCarriers(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/api/carriers/active`);
+        // Use serviceability endpoint when pincodes are available
+        let url = `${API_BASE_URL}/api/carriers/active`;
+        if (pickupPincode && deliveryPincode) {
+          const params = new URLSearchParams({
+            pickup: pickupPincode,
+            delivery: deliveryPincode,
+          });
+          if (data.serviceType) {
+            params.set('serviceType', data.serviceType);
+          }
+          url = `${API_BASE_URL}/api/carriers/check-serviceability?${params}`;
+        }
+        const res = await fetch(url);
         const result = await res.json();
         if (result.success && result.carriers.length > 0) {
           setCarriers(result.carriers);
+        } else {
+          setCarriers([]);
         }
       } catch (err) {
         console.error("Failed to fetch carriers:", err);
@@ -63,7 +79,7 @@ const ServiceSelection = ({ data, onChange }: ServiceSelectionProps) => {
       }
     };
     fetchCarriers();
-  }, []);
+  }, [pickupPincode, deliveryPincode, data.serviceType]);
 
   const handleChange = <K extends keyof ServiceFormData>(field: K, value: ServiceFormData[K]) => {
     onChange({ ...data, [field]: value });

@@ -40,6 +40,7 @@ import scanPartnerAuthRoutes from './routes/scan-partner-auth.js';
 // Carrier routes
 import carrierAuthRoutes from './routes/carrier-auth.js';
 import carrierRoutes from './routes/carriers.js';
+import carrierWebhookRoutes from './routes/carrier-webhook.js';
 
 // Socket handler
 import { locationSocket } from './socket/location.socket.js';
@@ -141,6 +142,7 @@ app.use('/api/scan-partner-auth', scanPartnerAuthRoutes);
 // ─── Carrier Routes ───
 app.use('/api/carrier-auth', carrierAuthRoutes);
 app.use('/api/carriers', carrierRoutes);
+app.use('/api/carrier-webhook', carrierWebhookRoutes);
 
 // ─── Settlement Engine Routes ───
 app.use('/api/settlement', settlementRoutes);

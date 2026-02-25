@@ -58,6 +58,7 @@ const primaryNavItems: NavItem[] = [
     { label: "Reports", href: "/reports", icon: FileBarChart2 },
     { label: "Analytics", href: "/analytics", icon: BarChart3 },
     { label: "Partner Mgmt", href: "/admin/partners", icon: Users },
+    { label: "Carriers", href: "/admin/carriers", icon: Truck },
     { label: "Team", href: "/partner/team", icon: Users },
     // WMS Items (visible to partners)
     { label: "Warehouse Hub", href: "/wms", icon: Warehouse },
@@ -160,7 +161,7 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                         }
 
                         // Admin-only items - hide from non-admins
-                        const adminItems = ["Users", "Warehouse", "Drivers", "Bulk Ops", "Fleet", "Fleet Tracking", "Reports", "Analytics", "Partner Mgmt"];
+                        const adminItems = ["Users", "Warehouse", "Drivers", "Bulk Ops", "Fleet", "Fleet Tracking", "Reports", "Analytics", "Partner Mgmt", "Carriers"];
                         if (user?.role !== 'admin' && adminItems.includes(item.label)) {
                             // Allow shipment_partner to see Fleet Tracking and Fleet
                             if (user?.role === 'shipment_partner' && (item.label === "Fleet Tracking" || item.label === "Fleet")) {

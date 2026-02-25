@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ const recentAlerts: { type: string; message: string; time: string }[] = [];
 
 const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background">
@@ -82,8 +84,8 @@ const AdminDashboard = () => {
                   <div
                     key={index}
                     className={`p-3 rounded-lg border ${alert.type === "error" ? "border-red-500/20 bg-red-500/5" :
-                        alert.type === "warning" ? "border-yellow-500/20 bg-yellow-500/5" :
-                          "border-blue-500/20 bg-blue-500/5"
+                      alert.type === "warning" ? "border-yellow-500/20 bg-yellow-500/5" :
+                        "border-blue-500/20 bg-blue-500/5"
                       }`}
                   >
                     <p className="text-sm font-medium">{alert.message}</p>
@@ -102,15 +104,16 @@ const AdminDashboard = () => {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { label: "Organizations", icon: Building2, href: "/admin/organizations" },
-                  { label: "Users", icon: Users, href: "/admin/users" },
+                  { label: "Organizations", icon: Building2, href: "/admin/partners" },
+                  { label: "Users", icon: Users, href: "/users" },
                   { label: "Carriers", icon: Truck, href: "/admin/carriers" },
-                  { label: "Settings", icon: Settings, href: "/admin/settings" },
+                  { label: "Settings", icon: Settings, href: "/settings" },
                 ].map((action) => (
                   <Button
                     key={action.label}
                     variant="outline"
                     className="h-auto flex-col gap-2 py-4"
+                    onClick={() => navigate(action.href)}
                   >
                     <action.icon className="h-6 w-6" />
                     <span className="text-sm">{action.label}</span>

@@ -32,6 +32,9 @@ const carrierSchema = new mongoose.Schema({
     features: [String],             // e.g. ["Real-time tracking", "COD available"]
 
     webhookUrl: { type: String, default: '' },
+    callbackUrl: { type: String, default: '' },  // URL for carrier to push status updates back
+    apiKey: { type: String, default: '' },         // API key for authenticating inbound carrier webhooks
+    isActive: { type: Boolean, default: false },   // soft-toggle; set true on approval
 
     status: {
         type: String,

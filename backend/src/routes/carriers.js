@@ -7,7 +7,7 @@ const router = express.Router();
 // ─── GET /api/carriers/active ─── Public: list approved carriers for the dropdown
 router.get('/active', async (req, res) => {
     try {
-        const carriers = await Carrier.find({ status: 'approved' })
+        const carriers = await Carrier.find({ status: 'approved', isActive: true })
             .select('businessName contactPerson rating baseFare perKgRate eta features supportedTypes serviceZones')
             .sort({ rating: -1 })
             .lean();
@@ -23,7 +23,7 @@ router.get('/check-serviceability', async (req, res) => {
     try {
         const { pickup, delivery, serviceType } = req.query;
 
-        let query = { status: 'approved' };
+        let query = { status: 'approved', isActive: true };
         if (serviceType) {
             query.supportedTypes = serviceType;
         }
@@ -93,6 +93,7 @@ router.put('/:id/approve', protect, async (req, res) => {
         }
 
         carrier.status = 'approved';
+        carrier.isActive = true;
         carrier.approvedAt = new Date();
         carrier.approvedBy = req.user._id;
         carrier.rejectionReason = undefined;
@@ -147,6 +148,7 @@ router.put('/:id/suspend', protect, async (req, res) => {
         }
 
         carrier.status = 'suspended';
+        carrier.isActive = false;
         await carrier.save();
 
         res.json({

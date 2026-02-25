@@ -223,7 +223,12 @@ const NewShipmentBooking = () => {
       case 4:
         return (
           <>
-            <ServiceSelection data={serviceData} onChange={setServiceData} />
+            <ServiceSelection
+              data={serviceData}
+              onChange={setServiceData}
+              pickupPincode={pickupData.pincode}
+              deliveryPincode={deliveryData.pincode}
+            />
             <div className="mt-8">
               <ReviewConfirm
                 bookingData={{

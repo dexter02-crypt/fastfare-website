@@ -63,9 +63,23 @@ router.post('/', protect, async (req, res) => {
 
         // Fire webhook to carrier if assigned
         if (carrierId) {
-            fireWebhook(carrierId, 'shipment.assigned', shipment.toObject()).catch(err => {
+            fireWebhook(carrierId, 'shipment.assigned', shipment).catch(err => {
                 console.error('Webhook fire error:', err);
             });
+
+            // Real-time Socket.IO push to carrier dashboard
+            const io = req.app.get('io');
+            if (io) {
+                io.to(`carrier_${carrierId}`).emit('new_shipment', {
+                    shipmentId: shipment._id,
+                    awb: shipment.awb,
+                    pickup: shipment.pickup,
+                    delivery: shipment.delivery,
+                    serviceType: shipment.serviceType,
+                    shippingCost: shipment.shippingCost,
+                    createdAt: shipment.createdAt
+                });
+            }
         }
 
         res.status(201).json({
@@ -119,9 +133,23 @@ router.post('/create', protect, async (req, res) => {
         await shipment.save();
 
         if (carrierId) {
-            fireWebhook(carrierId, 'shipment.assigned', shipment.toObject()).catch(err => {
+            fireWebhook(carrierId, 'shipment.assigned', shipment).catch(err => {
                 console.error('Webhook fire error:', err);
             });
+
+            // Real-time Socket.IO push to carrier dashboard
+            const io = req.app.get('io');
+            if (io) {
+                io.to(`carrier_${carrierId}`).emit('new_shipment', {
+                    shipmentId: shipment._id,
+                    awb: shipment.awb,
+                    pickup: shipment.pickup,
+                    delivery: shipment.delivery,
+                    serviceType: shipment.serviceType,
+                    shippingCost: shipment.shippingCost,
+                    createdAt: shipment.createdAt
+                });
+            }
         }
 
         res.status(201).json({
@@ -388,7 +416,9 @@ router.get('/carrier/incoming', protectCarrier, async (req, res) => {
         const query = { carrierId: req.carrierId };
 
         if (status) {
-            query.status = status;
+            // Support comma-separated statuses: ?status=accepted,pickup_scheduled,picked_up
+            const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+            query.status = statuses.length > 1 ? { $in: statuses } : statuses[0];
         } else {
             query.status = { $in: ['pending_acceptance', 'accepted', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery'] };
         }
@@ -410,7 +440,7 @@ router.get('/carrier/stats', protectCarrier, async (req, res) => {
         const [pending, accepted, inTransit, delivered, total] = await Promise.all([
             Shipment.countDocuments({ carrierId: cid, status: 'pending_acceptance' }),
             Shipment.countDocuments({ carrierId: cid, status: { $in: ['accepted', 'pickup_scheduled', 'picked_up'] } }),
-            Shipment.countDocuments({ carrierId: cid, status: 'in_transit' }),
+            Shipment.countDocuments({ carrierId: cid, status: { $in: ['in_transit', 'out_for_delivery'] } }),
             Shipment.countDocuments({ carrierId: cid, status: 'delivered' }),
             Shipment.countDocuments({ carrierId: cid })
         ]);
@@ -471,6 +501,105 @@ router.put('/carrier/:id/reject', protectCarrier, async (req, res) => {
         await shipment.save();
 
         res.json({ success: true, message: 'Shipment rejected', shipment });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// PUT /api/shipments/carrier/:id/update-status — carrier updates shipment status through lifecycle
+router.put('/carrier/:id/update-status', protectCarrier, async (req, res) => {
+    try {
+        const { status, location, description } = req.body;
+
+        if (!status) {
+            return res.status(400).json({ success: false, message: 'status field is required' });
+        }
+
+        const allowedStatuses = ['pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered'];
+        if (!allowedStatuses.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid status. Allowed: ${allowedStatuses.join(', ')}`
+            });
+        }
+
+        const shipment = await Shipment.findOne({
+            _id: req.params.id,
+            carrierId: req.carrierId
+        });
+
+        if (!shipment) {
+            return res.status(404).json({ success: false, message: 'Shipment not found' });
+        }
+
+        // Prevent backward transitions
+        const statusOrder = [
+            'pending', 'pending_acceptance', 'accepted', 'pickup_scheduled',
+            'picked_up', 'in_transit', 'out_for_delivery', 'delivered'
+        ];
+        const currentIdx = statusOrder.indexOf(shipment.status);
+        const newIdx = statusOrder.indexOf(status);
+
+        if (newIdx <= currentIdx) {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot transition from '${shipment.status}' to '${status}'`
+            });
+        }
+
+        shipment.status = status;
+
+        // Store scheduling details when pickup is scheduled
+        if (status === 'pickup_scheduled') {
+            const { pickupDate, pickupSlot, vehicleType, driverName, driverPhone, instructions } = req.body;
+            if (pickupDate) shipment.pickupDate = new Date(pickupDate);
+            if (pickupSlot) shipment.pickupSlot = pickupSlot;
+            if (vehicleType) shipment.assignedVehicle = vehicleType;
+            if (driverName) shipment.assignedDriverName = driverName;
+            if (driverPhone) shipment.assignedDriver = driverPhone;
+            shipment.scheduledPickup = true;
+        }
+
+        const schedulingInfo = status === 'pickup_scheduled' && req.body.pickupDate
+            ? ` — ${new Date(req.body.pickupDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} ${req.body.pickupSlot || ''}`
+            : '';
+
+        shipment.trackingHistory.push({
+            status,
+            location: location || '',
+            description: description || `Status updated to ${status}${schedulingInfo}`,
+            timestamp: new Date()
+        });
+
+        if (status === 'delivered') {
+            shipment.actualDelivery = new Date();
+        }
+
+        await shipment.save();
+
+        // Broadcast via Socket.IO
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`carrier_${req.carrierId}`).emit('shipment_status_updated', {
+                shipmentId: shipment._id,
+                awb: shipment.awb,
+                status,
+                timestamp: new Date()
+            });
+            io.emit('shipment_update', {
+                shipmentId: shipment._id,
+                awb: shipment.awb,
+                status,
+                timestamp: new Date()
+            });
+        }
+
+        // Fire webhook for status change
+        fireWebhook(req.carrierId, `shipment.${status}`, shipment).catch(err => {
+            console.error('Status webhook error:', err);
+        });
+
+        res.json({ success: true, message: `Shipment updated to '${status}'`, shipment });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

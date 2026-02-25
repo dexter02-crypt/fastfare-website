@@ -10,6 +10,16 @@ export const getDriverPositions = () => {
     return Array.from(driverPositions.values());
 };
 
+/**
+ * Notify a carrier's connected dashboard clients via Socket.IO.
+ * Call from HTTP routes: const { notifyCarrier } = await import('../socket/location.socket.js');
+ */
+export const notifyCarrier = (io, carrierId, event, data) => {
+    if (io) {
+        io.to(`carrier_${carrierId}`).emit(event, data);
+    }
+};
+
 export const updateDriverPosition = (data) => {
     driverPositions.set(data.driverId, {
         ...data,
@@ -40,6 +50,14 @@ export const locationSocket = (io) => {
 
         socket.on('join_tracking', (trackingId) => {
             socket.join(trackingId);
+        });
+
+        // Carrier dashboard clients join their carrier room
+        socket.on('join_carrier', (data) => {
+            if (data && data.carrierId) {
+                socket.join(`carrier_${data.carrierId}`);
+                console.log(`Carrier ${data.carrierId} joined room via socket ${socket.id}`);
+            }
         });
 
         socket.on('join_driver', (data) => {
