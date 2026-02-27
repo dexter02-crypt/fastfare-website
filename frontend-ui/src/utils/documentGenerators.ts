@@ -6,19 +6,19 @@
 
 // ─── Masking Helpers ───
 export const maskPhone = (phone: string): string => {
-    if (!phone || phone.length < 4) return phone || '—';
-    return phone[0] + 'x'.repeat(phone.length - 2) + phone[phone.length - 1];
+  if (!phone || phone.length < 4) return phone || '—';
+  return phone[0] + 'x'.repeat(phone.length - 2) + phone[phone.length - 1];
 };
 
 export const maskAmount = (amount: number): string => {
-    const str = amount.toLocaleString('en-IN');
-    if (str.length <= 2) return '₹' + str;
-    return '₹' + str[0] + 'x'.repeat(str.length - 2) + str[str.length - 1];
+  const str = amount.toLocaleString('en-IN');
+  if (str.length <= 2) return '₹' + str;
+  return '₹' + str[0] + 'x'.repeat(str.length - 2) + str[str.length - 1];
 };
 
 export const maskName = (name: string): string => {
-    if (!name || name.length <= 3) return name || '—';
-    return name.substring(0, 3) + '...';
+  if (!name || name.length <= 3) return name || '—';
+  return name.substring(0, 3) + '...';
 };
 
 // ─── Shared Styles ───
@@ -30,26 +30,26 @@ const FASTFARE_LOGO_SVG = `<svg viewBox="0 0 24 24" width="28" height="28" style
 // MANIFEST GENERATOR
 // ──────────────────────────────────────────────
 interface ManifestShipment {
-    awb?: string;
-    orderId?: string;
-    _id?: string;
-    contentType?: string;
-    description?: string;
-    delivery?: { name?: string; pincode?: string; city?: string };
-    packages?: Array<{ name?: string }>;
+  awb?: string;
+  orderId?: string;
+  _id?: string;
+  contentType?: string;
+  description?: string;
+  delivery?: { name?: string; pincode?: string; city?: string };
+  packages?: Array<{ name?: string }>;
 }
 
 export const generateManifestHTML = (
-    shipments: ManifestShipment[],
-    sellerName: string,
-    courierName: string = 'FastFare Logistics'
+  shipments: ManifestShipment[],
+  sellerName: string,
+  courierName: string = 'FastFare Logistics'
 ): string => {
-    const manifestId = `MFT-${String(Date.now()).slice(-6)}`;
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const manifestId = `MFT-${String(Date.now()).slice(-6)}`;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
-    const rows = shipments.map((s, i) => `
+  const rows = shipments.map((s, i) => `
     <tr>
       <td style="padding:8px;border:1px solid #ccc;text-align:center">${i + 1}</td>
       <td style="padding:8px;border:1px solid #ccc">${s.orderId || s._id || '—'}</td>
@@ -62,7 +62,7 @@ export const generateManifestHTML = (
     </tr>
   `).join('');
 
-    return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html><head><title>FastFare Manifest - ${manifestId}</title>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
@@ -148,59 +148,59 @@ export const generateManifestHTML = (
 // TAX INVOICE GENERATOR
 // ──────────────────────────────────────────────
 interface InvoiceUser {
-    businessName?: string;
-    email?: string;
-    phone?: string;
-    gstin?: string;
-    contactPerson?: string;
+  businessName?: string;
+  email?: string;
+  phone?: string;
+  gstin?: string;
+  contactPerson?: string;
 }
 
 interface InvoiceShipment {
-    awb?: string;
-    _id?: string;
-    shippingCost?: number;
-    totalValue?: number;
-    codAmount?: number;
-    paymentMode?: string;
-    serviceType?: string;
-    carrier?: string;
-    packages?: Array<{ name?: string; weight?: number; quantity?: number; value?: number }>;
-    pickup?: { city?: string; state?: string; pincode?: string; address?: string };
-    delivery?: { city?: string; state?: string; pincode?: string; name?: string };
-    createdAt?: string;
-    status?: string;
-    platformFee?: number;
+  awb?: string;
+  _id?: string;
+  shippingCost?: number;
+  totalValue?: number;
+  codAmount?: number;
+  paymentMode?: string;
+  serviceType?: string;
+  carrier?: string;
+  packages?: Array<{ name?: string; weight?: number; quantity?: number; value?: number }>;
+  pickup?: { city?: string; state?: string; pincode?: string; address?: string };
+  delivery?: { city?: string; state?: string; pincode?: string; name?: string };
+  createdAt?: string;
+  status?: string;
+  platformFee?: number;
 }
 
 function numberToWords(num: number): string {
-    if (num === 0) return 'Zero';
-    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
-        'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-    if (num < 20) return ones[num];
-    if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '');
-    if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 ? ' and ' + numberToWords(num % 100) : '');
-    if (num < 100000) return numberToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
-    if (num < 10000000) return numberToWords(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 ? ' ' + numberToWords(num % 100000) : '');
-    return numberToWords(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 ? ' ' + numberToWords(num % 10000000) : '');
+  if (num === 0) return 'Zero';
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  if (num < 20) return ones[num];
+  if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '');
+  if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 ? ' and ' + numberToWords(num % 100) : '');
+  if (num < 100000) return numberToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
+  if (num < 10000000) return numberToWords(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 ? ' ' + numberToWords(num % 100000) : '');
+  return numberToWords(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 ? ' ' + numberToWords(num % 10000000) : '');
 }
 
 export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceUser): string => {
-    const invoiceNo = `FF-INV-${String(Date.now()).slice(-8)}`;
-    const invoiceDate = new Date(shipment.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const invoiceNo = `FF-INV-${String(Date.now()).slice(-8)}`;
+  const invoiceDate = new Date(shipment.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
-    const shippingCost = shipment.shippingCost || 0;
-    const platformFee = shipment.platformFee || 0;
-    const taxableValue = shippingCost;
-    const igstRate = 18;
-    const igstAmount = Math.round(taxableValue * igstRate / 100 * 100) / 100;
-    const totalAmount = taxableValue + igstAmount;
-    const isPaid = shipment.status === 'delivered' || shipment.paymentMode === 'prepaid' || shipment.paymentMode === 'razorpay';
+  const shippingCost = shipment.shippingCost || 0;
+  const platformFee = shipment.platformFee || 0;
+  const taxableValue = shippingCost;
+  const igstRate = 18;
+  const igstAmount = Math.round(taxableValue * igstRate / 100 * 100) / 100;
+  const totalAmount = taxableValue + igstAmount;
+  const isPaid = shipment.status === 'delivered' || shipment.paymentMode === 'prepaid' || shipment.paymentMode === 'razorpay';
 
-    const placeOfSupply = shipment.delivery?.state || shipment.pickup?.state || 'Haryana';
+  const placeOfSupply = shipment.delivery?.state || shipment.pickup?.state || 'Haryana';
 
-    return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html><head><title>Tax Invoice - ${invoiceNo}</title>
 <style>
   @media print { body { margin: 0; } @page { margin: 15mm; } }
@@ -266,65 +266,96 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
 
   <!-- Items Table -->
   <div style="padding:0 24px 16px">
-    <table style="margin-top:16px">
+    <table style="margin-top:16px; width: 100%; border-collapse: collapse; font-size: 11px;">
       <thead>
-        <tr>
-          <th style="width:30px">#</th>
-          <th>Description</th>
-          <th style="width:40px">Qty</th>
-          <th style="width:70px">HSN/SAC</th>
-          <th style="width:80px;text-align:right">Rate</th>
-          <th style="width:80px;text-align:right">Taxable Value</th>
-          <th style="width:50px;text-align:center">IGST %</th>
-          <th style="width:80px;text-align:right">IGST Amt</th>
+        <tr style="background:#f8f9fa;">
+          <th style="width:30px; text-align:center;">#</th>
+          <th style="text-align:left;">Description</th>
+          <th style="width:40px; text-align:center;">Qty</th>
+          <th style="width:70px; text-align:center;">HSN/SAC</th>
+          <th style="width:80px; text-align:right;">Rate (₹)</th>
+          <th style="width:80px; text-align:right;">Discount (₹)</th>
+          <th style="width:90px; text-align:right;">Taxable Value (₹)</th>
+          <th style="width:60px; text-align:center;">GST %</th>
+          <th style="width:80px; text-align:right;">GST Amt (₹)</th>
+          <th style="width:80px; text-align:right;">Total (₹)</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>1</td>
+          <td style="text-align:center;">1</td>
           <td>
-            <strong>Courier Freight Charges</strong><br>
-            <span style="color:#888;font-size:11px">${shipment.serviceType || 'Standard'} Delivery — ${shipment.carrier || 'FastFare'} | AWB: ${shipment.awb || '—'}</span>
+            <strong>Courier Freight Charges — ${shipment.serviceType ? shipment.serviceType.charAt(0).toUpperCase() + shipment.serviceType.slice(1) : 'Express'} Delivery</strong><br>
+            <span style="color:#888;font-size:10px">Carrier: ${shipment.carrier || 'FastFare'} | AWB: ${shipment.awb || '—'}</span>
           </td>
-          <td>1</td>
-          <td>996812</td>
-          <td style="text-align:right">₹${shippingCost.toLocaleString('en-IN')}</td>
-          <td style="text-align:right">₹${taxableValue.toLocaleString('en-IN')}</td>
-          <td style="text-align:center">${igstRate}%</td>
-          <td style="text-align:right">₹${igstAmount.toLocaleString('en-IN')}</td>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:center;">996812</td>
+          <td style="text-align:right;">${(taxableValue / 0.59).toFixed(2)}</td>
+          <td style="text-align:right;">${((taxableValue / 0.59) - taxableValue).toFixed(2)}</td>
+          <td style="text-align:right;">${taxableValue.toFixed(2)}</td>
+          <td style="text-align:center;">${igstRate}%</td>
+          <td style="text-align:right;">${igstAmount.toFixed(2)}</td>
+          <td style="text-align:right;">${(taxableValue + igstAmount).toFixed(2)}</td>
         </tr>
         ${platformFee > 0 ? `
         <tr>
-          <td>2</td>
-          <td><strong>Platform Fee</strong><br><span style="color:#888;font-size:11px">Transaction processing fee</span></td>
-          <td>1</td>
-          <td>998599</td>
-          <td style="text-align:right">₹${platformFee.toLocaleString('en-IN')}</td>
-          <td style="text-align:right">₹${platformFee.toLocaleString('en-IN')}</td>
-          <td style="text-align:center">${igstRate}%</td>
-          <td style="text-align:right">₹${Math.round(platformFee * igstRate / 100).toLocaleString('en-IN')}</td>
+          <td style="text-align:center;">2</td>
+          <td><strong>Platform Fee</strong><br><span style="color:#888;font-size:10px">Transaction processing fee</span></td>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:center;">998599</td>
+          <td style="text-align:right;">${platformFee.toFixed(2)}</td>
+          <td style="text-align:right;">0.00</td>
+          <td style="text-align:right;">${platformFee.toFixed(2)}</td>
+          <td style="text-align:center;">${igstRate}%</td>
+          <td style="text-align:right;">${(Math.round(platformFee * igstRate / 100 * 100) / 100).toFixed(2)}</td>
+          <td style="text-align:right;">${(platformFee + Math.round(platformFee * igstRate / 100 * 100) / 100).toFixed(2)}</td>
         </tr>` : ''}
       </tbody>
-      <tfoot>
-        <tr class="total-row">
-          <td colspan="5" style="text-align:right"><strong>Total Invoice Amount</strong></td>
-          <td style="text-align:right">₹${(taxableValue + platformFee).toLocaleString('en-IN')}</td>
-          <td></td>
-          <td style="text-align:right">₹${(igstAmount + Math.round(platformFee * igstRate / 100)).toLocaleString('en-IN')}</td>
-        </tr>
-      </tfoot>
     </table>
 
-    <!-- Grand Total -->
-    <div style="margin-top:16px;text-align:right">
-      <div style="font-size:20px;font-weight:bold;color:${BRAND_COLOR}">Grand Total: ₹${totalAmount.toLocaleString('en-IN')}</div>
-      <div style="font-size:11px;color:#888;margin-top:4px">INR ${numberToWords(Math.round(totalAmount))} Only</div>
+    <div style="display:flex; justify-content: flex-end; margin-top:24px;">
+      <div style="width: 350px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden;">
+        <div style="background: ${BRAND_COLOR}; color: white; padding: 10px 16px; font-weight: bold; font-size: 13px;">
+          💰 Summary Section
+        </div>
+        <table style="border:0; width: 100%; font-size: 12px; margin:0;">
+          <tr>
+            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Gross Service Value</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">${(taxableValue / 0.59 + platformFee).toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee; color: #16a34a;">Less: Promotional Discount</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee; color: #16a34a;">−${((taxableValue / 0.59) - taxableValue).toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee; font-weight: 600;">Taxable Value</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee; font-weight: 600;">${(taxableValue + platformFee).toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Add: GST @${igstRate}%</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">${(igstAmount + (platformFee > 0 ? Math.round(platformFee * igstRate / 100 * 100) / 100 : 0)).toFixed(2)}</td>
+          </tr>
+          <tr style="background: #f0f4ff;">
+            <td style="padding:12px 16px; border:0; font-weight:bold; color: ${BRAND_COLOR}; font-size: 14px;">Total Invoice Amount</td>
+            <td style="padding:12px 16px; text-align:right; border:0; font-weight:bold; color: ${BRAND_COLOR}; font-size: 14px;">₹${totalAmount.toFixed(2)}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-top:16px; font-size:11px; color:#666;">
+      <p style="margin:2px 0;"><strong>Note:</strong></p>
+      <p style="margin:2px 0;">Promotional discount applied as per FastFare offer.</p>
+      <p style="margin:2px 0;">GST charged on net taxable value after discount.</p>
     </div>
 
     <!-- Amount Due -->
-    <div style="margin-top:12px;padding:10px 16px;background:#f0f4ff;border-radius:6px;display:flex;justify-content:space-between;align-items:center">
-      <span style="font-weight:600">Amount Due</span>
-      <span style="font-size:18px;font-weight:bold;color:${isPaid ? '#166534' : '#92400e'}">₹${isPaid ? '0.00' : totalAmount.toLocaleString('en-IN')}</span>
+    <div style="margin-top:20px;padding:12px 16px;background:#f8f9fa;border-left:4px solid ${isPaid ? '#10b981' : '#f59e0b'};border-radius:4px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:600; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+        Amount Due
+        <span class="badge ${isPaid ? 'badge-paid' : 'badge-unpaid'}" style="font-size: 11px; padding: 2px 8px;">${isPaid ? 'PAID' : 'UNPAID'}</span>
+      </div>
+      <div style="font-size:18px;font-weight:bold;color:${isPaid ? '#166534' : '#92400e'}">₹${isPaid ? '0.00' : totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
     </div>
   </div>
 
@@ -354,42 +385,42 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
 // SHIPPING LABEL GENERATOR (with masking)
 // ──────────────────────────────────────────────
 interface LabelShipment {
-    awb?: string;
-    _id?: string;
-    orderId?: string;
-    paymentMode?: string;
-    serviceType?: string;
-    carrier?: string;
-    codAmount?: number;
-    totalWeight?: number;
-    shippingCost?: number;
-    delivery?: { name?: string; address?: string; city?: string; state?: string; pincode?: string; phone?: string };
-    pickup?: { name?: string; address?: string; city?: string; state?: string; pincode?: string; phone?: string };
-    packages?: Array<{ name?: string; weight?: number; quantity?: number; value?: number; length?: number; width?: number; height?: number; _id?: string; id?: string }>;
-    createdAt?: string;
+  awb?: string;
+  _id?: string;
+  orderId?: string;
+  paymentMode?: string;
+  serviceType?: string;
+  carrier?: string;
+  codAmount?: number;
+  totalWeight?: number;
+  shippingCost?: number;
+  delivery?: { name?: string; address?: string; city?: string; state?: string; pincode?: string; phone?: string };
+  pickup?: { name?: string; address?: string; city?: string; state?: string; pincode?: string; phone?: string };
+  packages?: Array<{ name?: string; weight?: number; quantity?: number; value?: number; length?: number; width?: number; height?: number; _id?: string; id?: string }>;
+  createdAt?: string;
 }
 
 export const generateShippingLabelHTML = (shipment: LabelShipment, masked: boolean = true): string => {
-    const awb = shipment.awb || shipment._id || 'N/A';
-    const orderId = shipment.orderId || shipment._id || 'N/A';
-    const packages = shipment.packages || [];
-    const totalWeight = shipment.totalWeight || packages.reduce((s, p) => s + ((p.weight || 0) * (p.quantity || 1)), 0);
-    const dims = packages.length > 0
-        ? `${packages[0].length || 0}×${packages[0].width || 0}×${packages[0].height || 0} cm`
-        : '—';
+  const awb = shipment.awb || shipment._id || 'N/A';
+  const orderId = shipment.orderId || shipment._id || 'N/A';
+  const packages = shipment.packages || [];
+  const totalWeight = shipment.totalWeight || packages.reduce((s, p) => s + ((p.weight || 0) * (p.quantity || 1)), 0);
+  const dims = packages.length > 0
+    ? `${packages[0].length || 0}×${packages[0].width || 0}×${packages[0].height || 0} cm`
+    : '—';
 
-    const deliveryPhone = masked ? maskPhone(shipment.delivery?.phone || '') : (shipment.delivery?.phone || '—');
-    const pickupPhone = masked ? maskPhone(shipment.pickup?.phone || '') : (shipment.pickup?.phone || '—');
+  const deliveryPhone = masked ? maskPhone(shipment.delivery?.phone || '') : (shipment.delivery?.phone || '—');
+  const pickupPhone = masked ? maskPhone(shipment.pickup?.phone || '') : (shipment.pickup?.phone || '—');
 
-    // Build masked product rows
-    const productRows = packages.map((pkg) => {
-        const sku = `SKU-${(pkg._id || pkg.id || '000').toString().slice(-8).toUpperCase()}`;
-        const qty = pkg.quantity || 1;
-        const price = pkg.value || 0;
-        const displayName = masked ? maskName(pkg.name || 'Package') : (pkg.name || 'Package');
-        const displayPrice = masked ? maskAmount(price) : `₹${price.toLocaleString('en-IN')}`;
-        const displayTotal = masked ? maskAmount(qty * price) : `₹${(qty * price).toLocaleString('en-IN')}`;
-        return `
+  // Build masked product rows
+  const productRows = packages.map((pkg) => {
+    const sku = `SKU-${(pkg._id || pkg.id || '000').toString().slice(-8).toUpperCase()}`;
+    const qty = pkg.quantity || 1;
+    const price = pkg.value || 0;
+    const displayName = masked ? maskName(pkg.name || 'Package') : (pkg.name || 'Package');
+    const displayPrice = masked ? maskAmount(price) : `₹${price.toLocaleString('en-IN')}`;
+    const displayTotal = masked ? maskAmount(qty * price) : `₹${(qty * price).toLocaleString('en-IN')}`;
+    return `
       <tr style="border-bottom:1px solid #000">
         <td style="padding:4px;border-right:1px solid #000;text-align:left">
           <div style="font-weight:bold">${displayName}</div>
@@ -400,15 +431,15 @@ export const generateShippingLabelHTML = (shipment: LabelShipment, masked: boole
         <td style="padding:4px">${displayTotal}</td>
       </tr>
     `;
-    }).join('');
+  }).join('');
 
-    const grandTotal = packages.reduce((s, p) => s + ((p.value || 0) * (p.quantity || 1)), 0);
-    const displayGrandTotal = masked ? maskAmount(grandTotal) : `₹${grandTotal.toLocaleString('en-IN')}`;
-    const invoiceDate = new Date(shipment.createdAt || Date.now()).toLocaleDateString('en-IN');
-    const serviceType = (shipment.serviceType || 'standard').charAt(0).toUpperCase() + (shipment.serviceType || 'standard').slice(1);
-    const carrier = shipment.carrier || 'FastFare';
+  const grandTotal = packages.reduce((s, p) => s + ((p.value || 0) * (p.quantity || 1)), 0);
+  const displayGrandTotal = masked ? maskAmount(grandTotal) : `₹${grandTotal.toLocaleString('en-IN')}`;
+  const invoiceDate = new Date(shipment.createdAt || Date.now()).toLocaleDateString('en-IN');
+  const serviceType = (shipment.serviceType || 'standard').charAt(0).toUpperCase() + (shipment.serviceType || 'standard').slice(1);
+  const carrier = shipment.carrier || 'FastFare';
 
-    return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html><head><title>Shipping Label - ${awb}</title>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
