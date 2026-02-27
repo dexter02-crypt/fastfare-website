@@ -271,7 +271,8 @@ router.post('/register', async (req, res) => {
                 gstin: user.gstin,
                 contactPerson: user.contactPerson,
                 role: user.role,
-                kyc: user.kyc
+                kyc: user.kyc,
+                partnerDetails: user.partnerDetails
             },
             token
         });

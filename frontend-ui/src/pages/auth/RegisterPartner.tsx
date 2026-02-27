@@ -258,8 +258,8 @@ const RegisterPartner = () => {
             localStorage.setItem("kycSkippedAt", new Date().toISOString());
 
             toast({
-                title: "Registration Successful! 🎉",
-                description: "Welcome to FastFare!",
+                title: "Registration Submitted! 🎉",
+                description: "Your account is pending admin approval. You'll get full access once approved.",
             });
 
             navigate("/dashboard", { replace: true });

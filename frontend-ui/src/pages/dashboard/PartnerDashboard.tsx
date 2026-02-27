@@ -66,6 +66,31 @@ const PartnerDashboard = () => {
                     <p className="text-muted-foreground">Here's what's happening with your logistics operations today.</p>
                 </div>
 
+                {/* Pending Approval Banner */}
+                {user?.partnerDetails?.status === 'pending_approval' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-xl border-2 border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-5"
+                    >
+                        <div className="flex items-start gap-4">
+                            <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                <Bell className="h-6 w-6 text-amber-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-amber-800 dark:text-amber-200 text-lg">Account Pending Approval</h3>
+                                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                                    Your delivery partner account has been submitted and is currently under review by the FastFare admin team.
+                                    You will get full access to orders, fleet management, and earnings once your account is approved.
+                                </p>
+                                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                                    Admins can approve your account from <strong>Admin Panel → Carriers Management</strong>.
+                                </p>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {statCards.map((stat, index) => (
