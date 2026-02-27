@@ -251,16 +251,58 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
           onValueChange={(value) => handleChange("paymentMode", value)}
           className="grid grid-cols-1 gap-4"
         >
-          <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'prepaid' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
-            <RadioGroupItem value="prepaid" id="prepaid" />
-            <Label htmlFor="prepaid" className="cursor-pointer">
-              <span className="font-medium">Prepaid</span>
+          <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'razorpay' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
+            <RadioGroupItem value="razorpay" id="razorpay" />
+            <Label htmlFor="razorpay" className="cursor-pointer">
+              <span className="font-medium">Pay Online (Razorpay)</span>
               <span className="text-sm text-muted-foreground block">
-                Pay now for shipping
+                Pay securely via UPI, Credit/Debit Card, or Netbanking
               </span>
             </Label>
           </div>
+
+          <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'wallet' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
+            <RadioGroupItem value="wallet" id="wallet" />
+            <Label htmlFor="wallet" className="cursor-pointer">
+              <span className="font-medium">FastFare Wallet</span>
+              <span className="text-sm text-muted-foreground block">
+                Deduct the amount directly from your wallet balance
+              </span>
+            </Label>
+          </div>
+
+          <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'cod' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
+            <RadioGroupItem value="cod" id="cod" />
+            <Label htmlFor="cod" className="cursor-pointer w-full">
+              <div className="flex justify-between items-center w-full">
+                <div>
+                  <span className="font-medium">Cash on Delivery (COD)</span>
+                  <span className="text-sm text-muted-foreground block">
+                    Collect payment from customer upon delivery
+                  </span>
+                </div>
+              </div>
+            </Label>
+          </div>
         </RadioGroup>
+
+        {data.paymentMode === 'cod' && (
+          <div className="mt-4 p-4 border rounded-lg bg-orange-50 border-orange-200">
+            <Label htmlFor="codAmount" className="text-orange-800">COD Amount to Collect (₹)</Label>
+            <Input
+              id="codAmount"
+              type="number"
+              min={1}
+              className="mt-2"
+              value={data.codAmount || ""}
+              onChange={(e) => handleChange("codAmount", parseInt(e.target.value) || 0)}
+              placeholder="e.g. 500"
+            />
+            <p className="text-xs text-orange-700 mt-2">
+              Note: An additional 2% or ₹50 (whichever is higher) collection fee will be charged to your account.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

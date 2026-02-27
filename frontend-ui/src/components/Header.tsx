@@ -306,12 +306,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                   Track Orders
                 </Button>
               </Link>
-              <Link to="/carrier/login">
-                <Button variant="ghost" size="sm" className="gap-1">
-                  <Truck className="h-4 w-4" />
-                  Carrier Login
-                </Button>
-              </Link>
+
               <Link to="/login">
                 <Button variant="ghost" size="sm">
                   Log in
@@ -383,11 +378,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                   </Link>
                 ))}
                 <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                  <Link to="/carrier/login" onClick={closeMobileMenu}>
-                    <Button variant="ghost" className="w-full justify-start">
-                      <Truck className="mr-2 h-4 w-4" /> Carrier Login
-                    </Button>
-                  </Link>
+
                   <Link to="/login" onClick={closeMobileMenu}>
                     <Button variant="ghost" className="w-full">Log in</Button>
                   </Link>

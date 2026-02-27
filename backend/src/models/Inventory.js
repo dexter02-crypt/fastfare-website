@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 
 const inventorySchema = new mongoose.Schema({
-    sku: { type: String, required: true, unique: true },
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    sku: { type: String, required: true },
     name: { type: String, required: true },
     description: { type: String },
     category: { type: String },

@@ -5,11 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff, ArrowLeft, Truck, Mail, Phone, User, Shield, MapPin, CreditCard, Check, X, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Truck, Mail, Phone, User, Shield, MapPin, CreditCard, Check, X, Loader2, Plus, Globe, Package, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
 import authBg from "@/assets/auth-bg.png";
+
+const vehicleTypeOptions = [
+    { id: "bike", label: "Bike" },
+    { id: "auto", label: "Auto" },
+    { id: "mini_truck", label: "Mini Truck" },
+    { id: "truck", label: "Truck" },
+    { id: "large_truck", label: "Large Truck" },
+    { id: "tempo", label: "Tempo" },
+];
+
+const shipmentTypeOptions = [
+    { id: "standard", label: "Standard" },
+    { id: "express", label: "Express" },
+    { id: "overnight", label: "Overnight" },
+    { id: "economy", label: "Economy" },
+    { id: "fragile", label: "Fragile" },
+];
 
 const RegisterPartner = () => {
     const navigate = useNavigate();
@@ -30,7 +47,48 @@ const RegisterPartner = () => {
         confirmPassword: "",
         city: "",
         gstin: "",
+        // Carrier/Fleet fields
+        totalVehicles: "",
+        vehicleTypes: [] as string[],
+        serviceStates: "",
+        servicePincodes: "",
+        supportedTypes: ["standard"] as string[],
+        baseFare: "99",
+        perKgRate: "10",
+        eta: "3-5 days",
+        webhookUrl: "",
+        features: [] as string[],
+        featureInput: "",
     });
+
+    const toggleArrayField = (field: string, value: string) => {
+        setFormData((prev: any) => {
+            const arr = prev[field] as string[];
+            return {
+                ...prev,
+                [field]: arr.includes(value)
+                    ? arr.filter((v) => v !== value)
+                    : [...arr, value],
+            };
+        });
+    };
+
+    const addFeature = () => {
+        if (formData.featureInput.trim()) {
+            setFormData(prev => ({
+                ...prev,
+                features: [...prev.features, prev.featureInput.trim()],
+                featureInput: ""
+            }));
+        }
+    };
+
+    const removeFeature = (index: number) => {
+        setFormData(prev => ({
+            ...prev,
+            features: prev.features.filter((_, i) => i !== index)
+        }));
+    };
 
     const verifyGstin = async () => {
         if (formData.gstin.length !== 15) {
@@ -159,6 +217,27 @@ const RegisterPartner = () => {
                 phone: formData.phone,
                 password: formData.password,
                 role: "shipment_partner",
+                // Passing down the carrier-specific data as partnerDetails (handled automatically by backend partner-auth)
+                fleetDetails: {
+                    totalVehicles: parseInt(formData.totalVehicles) || 0,
+                    vehicleTypes: formData.vehicleTypes,
+                },
+                serviceZones: formData.serviceStates
+                    ? formData.serviceStates.split(",").map((s) => ({
+                        state: s.trim(),
+                        pincodes: formData.servicePincodes
+                            ? formData.servicePincodes.split(",").map((p) => p.trim())
+                            : [],
+                    }))
+                    : [],
+                supportedTypes: formData.supportedTypes,
+                baseFare: parseFloat(formData.baseFare) || 99,
+                perKgRate: parseFloat(formData.perKgRate) || 10,
+                webhookUrl: formData.webhookUrl || undefined,
+                features: formData.features,
+                eta: formData.eta || '3-5 days',
+                zone: formData.city,
+                city: formData.city
             };
 
             const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
@@ -404,8 +483,165 @@ const RegisterPartner = () => {
                             )}
                         </div>
 
+                        {/* Fleet & Service Zones */}
+                        <div className="pt-4 mt-4 border-t border-border/50">
+                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                <Truck className="h-4 w-4 text-primary" /> Flight/Fleet Details
+                            </h3>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="totalVehicles">Total Vehicles / Coverage</Label>
+                                        <Input
+                                            id="totalVehicles"
+                                            type="number"
+                                            value={formData.totalVehicles}
+                                            onChange={(e) => setFormData({ ...formData, totalVehicles: e.target.value })}
+                                            placeholder="e.g. 15"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Vehicle Types Used</Label>
+                                        <div className="flex flex-wrap gap-2 mt-1">
+                                            {vehicleTypeOptions.map((v) => (
+                                                <button
+                                                    key={v.id}
+                                                    type="button"
+                                                    onClick={() => toggleArrayField("vehicleTypes", v.id)}
+                                                    className={`px-3 py-1 text-xs rounded-full border transition-all ${formData.vehicleTypes.includes(v.id)
+                                                        ? "bg-primary text-primary-foreground border-primary"
+                                                        : "bg-background text-muted-foreground border-input hover:border-primary"
+                                                        }`}
+                                                >
+                                                    {v.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Service Capabilities */}
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="serviceStates">Service States</Label>
+                                    <Input
+                                        id="serviceStates"
+                                        value={formData.serviceStates}
+                                        onChange={(e) => setFormData({ ...formData, serviceStates: e.target.value })}
+                                        placeholder="e.g. MH, GJ, DL (comma-separated)"
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">Leave empty to serve all regions</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Supported Shipment Types *</Label>
+                                    <div className="flex flex-wrap gap-2 mt-1">
+                                        {shipmentTypeOptions.map((s) => (
+                                            <button
+                                                key={s.id}
+                                                type="button"
+                                                onClick={() => toggleArrayField("supportedTypes", s.id)}
+                                                className={`px-3 py-1 text-xs rounded-full border transition-all ${formData.supportedTypes.includes(s.id)
+                                                    ? "bg-primary text-primary-foreground border-primary"
+                                                    : "bg-background text-muted-foreground border-input hover:border-primary"
+                                                    }`}
+                                            >
+                                                {s.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Pricing & Integration */}
+                        <div className="pt-4 mt-4 border-t border-border/50">
+                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                <Zap className="h-4 w-4 text-primary" /> Pricing & Features
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="baseFare">Base Fare (₹)</Label>
+                                    <Input
+                                        id="baseFare"
+                                        type="number"
+                                        value={formData.baseFare}
+                                        onChange={(e) => setFormData({ ...formData, baseFare: e.target.value })}
+                                        placeholder="99"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="perKgRate">Per KG Rate (₹)</Label>
+                                    <Input
+                                        id="perKgRate"
+                                        type="number"
+                                        value={formData.perKgRate}
+                                        onChange={(e) => setFormData({ ...formData, perKgRate: e.target.value })}
+                                        placeholder="10"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="eta">Avg. Delivery ETA</Label>
+                                <Input
+                                    id="eta"
+                                    value={formData.eta}
+                                    onChange={(e) => setFormData({ ...formData, eta: e.target.value })}
+                                    placeholder="e.g. 3-5 Business Days"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="webhookUrl">Webhook URL (Optional)</Label>
+                                <div className="relative">
+                                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="webhookUrl"
+                                        value={formData.webhookUrl}
+                                        onChange={(e) => setFormData({ ...formData, webhookUrl: e.target.value })}
+                                        placeholder="https://your-api.com/webhook"
+                                        className="pl-10"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-muted-foreground">Receive real-time shipment events via HTTP POST</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Special Features / Highlights</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        value={formData.featureInput}
+                                        onChange={(e) => setFormData({ ...formData, featureInput: e.target.value })}
+                                        placeholder="e.g. Temperature Controlled, Real-time tracking"
+                                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addFeature())}
+                                    />
+                                    <Button type="button" size="icon" variant="outline" onClick={addFeature}>
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                {formData.features.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {formData.features.map((f, i) => (
+                                            <span
+                                                key={i}
+                                                className="bg-primary/10 text-primary px-2 py-1 text-xs rounded-full flex items-center gap-1"
+                                            >
+                                                {f}
+                                                <button type="button" onClick={() => removeFeature(i)} className="hover:text-red-500">
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
                         {/* Password */}
-                        <div className="space-y-2">
+                        <div className="pt-4 mt-4 border-t border-border/50 space-y-2">
                             <Label htmlFor="password">Password</Label>
                             <div className="relative">
                                 <Input

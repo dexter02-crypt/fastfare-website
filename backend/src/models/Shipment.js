@@ -49,7 +49,7 @@ const shipmentSchema = new mongoose.Schema({
     description: String,
     paymentMode: {
         type: String,
-        enum: ['prepaid', 'cod'],
+        enum: ['prepaid', 'cod', 'razorpay', 'wallet'],
         default: 'prepaid'
     },
     codAmount: { type: Number, default: 0 },
@@ -61,7 +61,7 @@ const shipmentSchema = new mongoose.Schema({
     carrier: String,
     carrierId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Carrier',
+        ref: 'User',
         default: null
     },
     insurance: { type: Boolean, default: false },

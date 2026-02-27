@@ -1,16 +1,30 @@
 import express from 'express';
-import Carrier from '../models/Carrier.js';
+import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// ─── GET /api/carriers/active ─── Public: list approved carriers for the dropdown
+// ─── GET /api/carriers/active ─── Public: list approved partners for the dropdown
 router.get('/active', async (req, res) => {
     try {
-        const carriers = await Carrier.find({ status: 'approved', isActive: true })
-            .select('businessName contactPerson rating baseFare perKgRate eta features supportedTypes serviceZones')
-            .sort({ rating: -1 })
-            .lean();
+        const partners = await User.find({
+            role: 'shipment_partner',
+            'partnerDetails.status': 'approved'
+        }).select('businessName contactPerson partnerDetails').lean();
+
+        // Map to format matching frontend expectations
+        const carriers = partners.map(p => ({
+            _id: p._id,
+            businessName: p.businessName,
+            contactPerson: p.contactPerson,
+            rating: p.partnerDetails?.rating,
+            baseFare: p.partnerDetails?.baseFare,
+            perKgRate: p.partnerDetails?.perKgRate,
+            eta: p.partnerDetails?.eta,
+            features: p.partnerDetails?.features,
+            supportedTypes: p.partnerDetails?.supportedTypes,
+            serviceZones: p.partnerDetails?.serviceZones
+        }));
 
         res.json({ success: true, carriers });
     } catch (error) {
@@ -23,23 +37,38 @@ router.get('/check-serviceability', async (req, res) => {
     try {
         const { pickup, delivery, serviceType } = req.query;
 
-        let query = { status: 'approved', isActive: true };
+        let query = {
+            role: 'shipment_partner',
+            'partnerDetails.status': 'approved'
+        };
+
         if (serviceType) {
-            query.supportedTypes = serviceType;
+            query['partnerDetails.supportedTypes'] = serviceType;
         }
 
-        let carriers = await Carrier.find(query)
-            .select('businessName contactPerson rating baseFare perKgRate eta features supportedTypes serviceZones')
-            .sort({ rating: -1 })
-            .lean();
+        let partners = await User.find(query).select('businessName contactPerson partnerDetails').lean();
+
+        // Map format
+        let carriers = partners.map(p => ({
+            _id: p._id,
+            businessName: p.businessName,
+            contactPerson: p.contactPerson,
+            rating: p.partnerDetails?.rating,
+            baseFare: p.partnerDetails?.baseFare,
+            perKgRate: p.partnerDetails?.perKgRate,
+            eta: p.partnerDetails?.eta,
+            features: p.partnerDetails?.features,
+            supportedTypes: p.partnerDetails?.supportedTypes,
+            serviceZones: p.partnerDetails?.serviceZones
+        }));
 
         // Filter by serviceability (pincode match)
         if (pickup || delivery) {
             carriers = carriers.filter(carrier => {
                 if (!carrier.serviceZones || carrier.serviceZones.length === 0) return true; // no zones = serves all
-                return carrier.serviceZones.some(zone => {
+                return carrier.serviceZones.some((zone) => {
                     if (!zone.pincodes || zone.pincodes.length === 0) return true;
-                    return zone.pincodes.some(pin => {
+                    return zone.pincodes.some((pin) => {
                         if (pin.includes('-')) {
                             const [start, end] = pin.split('-').map(Number);
                             const pickupNum = parseInt(pickup);
@@ -59,7 +88,7 @@ router.get('/check-serviceability', async (req, res) => {
     }
 });
 
-// ─── GET /api/carriers/ ─── Admin: list all carriers
+// ─── GET /api/carriers/ ─── Admin: list all carriers (now shipment_partners)
 router.get('/', protect, async (req, res) => {
     try {
         if (req.user.role !== 'admin') {
@@ -67,12 +96,30 @@ router.get('/', protect, async (req, res) => {
         }
 
         const { status } = req.query;
-        const query = status ? { status } : {};
+        let query = { role: 'shipment_partner' };
+        if (status) {
+            query['partnerDetails.status'] = status;
+        }
 
-        const carriers = await Carrier.find(query)
-            .select('-password')
+        let partners = await User.find(query)
+            .select('-password -__v')
             .sort({ createdAt: -1 })
             .lean();
+
+        // Map format for admin frontend
+        let carriers = partners.map(p => ({
+            _id: p._id,
+            businessName: p.businessName,
+            contactPerson: p.contactPerson,
+            email: p.email,
+            phone: p.phone,
+            gstin: p.gstin,
+            status: p.partnerDetails?.status || 'pending_approval',
+            fleetDetails: p.partnerDetails?.fleetDetails || { totalVehicles: 0, vehicleTypes: [] },
+            serviceZones: p.partnerDetails?.serviceZones || [],
+            baseFare: p.partnerDetails?.baseFare,
+            createdAt: p.createdAt
+        }));
 
         res.json({ success: true, carriers });
     } catch (error) {
@@ -87,22 +134,22 @@ router.put('/:id/approve', protect, async (req, res) => {
             return res.status(403).json({ success: false, message: 'Admin access required' });
         }
 
-        const carrier = await Carrier.findById(req.params.id);
-        if (!carrier) {
-            return res.status(404).json({ success: false, message: 'Carrier not found' });
+        const partner = await User.findOne({ _id: req.params.id, role: 'shipment_partner' });
+        if (!partner) {
+            return res.status(404).json({ success: false, message: 'Partner not found' });
         }
 
-        carrier.status = 'approved';
-        carrier.isActive = true;
-        carrier.approvedAt = new Date();
-        carrier.approvedBy = req.user._id;
-        carrier.rejectionReason = undefined;
-        await carrier.save();
+        if (!partner.partnerDetails) partner.partnerDetails = {};
+        partner.partnerDetails.status = 'approved';
+        partner.partnerDetails.approvedAt = new Date();
+        partner.partnerDetails.approvedBy = req.user._id;
+        partner.partnerDetails.rejectionReason = undefined;
+        await partner.save();
 
         res.json({
             success: true,
-            message: `${carrier.businessName} has been approved`,
-            carrier: { id: carrier._id, businessName: carrier.businessName, status: carrier.status }
+            message: `${partner.businessName} has been approved`,
+            carrier: { id: partner._id, businessName: partner.businessName, status: 'approved' }
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -116,19 +163,20 @@ router.put('/:id/reject', protect, async (req, res) => {
             return res.status(403).json({ success: false, message: 'Admin access required' });
         }
 
-        const carrier = await Carrier.findById(req.params.id);
-        if (!carrier) {
-            return res.status(404).json({ success: false, message: 'Carrier not found' });
+        const partner = await User.findOne({ _id: req.params.id, role: 'shipment_partner' });
+        if (!partner) {
+            return res.status(404).json({ success: false, message: 'Partner not found' });
         }
 
-        carrier.status = 'rejected';
-        carrier.rejectionReason = req.body.reason || 'Application did not meet requirements';
-        await carrier.save();
+        if (!partner.partnerDetails) partner.partnerDetails = {};
+        partner.partnerDetails.status = 'rejected';
+        partner.partnerDetails.rejectionReason = req.body.reason || 'Application did not meet requirements';
+        await partner.save();
 
         res.json({
             success: true,
-            message: `${carrier.businessName} has been rejected`,
-            carrier: { id: carrier._id, businessName: carrier.businessName, status: carrier.status }
+            message: `${partner.businessName} has been rejected`,
+            carrier: { id: partner._id, businessName: partner.businessName, status: 'rejected' }
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -142,18 +190,18 @@ router.put('/:id/suspend', protect, async (req, res) => {
             return res.status(403).json({ success: false, message: 'Admin access required' });
         }
 
-        const carrier = await Carrier.findById(req.params.id);
-        if (!carrier) {
-            return res.status(404).json({ success: false, message: 'Carrier not found' });
+        const partner = await User.findOne({ _id: req.params.id, role: 'shipment_partner' });
+        if (!partner) {
+            return res.status(404).json({ success: false, message: 'Partner not found' });
         }
 
-        carrier.status = 'suspended';
-        carrier.isActive = false;
-        await carrier.save();
+        if (!partner.partnerDetails) partner.partnerDetails = {};
+        partner.partnerDetails.status = 'suspended';
+        await partner.save();
 
         res.json({
             success: true,
-            message: `${carrier.businessName} has been suspended`
+            message: `${partner.businessName} has been suspended`
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

@@ -5,10 +5,11 @@ import { protect, admin } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// GET /api/wms/rtd — list all RTD reports
+// GET /api/wms/rtd — list RTD reports (user-scoped)
 router.get('/', protect, async (req, res) => {
     try {
-        const reports = await RTD.find()
+        const query = req.user.role === 'admin' ? {} : { owner: req.user._id };
+        const reports = await RTD.find(query)
             .populate('tripId', 'tripNumber status')
             .populate('driverId', 'name phone')
             .populate('vehicleId', 'numberPlate')
@@ -33,6 +34,7 @@ router.post('/', protect, async (req, res) => {
         const rtdId = `RTD-${Date.now()}-${(count + 1).toString().padStart(4, '0')}`;
 
         const rtd = new RTD({
+            owner: req.user._id,
             rtdId,
             shipmentId,
             tripId: tripId || null,

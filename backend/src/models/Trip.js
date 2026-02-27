@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const tripSchema = new mongoose.Schema({
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     tripId: { type: String, required: true, unique: true },
 
     vehicleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },

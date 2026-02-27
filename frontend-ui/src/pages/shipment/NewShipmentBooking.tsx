@@ -14,6 +14,13 @@ import ServiceSelection from "@/components/shipment/ServiceSelection";
 import ReviewConfirm from "@/components/shipment/ReviewConfirm";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { paymentApi } from "@/lib/api";
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 const steps = [
   { id: 1, name: "Pickup Details", description: "Enter pickup address" },
@@ -50,7 +57,7 @@ const initialPackageData = {
   ],
   contentType: "",
   description: "",
-  paymentMode: "prepaid",
+  paymentMode: "razorpay",
   codAmount: 0,
   insurance: false,
 };
@@ -93,74 +100,131 @@ const NewShipmentBooking = () => {
           return;
         }
 
-        const bookingPayload = {
-          pickup: pickupData,
-          delivery: deliveryData,
-          packages: packageData.packages,
+        const submitBooking = async () => {
+          const bookingPayload = {
+            pickup: pickupData,
+            delivery: deliveryData,
+            packages: packageData.packages,
 
-          // Package Details (Flattened)
-          contentType: packageData.contentType,
-          description: packageData.description,
-          paymentMode: packageData.paymentMode,
-          codAmount: packageData.codAmount,
+            // Package Details (Flattened)
+            contentType: packageData.contentType,
+            description: packageData.description,
+            paymentMode: packageData.paymentMode,
+            codAmount: packageData.codAmount,
 
-          // Service Details (Flattened)
-          serviceType: serviceData.serviceType,
-          carrier: serviceData.carrier,
-          carrierId: serviceData.carrierId || undefined,
-          insurance: serviceData.insurance,
-          fragileHandling: serviceData.fragileHandling,
-          signatureRequired: serviceData.signatureRequired,
-          scheduledPickup: serviceData.scheduledPickup,
-          pickupDate: serviceData.pickupDate,
-          pickupSlot: serviceData.pickupSlot,
-        };
+            // Service Details (Flattened)
+            serviceType: serviceData.serviceType,
+            carrier: serviceData.carrier,
+            carrierId: serviceData.carrierId || undefined,
+            insurance: serviceData.insurance,
+            fragileHandling: serviceData.fragileHandling,
+            signatureRequired: serviceData.signatureRequired,
+            scheduledPickup: serviceData.scheduledPickup,
+            pickupDate: serviceData.pickupDate,
+            pickupSlot: serviceData.pickupSlot,
+          };
 
-        const response = await fetch(`${API_BASE_URL}/api/shipments/create`, {
-          method: "POST",
-          headers: {
+          const response = await fetch(`${API_BASE_URL}/api/shipments/create`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(bookingPayload),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Failed to create shipment");
+          }
+
+          // Save addresses if user checked "Save this address"
+          const addressHeaders = {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(bookingPayload),
-        });
+          };
 
-        const data = await response.json();
+          if (pickupData.saveAddress) {
+            const { saveAddress, ...addrToSave } = pickupData;
+            fetch(`${API_BASE_URL}/api/users/addresses`, {
+              method: "POST",
+              headers: addressHeaders,
+              body: JSON.stringify(addrToSave),
+            }).catch(() => { }); // Fire-and-forget
+          }
 
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to create shipment");
+          if (deliveryData.saveAddress) {
+            const { saveAddress, ...addrToSave } = deliveryData;
+            fetch(`${API_BASE_URL}/api/users/addresses`, {
+              method: "POST",
+              headers: addressHeaders,
+              body: JSON.stringify(addrToSave),
+            }).catch(() => { }); // Fire-and-forget
+          }
+
+          toast({
+            title: "Shipment Created Successfully",
+            description: `AWB: ${data.shipment?.awb || data.shipment?._id}`,
+          });
+
+          navigate("/shipment/success", { state: { shipment: data.shipment } });
+        }; // end of submitBooking
+
+        // Payment Processing Logic
+        if (packageData.paymentMode === 'razorpay') {
+          // Calculate total cost (same calculation as ReviewConfirm)
+          const getCarrierPrice = (carrier: string) => {
+            const prices: Record<string, number> = { bluedart: 149, delhivery: 129, fedex: 199, dtdc: 99 };
+            return prices[carrier] || 99;
+          };
+          const getServiceMultiplier = (type: string) => {
+            const multipliers: Record<string, number> = { standard: 1, express: 1.5, "same-day": 2.5 };
+            return multipliers[type] || 1;
+          };
+
+          const basePrice = getCarrierPrice(serviceData.carrier);
+          const serviceMultiplier = getServiceMultiplier(serviceData.serviceType);
+          const shippingCost = Math.round(basePrice * serviceMultiplier);
+          const insuranceCost = serviceData.insurance ? 29 : 0;
+          const fragileCost = serviceData.fragileHandling ? 49 : 0;
+          const signatureCost = serviceData.signatureRequired ? 19 : 0;
+          const totalCost = Math.round((shippingCost + insuranceCost + fragileCost + signatureCost) * 1.18);
+
+          // Get Razorpay Order
+          const orderData = await paymentApi.createOrder(totalCost);
+
+          const options = {
+            key: orderData.keyId,
+            amount: orderData.amount,
+            currency: orderData.currency,
+            name: "FastFare Logistics",
+            description: `Shipment Booking`,
+            order_id: orderData.orderId,
+            handler: async function (response: any) {
+              // If Razorpay succeeds, create the shipment
+              await submitBooking();
+              setIsSubmitting(false);
+            },
+            prefill: {
+              name: localStorage.getItem("userName") || "",
+              email: localStorage.getItem("userEmail") || "",
+            },
+            theme: { color: "#6366f1" },
+            modal: {
+              ondismiss: function () {
+                setIsSubmitting(false);
+                toast({ title: "Payment Cancelled", variant: "destructive" });
+              }
+            }
+          };
+
+          const razorpay = new window.Razorpay(options);
+          razorpay.open();
+        } else {
+          // For COD and Wallet, submit directly
+          await submitBooking();
         }
-
-        // Save addresses if user checked "Save this address"
-        const addressHeaders = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        };
-
-        if (pickupData.saveAddress) {
-          const { saveAddress, ...addrToSave } = pickupData;
-          fetch(`${API_BASE_URL}/api/users/addresses`, {
-            method: "POST",
-            headers: addressHeaders,
-            body: JSON.stringify(addrToSave),
-          }).catch(() => { }); // Fire-and-forget
-        }
-
-        if (deliveryData.saveAddress) {
-          const { saveAddress, ...addrToSave } = deliveryData;
-          fetch(`${API_BASE_URL}/api/users/addresses`, {
-            method: "POST",
-            headers: addressHeaders,
-            body: JSON.stringify(addrToSave),
-          }).catch(() => { }); // Fire-and-forget
-        }
-
-        toast({
-          title: "Shipment Created Successfully",
-          description: `AWB: ${data.shipment?.awb || data.shipment?._id}`,
-        });
-
-        navigate("/shipment/success", { state: { shipment: data.shipment } });
 
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Could not book shipment. Please try again.';

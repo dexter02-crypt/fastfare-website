@@ -163,8 +163,8 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                         // Admin-only items - hide from non-admins
                         const adminItems = ["Users", "Warehouse", "Drivers", "Bulk Ops", "Fleet", "Fleet Tracking", "Reports", "Analytics", "Partner Mgmt", "Carriers"];
                         if (user?.role !== 'admin' && adminItems.includes(item.label)) {
-                            // Allow shipment_partner to see Fleet Tracking and Fleet
-                            if (user?.role === 'shipment_partner' && (item.label === "Fleet Tracking" || item.label === "Fleet")) {
+                            // Allow shipment_partner and user to see Fleet Tracking and Fleet
+                            if ((user?.role === 'shipment_partner' || user?.role === 'user') && (item.label === "Fleet Tracking" || item.label === "Fleet")) {
                                 return true;
                             }
                             return false;
@@ -173,16 +173,22 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                         // Partner specific filtering - show limited menu + WMS items
                         if (user?.role === 'shipment_partner') {
                             const partnerAllowed = [
-                                "Dashboard", "Orders", "Fleet", "Fleet Tracking", "Tracking", "Wallet", "Settlement", "My Reports", "Team", "Settings", "Help Center",
+                                "Dashboard", "Orders", "Fleet", "Fleet View", "Activity", "Fleet Tracking", "Tracking", "Wallet", "Settlement", "My Reports", "Team", "Settings", "Help Center",
                                 // WMS items
                                 "Warehouse Hub", "WMS Fleet", "Inventory", "Inbound", "RTD Returns", "Live Tracking", "WMS Reports"
                             ];
                             return partnerAllowed.includes(item.label);
                         }
 
-                        // Regular user filtering - hide partner/admin specific items
+                        // Regular user filtering - show full feature set (same as partner + user-specific)
                         if (user?.role === 'user') {
-                            const userAllowed = ["Dashboard", "Shipments", "My Orders", "Tracking", "Rates", "Returns", "Wallet", "My Reports"];
+                            const userAllowed = [
+                                "Dashboard", "Shipments", "My Orders", "Orders", "Tracking", "Rates", "Returns", "Wallet", "Settlement", "My Reports", "Settings", "Help Center",
+                                // Fleet & tracking
+                                "Fleet", "Fleet View", "Activity", "Fleet Tracking",
+                                // WMS items
+                                "Warehouse Hub", "WMS Fleet", "Inventory", "Inbound", "RTD Returns", "Live Tracking", "WMS Reports"
+                            ];
                             return userAllowed.includes(item.label);
                         }
 

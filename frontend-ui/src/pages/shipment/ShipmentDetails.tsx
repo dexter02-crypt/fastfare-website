@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/config";
+import { generateShippingLabelHTML, generateTaxInvoiceHTML } from "@/utils/documentGenerators";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -136,7 +137,7 @@ const ShipmentDetails = () => {
   const handlePrintLabel = () => {
     const labelWindow = window.open('', '_blank', 'width=800,height=600');
     if (labelWindow && shipment) {
-      labelWindow.document.write(generateLabelHTML(shipment));
+      labelWindow.document.write(generateShippingLabelHTML(shipment, true));
       labelWindow.document.close();
       setTimeout(() => labelWindow.print(), 500);
     }
@@ -144,197 +145,13 @@ const ShipmentDetails = () => {
 
   const handleDownloadInvoice = () => {
     if (!shipment) return;
-
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
     const invoiceWindow = window.open('', '_blank', 'width=800,height=1000');
     if (invoiceWindow) {
-      invoiceWindow.document.write(generateInvoiceHTML(shipment));
+      invoiceWindow.document.write(generateTaxInvoiceHTML(shipment, user));
       invoiceWindow.document.close();
     }
   };
-
-  const generateLabelHTML = (data: Shipment) => `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Shipping Label - ${data.awb}</title>
-        <style>
-          body { font-family: 'Arial', sans-serif; padding: 20px; margin: 0; }
-          .label { border: 3px solid #000; padding: 20px; max-width: 600px; margin: 0 auto; }
-          .header { display: flex; justify-content: space-between; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #000; }
-          .logo { font-size: 24px; font-weight: bold; color: #6366f1; }
-          .awb { font-size: 28px; font-weight: bold; }
-          .section { margin-bottom: 20px; }
-          .section-title { font-weight: bold; font-size: 14px; margin-bottom: 10px; }
-          .address { font-size: 14px; line-height: 1.5; }
-          .address strong { font-size: 16px; }
-          .barcode { text-align: center; margin: 20px 0; }
-          .barcode-text { font-family: monospace; font-size: 14px; letter-spacing: 2px; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-          .info-item { font-size: 12px; }
-          .info-item label { display: block; font-weight: bold; margin-bottom: 5px; }
-          .footer { text-align: center; margin-top: 30px; font-size: 10px; color: #666; }
-        </style>
-      </head>
-      <body>
-        <div class="label">
-          <div class="header">
-            <div class="logo">FastFare</div>
-            <div class="awb">${data.awb}</div>
-          </div>
-
-          <div class="section">
-            <div class="section-title">SHIP TO:</div>
-            <div class="address">
-              <strong>${getSafeAddress(data.delivery).name}</strong><br>
-              ${getSafeAddress(data.delivery).address}<br>
-              ${getSafeAddress(data.delivery).city}, ${getSafeAddress(data.delivery).state} - ${getSafeAddress(data.delivery).pincode}<br>
-              Phone: ${getSafeAddress(data.delivery).phone}
-            </div>
-          </div>
-
-          <div class="section">
-            <div class="section-title">SHIP FROM:</div>
-            <div class="address">
-              <strong>${getSafeAddress(data.pickup).name}</strong><br>
-              ${getSafeAddress(data.pickup).address}<br>
-              ${getSafeAddress(data.pickup).city}, ${getSafeAddress(data.pickup).state} - ${getSafeAddress(data.pickup).pincode}<br>
-              Phone: ${getSafeAddress(data.pickup).phone}
-            </div>
-          </div>
-
-          <div class="barcode">
-            <svg width="300" height="60" style="background: repeating-linear-gradient(90deg, black 0px, black 2px, transparent 2px, transparent 4px, black 4px, black 6px, transparent 6px, transparent 8px, black 8px, black 10px, transparent 10px, transparent 14px, black 14px, black 16px, transparent 16px, transparent 18px);"></svg>
-            <div class="barcode-text">${data.awb}</div>
-          </div>
-
-          <div class="info-grid">
-            <div class="info-item">
-              <label>Service:</label>
-              ${getSafeValue(data.serviceType, "N/A")}
-            </div>
-            <div class="info-item">
-              <label>Weight:</label>
-              ${data.packages?.[0]?.weight || 0} kg
-            </div>
-            <div class="info-item">
-              <label>Payment:</label>
-              ${getSafeValue(data.paymentMode, "N/A").toUpperCase()}
-            </div>
-            <div class="info-item">
-              <label>Order ID:</label>
-              ${data.orderId || "N/A"}
-            </div>
-          </div>
-
-          <div class="footer">
-            Generated: ${new Date().toLocaleString()} | FastFare Logistics Pvt Ltd
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
-
-  const generateInvoiceHTML = (data: Shipment) => `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Invoice - ${data.orderId || data.awb}</title>
-        <style>
-          body { font-family: 'Arial', sans-serif; padding: 40px; margin: 0; color: #333; line-height: 1.6; }
-          .invoice { max-width: 700px; margin: 0 auto; border: 2px solid #e5e7eb; }
-          .header { padding: 30px; border-bottom: 2px solid #e5e7eb; background: #f9fafb; }
-          .logo { font-size: 28px; font-weight: bold; color: #6366f1; }
-          .invoice-title { text-align: right; }
-          .invoice-title h1 { margin: 0; color: #1f2937; }
-          .invoice-title p { margin: 5px 0; color: #6b7280; }
-          .content { padding: 30px; }
-          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
-          .section-title { font-weight: bold; color: #374151; margin-bottom: 15px; font-size: 14px; }
-          .table { width: 100%; margin-top: 20px; border-collapse: collapse; }
-          .table th { text-align: left; background: #f9fafb; padding: 12px; border-bottom: 2px solid #e5e7eb; font-weight: 600; }
-          .table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
-          .total { text-align: right; margin-top: 30px; font-size: 20px; font-weight: bold; }
-          .footer { text-align: center; padding: 20px; background: #f9fafb; border-top: 2px solid #e5e7eb; font-size: 12px; color: #6b7280; }
-        </style>
-      </head>
-      <body>
-        <div class="invoice">
-          <div class="header">
-            <div class="logo">FastFare Logistics</div>
-            <div class="invoice-title">
-              <h1>INVOICE</h1>
-              <p><strong>${data.orderId || data.awb}</strong></p>
-              <p>Date: ${new Date().toLocaleDateString()}</p>
-            </div>
-          </div>
-
-          <div class="content">
-            <div class="grid">
-              <div>
-                <p class="section-title">BILL TO</p>
-                <p><strong>${getSafeAddress(data.pickup).name}</strong></p>
-                <p>${getSafeAddress(data.pickup).address}</p>
-                <p>${getSafeAddress(data.pickup).city}, ${getSafeAddress(data.pickup).state} - ${getSafeAddress(data.pickup).pincode}</p>
-                <p>Phone: ${getSafeAddress(data.pickup).phone}</p>
-              </div>
-              <div>
-                <p class="section-title">INVOICE DETAILS</p>
-                <p><strong>Shipment:</strong> ${data.awb}</p>
-                <p><strong>Service:</strong> ${getSafeValue(data.serviceType, "N/A")}</p>
-                <p><strong>Payment Mode:</strong> ${getSafeValue(data.paymentMode, "N/A").toUpperCase()}</p>
-              </div>
-            </div>
-
-            <p class="section-title">PACKAGE DETAILS</p>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Description</th>
-                  <th>Weight</th>
-                  <th style="text-align: right;">Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.packages?.map((pkg: ShipmentPackage) => `
-                  <tr>
-                    <td>${getSafeValue(pkg.name, "Unknown")}</td>
-                    <td>${getSafeValue(pkg.weight, 0)} kg</td>
-                    <td style="text-align: right;">₹${getSafeValue(pkg.value, 0).toLocaleString()}</td>
-                  </tr>
-                `).join('') || '<tr><td colspan="3">No package details available</td></tr>'}
-              </tbody>
-            </table>
-
-            <div class="total">
-              Total: ₹${getSafeValue(data.shippingCost, 0).toLocaleString()}
-            </div>
-
-            <div class="grid" style="margin-top: 30px; grid-template-columns: 1fr 1fr 1fr;">
-              <div>
-                <p class="section-title">ROUTE</p>
-                <p><strong>From:</strong> ${getSafeAddress(data.pickup).city}</p>
-                <p><strong>To:</strong> ${getSafeAddress(data.delivery).city}</p>
-              </div>
-              <div>
-                <p class="section-title">CARRIER</p>
-                <p>${getSafeValue(data.carrier, "Not Assigned")}</p>
-              </div>
-              <div>
-                <p class="section-title">EST. DELIVERY</p>
-                <p>${data.estimatedDelivery ? new Date(data.estimatedDelivery).toLocaleDateString() : 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="footer">
-            <p>Thank you for choosing FastFare Logistics!</p>
-            <p>For queries, contact: support@fastfare.com | +91 1800-XXX-XXXX</p>
-            <p style="margin-top: 10px;">Generated: ${new Date().toLocaleString()}</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
 
   const handleShare = () => {
     const shareUrl = `${window.location.origin}/tracking/${shipment.awb}`;

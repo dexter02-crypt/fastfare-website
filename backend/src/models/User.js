@@ -63,6 +63,41 @@ const userSchema = new mongoose.Schema({
             default: 'office'
         }
     }],
+    partnerDetails: {
+        zone: String,
+        address: String,
+        city: String,
+        state: String,
+        aadhaar: String,
+        fleetDetails: {
+            totalVehicles: { type: Number, default: 0 },
+            vehicleTypes: [{ type: String, enum: ['bike', 'auto', 'mini_truck', 'truck', 'large_truck', 'tempo'] }]
+        },
+        serviceZones: [{
+            state: String,
+            pincodes: [String]
+        }],
+        supportedTypes: [{
+            type: String,
+            enum: ['standard', 'express', 'overnight', 'economy', 'fragile']
+        }],
+        baseFare: { type: Number, default: 99 },
+        perKgRate: { type: Number, default: 10 },
+        rating: { type: Number, default: 4.0, min: 0, max: 5 },
+        eta: { type: String, default: '3-5 days' },
+        features: [String],
+        webhookUrl: { type: String, default: '' },
+        callbackUrl: { type: String, default: '' },
+        apiKey: { type: String, default: '' },
+        status: {
+            type: String,
+            enum: ['pending_approval', 'approved', 'rejected', 'suspended'],
+            default: 'pending_approval'
+        },
+        rejectionReason: String,
+        approvedAt: Date,
+        approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    },
     walletBalance: {
         type: Number,
         default: 0,

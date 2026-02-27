@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 
 const vehicleSchema = new mongoose.Schema({
-    numberPlate: { type: String, required: true, unique: true },
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    numberPlate: { type: String, required: true },
     chassisNumber: { type: String, required: true, unique: true },
     engineNumber: { type: String },
     type: {

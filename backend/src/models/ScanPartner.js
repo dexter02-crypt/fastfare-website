@@ -45,9 +45,8 @@ scanPartnerSchema.methods.comparePassword = async function (candidatePassword) {
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Indexes
 scanPartnerSchema.index({ createdBy: 1 });
-scanPartnerSchema.index({ scanPartnerId: 1 });
+
 
 const ScanPartner = mongoose.models.ScanPartner || mongoose.model('ScanPartner', scanPartnerSchema);
 export default ScanPartner;

@@ -1,6 +1,5 @@
 import express from 'express';
 import Shipment from '../models/Shipment.js';
-import Carrier from '../models/Carrier.js';
 import { protect } from '../middleware/auth.js';
 import { fireWebhook } from '../services/webhookService.js';
 import jwt from 'jsonwebtoken';
@@ -387,33 +386,23 @@ router.post('/:id/cancel', protect, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════
-// CARRIER-SIDE ENDPOINTS
+// CARRIER-SIDE ENDPOINTS (Now Shipment Partner Incoming Orders)
 // ══════════════════════════════════════════════════════════════
 
-// Middleware: authenticate carrier from JWT
-const protectCarrier = async (req, res, next) => {
-    try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ success: false, message: 'Not authorized' });
-        }
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (decoded.role !== 'carrier') {
-            return res.status(403).json({ success: false, message: 'Carrier access required' });
-        }
-        req.carrierId = decoded.id;
+// Middleware: ensure user is a shipment partner
+const requirePartner = (req, res, next) => {
+    if (req.user && (req.user.role === 'shipment_partner' || req.user.role === 'admin')) {
         next();
-    } catch (error) {
-        return res.status(401).json({ success: false, message: 'Token invalid' });
+    } else {
+        res.status(403).json({ success: false, message: 'Partner access required' });
     }
 };
 
 // GET /api/shipments/carrier/incoming — list pending shipments for carrier
-router.get('/carrier/incoming', protectCarrier, async (req, res) => {
+router.get('/carrier/incoming', protect, requirePartner, async (req, res) => {
     try {
         const { status } = req.query;
-        const query = { carrierId: req.carrierId };
+        const query = { carrierId: req.user._id };
 
         if (status) {
             // Support comma-separated statuses: ?status=accepted,pickup_scheduled,picked_up
@@ -434,9 +423,9 @@ router.get('/carrier/incoming', protectCarrier, async (req, res) => {
 });
 
 // GET /api/shipments/carrier/stats — carrier dashboard stats
-router.get('/carrier/stats', protectCarrier, async (req, res) => {
+router.get('/carrier/stats', protect, requirePartner, async (req, res) => {
     try {
-        const cid = req.carrierId;
+        const cid = req.user._id;
         const [pending, accepted, inTransit, delivered, total] = await Promise.all([
             Shipment.countDocuments({ carrierId: cid, status: 'pending_acceptance' }),
             Shipment.countDocuments({ carrierId: cid, status: { $in: ['accepted', 'pickup_scheduled', 'picked_up'] } }),
@@ -455,11 +444,11 @@ router.get('/carrier/stats', protectCarrier, async (req, res) => {
 });
 
 // PUT /api/shipments/carrier/:id/accept — carrier accepts shipment
-router.put('/carrier/:id/accept', protectCarrier, async (req, res) => {
+router.put('/carrier/:id/accept', protect, requirePartner, async (req, res) => {
     try {
         const shipment = await Shipment.findOne({
             _id: req.params.id,
-            carrierId: req.carrierId,
+            carrierId: req.user._id,
             status: 'pending_acceptance'
         });
 
@@ -481,11 +470,11 @@ router.put('/carrier/:id/accept', protectCarrier, async (req, res) => {
 });
 
 // PUT /api/shipments/carrier/:id/reject — carrier rejects shipment
-router.put('/carrier/:id/reject', protectCarrier, async (req, res) => {
+router.put('/carrier/:id/reject', protect, requirePartner, async (req, res) => {
     try {
         const shipment = await Shipment.findOne({
             _id: req.params.id,
-            carrierId: req.carrierId,
+            carrierId: req.user._id,
             status: 'pending_acceptance'
         });
 
@@ -507,7 +496,7 @@ router.put('/carrier/:id/reject', protectCarrier, async (req, res) => {
 });
 
 // PUT /api/shipments/carrier/:id/update-status — carrier updates shipment status through lifecycle
-router.put('/carrier/:id/update-status', protectCarrier, async (req, res) => {
+router.put('/carrier/:id/update-status', protect, requirePartner, async (req, res) => {
     try {
         const { status, location, description } = req.body;
 
@@ -525,7 +514,7 @@ router.put('/carrier/:id/update-status', protectCarrier, async (req, res) => {
 
         const shipment = await Shipment.findOne({
             _id: req.params.id,
-            carrierId: req.carrierId
+            carrierId: req.user._id
         });
 
         if (!shipment) {
@@ -580,7 +569,7 @@ router.put('/carrier/:id/update-status', protectCarrier, async (req, res) => {
         // Broadcast via Socket.IO
         const io = req.app.get('io');
         if (io) {
-            io.to(`carrier_${req.carrierId}`).emit('shipment_status_updated', {
+            io.to(`partner_${req.user._id}`).emit('shipment_status_updated', {
                 shipmentId: shipment._id,
                 awb: shipment.awb,
                 status,
@@ -595,7 +584,7 @@ router.put('/carrier/:id/update-status', protectCarrier, async (req, res) => {
         }
 
         // Fire webhook for status change
-        fireWebhook(req.carrierId, `shipment.${status}`, shipment).catch(err => {
+        fireWebhook(req.user._id, `shipment.${status}`, shipment).catch(err => {
             console.error('Status webhook error:', err);
         });
 

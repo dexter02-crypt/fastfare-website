@@ -21,19 +21,21 @@ interface CarrierData {
     phone: string;
     gstin?: string;
     panNumber?: string;
-    fleetDetails?: { totalVehicles: number; vehicleTypes: string[] };
-    serviceZones?: { state: string; pincodes: string[] }[];
-    supportedTypes?: string[];
-    baseFare: number;
-    perKgRate: number;
-    rating: number;
-    eta: string;
-    features: string[];
-    webhookUrl?: string;
-    status: string;
-    rejectionReason?: string;
+    partnerDetails?: {
+        fleetDetails?: { totalVehicles: number; vehicleTypes: string[] };
+        serviceZones?: { state: string; pincodes: string[] }[];
+        supportedTypes?: string[];
+        baseFare: number;
+        perKgRate: number;
+        rating: number;
+        eta: string;
+        features: string[];
+        webhookUrl?: string;
+        status: string;
+        rejectionReason?: string;
+        approvedAt?: string;
+    };
     createdAt: string;
-    approvedAt?: string;
 }
 
 const AdminCarriers = () => {
@@ -177,17 +179,17 @@ const AdminCarriers = () => {
                                                 <div className="flex items-center gap-2">
                                                     <Building2 className="h-5 w-5 text-primary" />
                                                     <h3 className="font-semibold text-lg">{carrier.businessName}</h3>
-                                                    {getStatusBadge(carrier.status)}
+                                                    {getStatusBadge(carrier.partnerDetails?.status || "pending_approval")}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground mt-1 flex items-center gap-4">
                                                     <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {carrier.email}</span>
                                                     <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {carrier.phone}</span>
-                                                    <span className="flex items-center gap-1"><Star className="h-3 w-3" /> {carrier.rating}</span>
+                                                    <span className="flex items-center gap-1"><Star className="h-3 w-3" /> {carrier.partnerDetails?.rating || 4.0}</span>
                                                 </p>
                                             </div>
                                             <div className="text-right text-sm text-muted-foreground">
                                                 <p>Applied: {new Date(carrier.createdAt).toLocaleDateString("en-IN")}</p>
-                                                {carrier.approvedAt && <p>Approved: {new Date(carrier.approvedAt).toLocaleDateString("en-IN")}</p>}
+                                                {carrier.partnerDetails?.approvedAt && <p>Approved: {new Date(carrier.partnerDetails.approvedAt).toLocaleDateString("en-IN")}</p>}
                                             </div>
                                         </div>
 
@@ -195,31 +197,31 @@ const AdminCarriers = () => {
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
                                             <div className="bg-gray-50 rounded p-2">
                                                 <p className="text-xs text-muted-foreground">Fleet</p>
-                                                <p className="font-medium">{carrier.fleetDetails?.totalVehicles || 0} vehicles</p>
-                                                {carrier.fleetDetails?.vehicleTypes && (
-                                                    <p className="text-xs text-muted-foreground">{carrier.fleetDetails.vehicleTypes.join(", ")}</p>
+                                                <p className="font-medium">{carrier.partnerDetails?.fleetDetails?.totalVehicles || 0} vehicles</p>
+                                                {carrier.partnerDetails?.fleetDetails?.vehicleTypes && (
+                                                    <p className="text-xs text-muted-foreground">{carrier.partnerDetails.fleetDetails.vehicleTypes.join(", ")}</p>
                                                 )}
                                             </div>
                                             <div className="bg-gray-50 rounded p-2">
                                                 <p className="text-xs text-muted-foreground">Base Fare</p>
-                                                <p className="font-medium">₹{carrier.baseFare}</p>
-                                                <p className="text-xs text-muted-foreground">+ ₹{carrier.perKgRate}/kg</p>
+                                                <p className="font-medium">₹{carrier.partnerDetails?.baseFare || 0}</p>
+                                                <p className="text-xs text-muted-foreground">+ ₹{carrier.partnerDetails?.perKgRate || 0}/kg</p>
                                             </div>
                                             <div className="bg-gray-50 rounded p-2">
                                                 <p className="text-xs text-muted-foreground">ETA</p>
-                                                <p className="font-medium">{carrier.eta}</p>
+                                                <p className="font-medium">{carrier.partnerDetails?.eta || "N/A"}</p>
                                             </div>
                                             <div className="bg-gray-50 rounded p-2">
                                                 <p className="text-xs text-muted-foreground">Types</p>
-                                                <p className="font-medium text-xs">{carrier.supportedTypes?.join(", ") || "Standard"}</p>
+                                                <p className="font-medium text-xs">{carrier.partnerDetails?.supportedTypes?.join(", ") || "Standard"}</p>
                                             </div>
                                         </div>
 
-                                        {carrier.serviceZones && carrier.serviceZones.length > 0 && (
+                                        {carrier.partnerDetails?.serviceZones && carrier.partnerDetails.serviceZones.length > 0 && (
                                             <div className="mb-3">
                                                 <p className="text-xs text-muted-foreground mb-1">Service Zones:</p>
                                                 <div className="flex flex-wrap gap-1">
-                                                    {carrier.serviceZones.map((z, zi) => (
+                                                    {carrier.partnerDetails.serviceZones.map((z, zi) => (
                                                         <Badge key={zi} variant="outline" className="text-xs">
                                                             <MapPin className="h-3 w-3 mr-1" /> {z.state}
                                                         </Badge>
@@ -228,23 +230,23 @@ const AdminCarriers = () => {
                                             </div>
                                         )}
 
-                                        {carrier.features && carrier.features.length > 0 && (
+                                        {carrier.partnerDetails?.features && carrier.partnerDetails.features.length > 0 && (
                                             <div className="mb-3 flex flex-wrap gap-1">
-                                                {carrier.features.map((f, fi) => (
+                                                {carrier.partnerDetails.features.map((f, fi) => (
                                                     <span key={fi} className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full">{f}</span>
                                                 ))}
                                             </div>
                                         )}
 
-                                        {carrier.rejectionReason && (
+                                        {carrier.partnerDetails?.rejectionReason && (
                                             <div className="bg-red-50 text-red-700 rounded p-2 text-sm mb-3 flex items-start gap-2">
                                                 <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                                <span>Rejection reason: {carrier.rejectionReason}</span>
+                                                <span>Rejection reason: {carrier.partnerDetails.rejectionReason}</span>
                                             </div>
                                         )}
 
                                         {/* Actions */}
-                                        {carrier.status === "pending_approval" && (
+                                        {carrier.partnerDetails?.status === "pending_approval" && (
                                             <div className="flex items-center gap-3 pt-3 border-t">
                                                 <Button
                                                     className="flex-1 bg-green-600 hover:bg-green-700"

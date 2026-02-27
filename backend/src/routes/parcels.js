@@ -272,11 +272,12 @@ router.put('/:id/status', protect, async (req, res) => {
     }
 });
 
-// ─── GET /api/parcels ─── List all parcels (admin)
+// ─── GET /api/parcels ─── List parcels (user-scoped)
 router.get('/', protect, async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 50;
-        const parcels = await Parcel.find()
+        const query = req.user.role === 'admin' ? {} : { scannedBy: req.user._id };
+        const parcels = await Parcel.find(query)
             .sort({ createdAt: -1 })
             .limit(limit)
             .lean();

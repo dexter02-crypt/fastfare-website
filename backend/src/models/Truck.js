@@ -109,7 +109,7 @@ const truckSchema = new mongoose.Schema({
 });
 
 // Update timestamp on save
-truckSchema.pre('save', function(next) {
+truckSchema.pre('save', function (next) {
     this.updatedAt = new Date();
     next();
 });
@@ -117,6 +117,6 @@ truckSchema.pre('save', function(next) {
 // Index for faster queries
 truckSchema.index({ status: 1 });
 truckSchema.index({ createdBy: 1 });
-truckSchema.index({ chassisNo: 1 });
+
 
 export default mongoose.model('Truck', truckSchema);

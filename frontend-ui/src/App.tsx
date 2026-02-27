@@ -149,11 +149,7 @@ import WMSInboundPage from "./pages/wms/InboundPage";
 import WMSReportsPage from "./pages/wms/WMSReportsPage";
 import WMSTrackingPage from "./pages/wms/WMSTrackingPage";
 
-// Carrier
-import RegisterCarrier from "./pages/auth/RegisterCarrier";
-import CarrierLogin from "./pages/carrier/CarrierLogin";
-import CarrierDashboard from "./pages/carrier/CarrierDashboard";
-import CarrierOrders from "./pages/carrier/CarrierOrders";
+// Carrier (Legacy CarrierDashboard and CarrierOrders will be merged or removed next)
 import AdminCarriers from "./pages/admin/AdminCarriers";
 
 const queryClient = new QueryClient();
@@ -297,11 +293,6 @@ const App = () => (
             <Route path="/admin/carriers" element={<ProtectedRoute><AdminCarriers /></ProtectedRoute>} />
 
             {/* Carrier */}
-            <Route path="/register/carrier" element={<RegisterCarrier />} />
-            <Route path="/carrier/login" element={<CarrierLogin />} />
-            <Route path="/carrier/dashboard" element={<CarrierDashboard />} />
-            <Route path="/carrier/orders" element={<CarrierOrders />} />
-
             {/* Settlement & Tier System */}
             <Route path="/settlement" element={<ProtectedRoute><SettlementDashboard /></ProtectedRoute>} />
 

@@ -1,4 +1,4 @@
-import Carrier from '../models/Carrier.js';
+import User from '../models/User.js';
 import WebhookLog from '../models/WebhookLog.js';
 import crypto from 'crypto';
 
@@ -6,7 +6,7 @@ import crypto from 'crypto';
  * Build a structured, comprehensive shipment payload
  * containing all data a carrier partner needs.
  */
-function buildShipmentPayload(shipment, carrier) {
+function buildShipmentPayload(shipment, partnerDetails) {
     const s = typeof shipment.toObject === 'function' ? shipment.toObject() : shipment;
 
     return {
@@ -84,7 +84,7 @@ function buildShipmentPayload(shipment, carrier) {
         tracking: {
             fastfareShipmentId: s._id,
             awb: s.awb,
-            callbackUrl: carrier?.callbackUrl || '',
+            callbackUrl: partnerDetails?.callbackUrl || '',
             trackingHistory: s.trackingHistory || []
         }
     };
@@ -105,27 +105,27 @@ function generateSignature(payload, secret) {
  * Retries up to 3 times with exponential backoff.
  */
 export async function fireWebhook(carrierId, event, shipment) {
-    const carrier = await Carrier.findById(carrierId);
-    if (!carrier || !carrier.webhookUrl) {
-        console.log(`[Webhook] No webhook URL for carrier ${carrierId}, skipping`);
+    const partner = await User.findById(carrierId);
+    if (!partner || !partner.partnerDetails?.webhookUrl) {
+        console.log(`[Webhook] No webhook URL for partner ${carrierId}, skipping`);
         return null;
     }
 
     // Build the enriched payload
-    const payload = buildShipmentPayload(shipment, carrier);
+    const payload = buildShipmentPayload(shipment, partner.partnerDetails);
 
     const log = await WebhookLog.create({
         carrierId,
         shipmentId: payload.shipmentId || shipment._id,
         event,
-        webhookUrl: carrier.webhookUrl,
+        webhookUrl: partner.partnerDetails.webhookUrl,
         payload,
         deliveryStatus: 'pending',
         attempts: 0,
         maxAttempts: 3
     });
 
-    return attemptWebhook(log, carrier.apiKey);
+    return attemptWebhook(log, partner.partnerDetails.apiKey);
 }
 
 /**

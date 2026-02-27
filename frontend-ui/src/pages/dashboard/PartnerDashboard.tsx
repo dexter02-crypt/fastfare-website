@@ -1,22 +1,17 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
     Truck, CheckCircle, Package, Wallet, ChevronRight,
-    Warehouse, MapPin, RotateCcw, Box, TrendingUp, ArrowUpRight, Users
+    Warehouse, MapPin, RotateCcw, Box, TrendingUp, ArrowUpRight, Users, Bell, BarChart3, ArrowRight
 } from "lucide-react";
 import { authApi } from "@/lib/api";
+import { API_BASE_URL } from "@/config";
 
-const stats = [
-    { label: "Total Shipments", value: "0", icon: Package, bg: "bg-blue-100", text: "text-blue-600" },
-    { label: "In Transit", value: "0", icon: Truck, bg: "bg-orange-100", text: "text-orange-600" },
-    { label: "Delivered Today", value: "0", icon: CheckCircle, bg: "bg-green-100", text: "text-green-600" },
-    { label: "Wallet Balance", value: "₹0", icon: Wallet, bg: "bg-purple-100", text: "text-purple-600" },
-];
 
 const wmsActions = [
     { label: "Team Management", desc: "Drivers & scan partners", icon: Users, href: "/partner/team", color: "from-rose-500 to-rose-600" },
@@ -32,6 +27,27 @@ const activity: { id: string; dest: string; status: string; eta: string }[] = []
 
 const PartnerDashboard = () => {
     const user = authApi.getCurrentUser();
+    const navigate = useNavigate();
+    const [carrierStats, setCarrierStats] = useState({ pending: 0, accepted: 0, inTransit: 0, delivered: 0, total: 0 });
+
+    useEffect(() => {
+        if (user?.role === "shipment_partner") {
+            const token = localStorage.getItem("token");
+            fetch(`${API_BASE_URL}/api/shipments/carrier/stats`, {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+                .then((r) => r.json())
+                .then((d) => { if (d.success) setCarrierStats(d.stats); })
+                .catch(console.error);
+        }
+    }, [user]);
+
+    const statCards = [
+        { label: "New Orders", value: carrierStats.pending, icon: Bell, bg: "bg-orange-100", text: "text-orange-600" },
+        { label: "Active Pickups", value: carrierStats.accepted, icon: Truck, bg: "bg-blue-100", text: "text-blue-600" },
+        { label: "In Transit", value: carrierStats.inTransit, icon: Package, bg: "bg-purple-100", text: "text-purple-600" },
+        { label: "Delivered", value: carrierStats.delivered, icon: CheckCircle, bg: "bg-green-100", text: "text-green-600" },
+    ];
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -52,7 +68,7 @@ const PartnerDashboard = () => {
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {stats.map((stat, index) => (
+                    {statCards.map((stat, index) => (
                         <motion.div
                             key={stat.label}
                             initial={{ opacity: 0, y: 20 }}
@@ -73,6 +89,72 @@ const PartnerDashboard = () => {
                         </motion.div>
                     ))}
                 </div>
+
+                {/* Carrier / Partner Orders Quick Actions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card
+                        className="cursor-pointer border hover:shadow-md transition-all hover:border-primary/50"
+                        onClick={() => navigate("/partner/orders?tab=new")}
+                    >
+                        <CardContent className="p-6 flex items-center gap-4">
+                            <div className="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center">
+                                <Bell className="h-7 w-7 text-orange-600" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-semibold text-lg">New Orders</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {carrierStats.pending} shipments waiting for your acceptance
+                                </p>
+                            </div>
+                            <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                        </CardContent>
+                    </Card>
+
+                    <Card
+                        className="cursor-pointer border hover:shadow-md transition-all hover:border-primary/50"
+                        onClick={() => navigate("/partner/orders?tab=active")}
+                    >
+                        <CardContent className="p-6 flex items-center gap-4">
+                            <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <Truck className="h-7 w-7 text-blue-600" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-semibold text-lg">Active Pickups</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {carrierStats.accepted} active shipments to process
+                                </p>
+                            </div>
+                            <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Total Stats */}
+                <Card className="border shadow-sm">
+                    <CardHeader className="pb-3 border-b border-gray-100">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                            <BarChart3 className="h-5 w-5 text-primary" /> Delivery Completion Overview
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-4">
+                            <div className="flex-1 text-center p-4 bg-gray-50 rounded-lg border">
+                                <p className="text-3xl font-bold">{carrierStats.total}</p>
+                                <p className="text-sm text-muted-foreground mt-1">Total Shipments</p>
+                            </div>
+                            <div className="flex-1 text-center p-4 bg-green-50 rounded-lg border border-green-100">
+                                <p className="text-3xl font-bold text-green-600">{carrierStats.delivered}</p>
+                                <p className="text-sm text-muted-foreground mt-1">Completed</p>
+                            </div>
+                            <div className="flex-1 text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                <p className="text-3xl font-bold text-blue-600">
+                                    {carrierStats.total > 0 ? Math.round((carrierStats.delivered / carrierStats.total) * 100) : 0}%
+                                </p>
+                                <p className="text-sm text-muted-foreground mt-1">Success Rate</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* WMS Quick Actions */}
                 <div>

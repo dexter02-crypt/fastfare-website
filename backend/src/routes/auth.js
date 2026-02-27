@@ -220,8 +220,7 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: errorMsg });
         }
 
-        // Create user with role
-        const user = await User.create({
+        const userData = {
             businessName,
             gstin: gstin && gstin.trim() ? gstin.trim() : undefined,
             businessType,
@@ -232,7 +231,29 @@ router.post('/register', async (req, res) => {
             role: userRole,
             isVerified: true,
             emailVerified: true,
-        });
+        };
+
+        if (userRole === 'shipment_partner') {
+            const { fleetDetails, serviceZones, supportedTypes, baseFare, perKgRate, webhookUrl, features, eta, zone, city, aadhaar, address, state } = req.body;
+            userData.partnerDetails = {
+                fleetDetails: fleetDetails || { totalVehicles: 0, vehicleTypes: [] },
+                serviceZones: serviceZones || [],
+                supportedTypes: supportedTypes || ['standard'],
+                baseFare: baseFare || 99,
+                perKgRate: perKgRate || 10,
+                webhookUrl: webhookUrl || '',
+                features: features || [],
+                eta: eta || '3-5 days',
+                zone: zone || city || '',
+                city: city || '',
+                state: state || '',
+                aadhaar: aadhaar || '',
+                address: address || '',
+                status: 'pending_approval'
+            };
+        }
+
+        const user = await User.create(userData);
 
         // Clean up the OTP from store
         registrationOtpStore.delete(normalizedEmail);
@@ -291,7 +312,8 @@ router.post('/login', async (req, res) => {
                 businessType: user.businessType,
                 gstin: user.gstin,
                 contactPerson: user.contactPerson,
-                role: user.role
+                role: user.role,
+                partnerDetails: user.partnerDetails
             },
             token
         });
@@ -314,7 +336,8 @@ router.get('/me', protect, async (req, res) => {
             gstin: req.user.gstin,
             contactPerson: req.user.contactPerson,
             role: req.user.role,
-            savedAddresses: req.user.savedAddresses
+            savedAddresses: req.user.savedAddresses,
+            partnerDetails: req.user.partnerDetails
         }
     });
 });

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const rtdSchema = new mongoose.Schema({
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     rtdId: { type: String, required: true, unique: true },
     shipmentId: { type: String, required: true },
 

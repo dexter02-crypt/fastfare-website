@@ -60,7 +60,12 @@ router.post('/login', async (req, res) => {
 // ─── POST /api/partner-auth/register ───
 router.post('/register', async (req, res) => {
     try {
-        const { name, phone, email, password, businessName, zone, address, city, state, aadhaar } = req.body;
+        const {
+            name, phone, email, password, businessName,
+            zone, address, city, state, aadhaar,
+            gstin, panNumber, fleetDetails, serviceZones,
+            supportedTypes, baseFare, perKgRate, webhookUrl, features
+        } = req.body;
 
         if (!phone || !password || !name) {
             return res.status(400).json({ success: false, message: 'Name, phone, and password are required' });
@@ -83,10 +88,20 @@ router.post('/register', async (req, res) => {
             email: email || `${phone}@partner.fastfare.com`,
             password,
             role: 'shipment_partner',
-            gstin: `PARTNER${phone.slice(-10)}`,
+            gstin: gstin || `PARTNER${phone.slice(-10)}`,
             businessType: 'logistics',
             isVerified: true,
-            partnerDetails: { zone, address, city, state, aadhaar }
+            partnerDetails: {
+                zone, address, city, state, aadhaar,
+                fleetDetails: fleetDetails || { totalVehicles: 0, vehicleTypes: [] },
+                serviceZones: serviceZones || [],
+                supportedTypes: supportedTypes || ['standard'],
+                baseFare: baseFare || 99,
+                perKgRate: perKgRate || 10,
+                webhookUrl: webhookUrl || '',
+                features: features || [],
+                status: 'pending_approval'
+            }
         });
 
         const token = generateToken(user._id);

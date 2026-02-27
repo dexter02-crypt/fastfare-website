@@ -18,7 +18,6 @@ type RoleType = "user" | "shipment_partner" | "admin";
 const roles = [
   { id: "user" as RoleType, label: "User", icon: User, description: "Business Customer" },
   { id: "shipment_partner" as RoleType, label: "Partner", icon: Truck, description: "Delivery Partner" },
-  { id: "admin" as RoleType, label: "Admin", icon: Shield, description: "System Admin" },
 ];
 
 const Login = () => {
@@ -148,7 +147,7 @@ const Login = () => {
           </p>
 
           {/* Role Selector */}
-          <div className="grid grid-cols-3 gap-2 mb-6">
+          <div className="grid grid-cols-2 gap-2 mb-6">
             {roles.map((role) => (
               <button
                 key={role.id}
@@ -237,12 +236,7 @@ const Login = () => {
             </Button>
           </form>
 
-          {/* Admin hint */}
-          {selectedRole === "admin" && (
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-              <strong>Admin Access:</strong> admin@fastfare.com / Admin@123
-            </div>
-          )}
+
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             New to FastFare?{" "}

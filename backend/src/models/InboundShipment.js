@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const inboundShipmentSchema = new mongoose.Schema({
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     shipmentId: { type: String, required: true, unique: true },
     provider: { type: String },
     expectedArrival: { type: Date },
