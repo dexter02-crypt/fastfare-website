@@ -36,6 +36,7 @@ interface CarrierData {
         approvedAt?: string;
     };
     createdAt: string;
+    status?: string;
 }
 
 const AdminCarriers = () => {
@@ -179,7 +180,7 @@ const AdminCarriers = () => {
                                                 <div className="flex items-center gap-2">
                                                     <Building2 className="h-5 w-5 text-primary" />
                                                     <h3 className="font-semibold text-lg">{carrier.businessName}</h3>
-                                                    {getStatusBadge(carrier.partnerDetails?.status || "pending_approval")}
+                                                    {getStatusBadge(carrier.status || carrier.partnerDetails?.status || "pending_approval")}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground mt-1 flex items-center gap-4">
                                                     <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {carrier.email}</span>
@@ -246,7 +247,7 @@ const AdminCarriers = () => {
                                         )}
 
                                         {/* Actions */}
-                                        {carrier.partnerDetails?.status === "pending_approval" && (
+                                        {(carrier.status || carrier.partnerDetails?.status) === "pending_approval" && (
                                             <div className="flex items-center gap-3 pt-3 border-t">
                                                 <Button
                                                     className="flex-1 bg-green-600 hover:bg-green-700"
