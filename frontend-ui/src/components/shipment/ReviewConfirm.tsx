@@ -302,36 +302,20 @@ const ReviewConfirm = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span>Shipping Charges</span>
-              <span>₹{shippingCost}</span>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between items-center text-muted-foreground">
+              <span>Payment Method</span>
+              <span className="font-medium text-foreground">Cash on Delivery (COD)</span>
             </div>
-            {insuranceCost > 0 && (
-              <div className="flex justify-between">
-                <span>Insurance</span>
-                <span>₹{insuranceCost}</span>
+            {packages.codAmount > 0 && (
+              <div className="flex justify-between items-center text-muted-foreground">
+                <span>COD Amount to Collect</span>
+                <span className="font-medium text-foreground">₹{packages.codAmount}</span>
               </div>
             )}
-            {fragileCost > 0 && (
-              <div className="flex justify-between">
-                <span>Fragile Handling</span>
-                <span>₹{fragileCost}</span>
-              </div>
-            )}
-            {signatureCost > 0 && (
-              <div className="flex justify-between">
-                <span>Signature Required</span>
-                <span>₹{signatureCost}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>GST (18%)</span>
-              <span>₹{Math.round(totalCost * 0.18)}</span>
-            </div>
             <Separator />
-            <div className="flex justify-between font-semibold text-base">
-              <span>Total Amount</span>
+            <div className="flex justify-between items-center font-bold text-lg">
+              <span>Total Shipping Charges (Inc. GST)</span>
               <span className="text-primary">
                 ₹{Math.round(totalCost * 1.18)}
               </span>

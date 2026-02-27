@@ -40,7 +40,8 @@ interface CarrierOption {
 
 const serviceTypes = [
   { id: "express", name: "Express Delivery", description: "Guaranteed within 12 hours", icon: Zap, multiplier: 1.5 },
-  { id: "standard", name: "Standard Delivery", description: "Regular delivery within 3-5 business days", icon: Truck, multiplier: 1 },
+  // TEMPORARILY HIDDEN
+  // { id: "standard", name: "Standard Delivery", description: "Regular delivery within 3-5 business days", icon: Truck, multiplier: 1 },
 ];
 
 const logoColors = ["🔵", "🔴", "🟣", "🟠", "🟢", "🟤", "⚫"];

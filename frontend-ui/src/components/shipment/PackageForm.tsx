@@ -243,7 +243,7 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
         />
       </div>
 
-      {/* Payment Mode */}
+      {/* Payment Mode - TEMPORARILY HIDDEN (Only COD active) 
       <div className="space-y-3">
         <Label className="text-base font-semibold">Payment Mode</Label>
         <RadioGroup
@@ -251,6 +251,7 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
           onValueChange={(value) => handleChange("paymentMode", value)}
           className="grid grid-cols-1 gap-4"
         >
+          {/* TEMPORARILY HIDDEN 
           <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'razorpay' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
             <RadioGroupItem value="razorpay" id="razorpay" />
             <Label htmlFor="razorpay" className="cursor-pointer">
@@ -270,6 +271,7 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
               </span>
             </Label>
           </div>
+          * /}
 
           <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'cod' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
             <RadioGroupItem value="cod" id="cod" />
@@ -285,6 +287,10 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
             </Label>
           </div>
         </RadioGroup>
+      */}
+
+      {/* Show COD Amount Input immediately if COD is the default (which it is) */}
+      <div className="space-y-3">
 
         {data.paymentMode === 'cod' && (
           <div className="mt-4 p-4 border rounded-lg bg-orange-50 border-orange-200">

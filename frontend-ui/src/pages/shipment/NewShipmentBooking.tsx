@@ -57,7 +57,7 @@ const initialPackageData = {
   ],
   contentType: "",
   description: "",
-  paymentMode: "razorpay",
+  paymentMode: "cod",
   codAmount: 0,
   insurance: false,
 };
