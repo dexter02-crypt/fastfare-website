@@ -150,24 +150,8 @@ const Register = () => {
             ))}
           </div>
 
-          {/* Admin Notice */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="mt-6 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg"
-          >
-            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-              <Shield className="h-4 w-4" />
-              <span className="text-sm font-medium">Admin Access</span>
-            </div>
-            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-              Admin accounts are created by system administrators only.{" "}
-              <Link to="/login" className="underline hover:no-underline">
-                Login as admin
-              </Link>
-            </p>
-          </motion.div>
+
+
 
           <p className="text-center text-sm text-muted-foreground mt-8">
             Already have an account?{" "}

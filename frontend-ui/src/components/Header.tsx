@@ -300,7 +300,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
             </nav>
 
             <div className="hidden md:flex items-center gap-4">
-              <Link to="/tracking">
+              <Link to="/track">
                 <Button variant="ghost" size="sm" className="gap-1">
                   <Package className="h-4 w-4" />
                   Track Orders

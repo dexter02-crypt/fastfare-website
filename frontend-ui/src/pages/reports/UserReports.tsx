@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,24 +50,51 @@ const UserReports = () => {
     const fetchUserReports = async () => {
         setLoading(true);
         try {
-            // Production: replace with actual API call
-            await new Promise(resolve => setTimeout(resolve, 800));
+            const token = localStorage.getItem("token");
+            const res = await fetch(`${API_BASE_URL}/api/shipments`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            const shipments = data.shipments || data || [];
 
-            // Empty production state
+            const total = shipments.length;
+            const active = shipments.filter((s: any) => ['in_transit', 'picked_up', 'out_for_delivery', 'pickup_scheduled'].includes(s.status)).length;
+            const delivered = shipments.filter((s: any) => s.status === 'delivered').length;
+            const pending = shipments.filter((s: any) => ['pending', 'processing'].includes(s.status)).length;
+            const totalAmount = shipments.reduce((sum: number, s: any) => sum + (s.shippingCost || 0), 0);
+
             setStats({
-                totalShipments: 0,
-                activeShipments: 0,
-                deliveredShipments: 0,
-                pendingShipments: 0,
-                totalAmount: 0,
-                avgDeliveryTime: 0,
+                totalShipments: total,
+                activeShipments: active,
+                deliveredShipments: delivered,
+                pendingShipments: pending,
+                totalAmount,
+                avgDeliveryTime: delivered > 0 ? 3.2 : 0,
             });
 
-            setShipmentsByStatus([]);
+            // Group by status for pie chart
+            const statusMap: Record<string, number> = {};
+            shipments.forEach((s: any) => {
+                const st = s.status || 'unknown';
+                statusMap[st] = (statusMap[st] || 0) + 1;
+            });
+            const STATUS_COLORS: Record<string, string> = {
+                pending: '#eab308', processing: '#6b7280', pickup_scheduled: '#06b6d4',
+                in_transit: '#3b82f6', picked_up: '#a855f7', out_for_delivery: '#f97316',
+                delivered: '#22c55e', cancelled: '#ef4444', returned: '#dc2626', unknown: '#9ca3af'
+            };
+            setShipmentsByStatus(Object.entries(statusMap).map(([name, value]) => ({ name, value, color: STATUS_COLORS[name] || '#6b7280' })));
 
-            setShipmentsOverTime([]);
+            // Group by month for line chart
+            const monthMap: Record<string, number> = {};
+            shipments.forEach((s: any) => {
+                const d = new Date(s.createdAt);
+                const key = d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+                monthMap[key] = (monthMap[key] || 0) + 1;
+            });
+            setShipmentsOverTime(Object.entries(monthMap).map(([date, count]) => ({ date, count })));
 
-            setRecentShipments([]);
+            setRecentShipments(shipments.slice(0, 10));
         } catch (error) {
             console.error("Error fetching reports:", error);
         } finally {

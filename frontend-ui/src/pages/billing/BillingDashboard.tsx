@@ -109,12 +109,10 @@ const BillingDashboard = () => {
             <p className="text-muted-foreground">Manage your wallet, invoices, and payments</p>
           </div>
           <div className="flex gap-3">
-            <Link to="/billing/recharge">
-              <Button className="gap-2 gradient-primary">
-                <Plus className="h-4 w-4" />
-                Add Funds
-              </Button>
-            </Link>
+            <Button className="gap-2 gradient-primary" onClick={() => toast({ title: "Coming Soon", description: "Wallet recharge will be available soon!" })}>
+              <Plus className="h-4 w-4" />
+              Add Funds
+            </Button>
           </div>
         </div>
 

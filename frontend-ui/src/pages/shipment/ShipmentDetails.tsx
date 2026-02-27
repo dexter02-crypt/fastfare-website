@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "@/config";
-import { generateShippingLabelHTML, generateTaxInvoiceHTML } from "@/utils/documentGenerators";
+import { generateShippingLabelHTML, generateTaxInvoiceHTML, generateManifestHTML } from "@/utils/documentGenerators";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -153,6 +153,16 @@ const ShipmentDetails = () => {
     }
   };
 
+  const handleDownloadManifest = () => {
+    if (!shipment) return;
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const manifestWindow = window.open('', '_blank', 'width=900,height=700');
+    if (manifestWindow) {
+      manifestWindow.document.write(generateManifestHTML([shipment], user.businessName || 'Business Customer', 'FastFare Logistics'));
+      manifestWindow.document.close();
+    }
+  };
+
   const handleShare = () => {
     const shareUrl = `${window.location.origin}/tracking/${shipment.awb}`;
     navigator.clipboard.writeText(shareUrl);
@@ -280,6 +290,9 @@ const ShipmentDetails = () => {
             </Button>
             <Button variant="outline" size="sm" onClick={handleDownloadInvoice}>
               <Download className="h-4 w-4 mr-2" /> Invoice
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadManifest}>
+              <FileText className="h-4 w-4 mr-2" /> Manifest
             </Button>
             <Button variant="outline" size="sm" onClick={handleShare}>
               <Share2 className="h-4 w-4 mr-2" /> Share

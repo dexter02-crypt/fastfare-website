@@ -104,6 +104,7 @@ import FinancialSetup from "./pages/settings/FinancialSetup";
 
 // Returns
 import ReturnsDashboard from "./pages/returns/ReturnsDashboard";
+import CreateReturn from "./pages/returns/CreateReturn";
 
 // Legal — Seller/User Policies
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
@@ -286,6 +287,7 @@ const App = () => (
 
             {/* Returns */}
             <Route path="/returns" element={<ProtectedRoute><ReturnsDashboard /></ProtectedRoute>} />
+            <Route path="/returns/create" element={<ProtectedRoute><CreateReturn /></ProtectedRoute>} />
 
             {/* Admin */}
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />

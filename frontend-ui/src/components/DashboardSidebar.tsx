@@ -183,11 +183,7 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                         // Regular user filtering - show full feature set (same as partner + user-specific)
                         if (user?.role === 'user') {
                             const userAllowed = [
-                                "Dashboard", "Shipments", "My Orders", "Orders", "Tracking", "Rates", "Returns", "Wallet", "Settlement", "My Reports", "Settings", "Help Center",
-                                // Fleet & tracking
-                                "Fleet", "Fleet View", "Activity", "Fleet Tracking",
-                                // WMS items
-                                "Warehouse Hub", "WMS Fleet", "Inventory", "Inbound", "RTD Returns", "Live Tracking", "WMS Reports"
+                                "Dashboard", "Shipments", "My Orders", "Tracking", "Rates", "Returns", "Wallet", "My Reports", "Settings", "Help Center",
                             ];
                             return userAllowed.includes(item.label);
                         }
