@@ -1,3 +1,4 @@
+import { calculateInvoiceBreakdown } from "@/utils/discountEngine";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -295,9 +296,7 @@ const ReviewConfirm = ({
 
       {/* Price Summary */}
       {(() => {
-        const grossTotal = Math.round(totalCost * 1.18);
-        const promoDiscount = grossTotal > 500 ? grossTotal - 500 : 0;
-        const finalPayable = grossTotal > 500 ? 500 : grossTotal;
+        const breakdown = calculateInvoiceBreakdown(shippingCost);
         return (
           <Card className="bg-primary/5 border-primary/20">
             <CardHeader className="pb-3">
@@ -307,7 +306,8 @@ const ReviewConfirm = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3 text-sm">
+              <div className="space-y-2.5 text-sm">
+                {/* Payment Method */}
                 <div className="flex justify-between items-center text-muted-foreground">
                   <span>Payment Method</span>
                   <div className="flex items-center gap-2">
@@ -322,25 +322,45 @@ const ReviewConfirm = ({
                   </div>
                 )}
                 <Separator />
+                {/* Line items */}
                 <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Gross Total (Inc. GST 18%)</span>
-                  <span className="font-medium text-foreground">₹{grossTotal}</span>
+                  <span>Base Fare</span>
+                  <span className="font-medium text-foreground">₹{breakdown.baseFare}</span>
                 </div>
-                {promoDiscount > 0 && (
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Platform Fee (20%)</span>
+                  <span className="font-medium text-foreground">₹{breakdown.platformFee}</span>
+                </div>
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Fast Fare Commission (16%)</span>
+                  <span className="font-medium text-foreground">₹{breakdown.commission}</span>
+                </div>
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Fixed Fee</span>
+                  <span className="font-medium text-foreground">₹{breakdown.fixedFee}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center font-semibold">
+                  <span>Gross Total</span>
+                  <span>₹{breakdown.grossTotal}</span>
+                </div>
+                {/* Auto Promo Discount */}
+                {breakdown.discount > 0 && (
                   <>
                     <div className="flex justify-between items-center text-green-600">
-                      <span className="flex items-center gap-1">Promotional Discount <span className="text-xs">✅ Applied</span></span>
-                      <span className="font-semibold">−₹{promoDiscount}</span>
+                      <span className="flex items-center gap-1">✅ Promotional Discount (Auto)</span>
+                      <span className="font-semibold">−₹{breakdown.discount}</span>
                     </div>
-                    <div className="text-xs text-green-600 bg-green-50 rounded-md px-3 py-1.5">
-                      🎉 Special offer auto-applied — You save ₹{promoDiscount}
+                    <div className="text-xs text-gray-500 bg-green-50 rounded-md px-3 py-1.5">
+                      🎉 Special offer auto-applied • You save ₹{breakdown.discount}
                     </div>
                   </>
                 )}
                 <Separator />
-                <div className="flex justify-between items-center font-bold text-lg">
-                  <span>Amount Payable</span>
-                  <span className="text-primary">₹{finalPayable}</span>
+                {/* Final Amount */}
+                <div className="flex justify-between items-center font-bold text-lg bg-primary/10 rounded-lg px-3 py-2 -mx-1">
+                  <span>AMOUNT PAYABLE</span>
+                  <span className="text-primary text-xl">₹{breakdown.finalPayable}</span>
                 </div>
               </div>
             </CardContent>

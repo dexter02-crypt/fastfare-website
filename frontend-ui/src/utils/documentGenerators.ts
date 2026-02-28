@@ -192,15 +192,12 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
 
   const baseFare = shipment.shippingCost || 0;
   const platformFee = Math.round(baseFare * 0.20 * 100) / 100;
-  const commission = shipment.platformFee || Math.round(baseFare * 0.05 * 100) / 100;
+  const commission = shipment.platformFee || Math.round(baseFare * 0.16 * 100) / 100;
   const fixedFee = 120;
   const grossTotal = Math.round((baseFare + platformFee + commission + fixedFee) * 100) / 100;
-  const igstRate = 18;
-  const igstAmount = Math.round(grossTotal * igstRate / 100 * 100) / 100;
-  const grossWithGst = Math.round((grossTotal + igstAmount) * 100) / 100;
   // Auto-applied promo: final payable = ₹500 (when gross > 500)
-  const promoDiscount = grossWithGst > 500 ? Math.round((grossWithGst - 500) * 100) / 100 : 0;
-  const totalAmount = grossWithGst > 500 ? 500 : grossWithGst;
+  const promoDiscount = grossTotal > 500 ? Math.round((grossTotal - 500) * 100) / 100 : 0;
+  const totalAmount = grossTotal > 500 ? 500 : grossTotal;
   const isPaid = shipment.status === 'delivered' || shipment.paymentMode === 'prepaid' || shipment.paymentMode === 'razorpay';
 
   const placeOfSupply = shipment.delivery?.state || shipment.pickup?.state || 'Haryana';
@@ -326,17 +323,9 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
             <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Gross Total</td>
             <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${grossTotal.toFixed(2)}</td>
           </tr>
-          <tr>
-            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Add: GST @${igstRate}%</td>
-            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${igstAmount.toFixed(2)}</td>
-          </tr>
-          <tr>
-            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee; font-weight: 600;">Gross Total (Inc. GST)</td>
-            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee; font-weight: 600;">₹${grossWithGst.toFixed(2)}</td>
-          </tr>
           ${promoDiscount > 0 ? `<tr>
             <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee; color: #16a34a;">
-              Promotional Discount<br><span style="font-size:10px;color:#22c55e;">(Auto-applied offer)</span>
+              Promotional Discount (Auto-Applied)
             </td>
             <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee; color: #16a34a; font-weight:600;">−₹${promoDiscount.toFixed(2)}</td>
           </tr>` : ''}

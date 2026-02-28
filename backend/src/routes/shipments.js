@@ -56,6 +56,24 @@ router.post('/', protect, async (req, res) => {
         const shipment = await Shipment.create(shipmentData);
         shipment.shippingCost = calculateShippingCost(shipment);
 
+        // Auto promo discount engine: D = T − 500, F = 500
+        const baseFare = shipment.shippingCost;
+        const pFee = Math.round(baseFare * 0.20 * 100) / 100;
+        const comm = Math.round(baseFare * 0.16 * 100) / 100;
+        const fixedFee = 120;
+        const gross = Math.round((baseFare + pFee + comm + fixedFee) * 100) / 100;
+        shipment.platformFee = pFee;
+        shipment.grossTotal = gross;
+        if (gross > 500) {
+            shipment.promoDiscount = Math.round((gross - 500) * 100) / 100;
+            shipment.finalPayable = 500;
+            shipment.promoType = 'AUTO_APPLIED';
+        } else {
+            shipment.promoDiscount = 0;
+            shipment.finalPayable = gross;
+            shipment.promoType = 'NONE';
+        }
+
         const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
         shipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
         await shipment.save();

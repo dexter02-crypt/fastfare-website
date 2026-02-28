@@ -90,6 +90,10 @@ const shipmentSchema = new mongoose.Schema({
     totalValue: Number,
     shippingCost: Number,
     platformFee: { type: Number, default: 0 },
+    grossTotal: { type: Number, default: 0 },
+    promoDiscount: { type: Number, default: 0 },
+    finalPayable: { type: Number, default: 0 },
+    promoType: { type: String, enum: ['AUTO_APPLIED', 'NONE', null], default: null },
     sellerEarning: { type: Number, default: 0 },
     settlementStatus: {
         type: String,
