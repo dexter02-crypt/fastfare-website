@@ -304,9 +304,11 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
               onChange={(e) => handleChange("codAmount", parseInt(e.target.value) || 0)}
               placeholder="e.g. 500"
             />
-            <p className="text-xs text-orange-700 mt-2">
-              Note: An additional 2% or ₹50 (whichever is higher) collection fee will be charged to your account.
-            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                ✅ No extra charges for COD
+              </span>
+            </div>
           </div>
         )}
       </div>

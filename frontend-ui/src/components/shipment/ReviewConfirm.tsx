@@ -294,35 +294,59 @@ const ReviewConfirm = ({
       </Card>
 
       {/* Price Summary */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-primary" />
-            Payment Summary
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center text-muted-foreground">
-              <span>Payment Method</span>
-              <span className="font-medium text-foreground">Cash on Delivery (COD)</span>
-            </div>
-            {packages.codAmount > 0 && (
-              <div className="flex justify-between items-center text-muted-foreground">
-                <span>COD Amount to Collect</span>
-                <span className="font-medium text-foreground">₹{packages.codAmount}</span>
+      {(() => {
+        const grossTotal = Math.round(totalCost * 1.18);
+        const promoDiscount = grossTotal > 500 ? grossTotal - 500 : 0;
+        const finalPayable = grossTotal > 500 ? 500 : grossTotal;
+        return (
+          <Card className="bg-primary/5 border-primary/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-primary" />
+                Payment Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Payment Method</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground">Cash on Delivery (COD)</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-medium">✅ No extra charges</span>
+                  </div>
+                </div>
+                {packages.codAmount > 0 && (
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>COD Amount to Collect</span>
+                    <span className="font-medium text-foreground">₹{packages.codAmount}</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span>Gross Total (Inc. GST 18%)</span>
+                  <span className="font-medium text-foreground">₹{grossTotal}</span>
+                </div>
+                {promoDiscount > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-green-600">
+                      <span className="flex items-center gap-1">Promotional Discount <span className="text-xs">✅ Applied</span></span>
+                      <span className="font-semibold">−₹{promoDiscount}</span>
+                    </div>
+                    <div className="text-xs text-green-600 bg-green-50 rounded-md px-3 py-1.5">
+                      🎉 Special offer auto-applied — You save ₹{promoDiscount}
+                    </div>
+                  </>
+                )}
+                <Separator />
+                <div className="flex justify-between items-center font-bold text-lg">
+                  <span>Amount Payable</span>
+                  <span className="text-primary">₹{finalPayable}</span>
+                </div>
               </div>
-            )}
-            <Separator />
-            <div className="flex justify-between items-center font-bold text-lg">
-              <span>Total Shipping Charges (Inc. GST)</span>
-              <span className="text-primary">
-                ₹{Math.round(totalCost * 1.18)}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Terms and Conditions */}
       <div className="flex items-start gap-3 p-4 border rounded-lg">

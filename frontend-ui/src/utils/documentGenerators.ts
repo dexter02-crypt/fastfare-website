@@ -190,12 +190,17 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
   const invoiceDate = new Date(shipment.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
-  const shippingCost = shipment.shippingCost || 0;
-  const platformFee = shipment.platformFee || 0;
-  const taxableValue = shippingCost;
+  const baseFare = shipment.shippingCost || 0;
+  const platformFee = Math.round(baseFare * 0.20 * 100) / 100;
+  const commission = shipment.platformFee || Math.round(baseFare * 0.05 * 100) / 100;
+  const fixedFee = 120;
+  const grossTotal = Math.round((baseFare + platformFee + commission + fixedFee) * 100) / 100;
   const igstRate = 18;
-  const igstAmount = Math.round(taxableValue * igstRate / 100 * 100) / 100;
-  const totalAmount = taxableValue + igstAmount;
+  const igstAmount = Math.round(grossTotal * igstRate / 100 * 100) / 100;
+  const grossWithGst = Math.round((grossTotal + igstAmount) * 100) / 100;
+  // Auto-applied promo: final payable = ₹500 (when gross > 500)
+  const promoDiscount = grossWithGst > 500 ? Math.round((grossWithGst - 500) * 100) / 100 : 0;
+  const totalAmount = grossWithGst > 500 ? 500 : grossWithGst;
   const isPaid = shipment.status === 'delivered' || shipment.paymentMode === 'prepaid' || shipment.paymentMode === 'razorpay';
 
   const placeOfSupply = shipment.delivery?.state || shipment.pickup?.state || 'Haryana';
@@ -273,80 +278,85 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
           <th style="text-align:left;">Description</th>
           <th style="width:40px; text-align:center;">Qty</th>
           <th style="width:70px; text-align:center;">HSN/SAC</th>
-          <th style="width:80px; text-align:right;">Rate (₹)</th>
-          <th style="width:80px; text-align:right;">Discount (₹)</th>
-          <th style="width:90px; text-align:right;">Taxable Value (₹)</th>
-          <th style="width:60px; text-align:center;">GST %</th>
-          <th style="width:80px; text-align:right;">GST Amt (₹)</th>
-          <th style="width:80px; text-align:right;">Total (₹)</th>
+          <th style="width:100px; text-align:right;">Amount (₹)</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td style="text-align:center;">1</td>
           <td>
-            <strong>Courier Freight Charges — ${shipment.serviceType ? shipment.serviceType.charAt(0).toUpperCase() + shipment.serviceType.slice(1) : 'Express'} Delivery</strong><br>
+            <strong>Base Fare — ${shipment.serviceType ? shipment.serviceType.charAt(0).toUpperCase() + shipment.serviceType.slice(1) : 'Express'} Delivery</strong><br>
             <span style="color:#888;font-size:10px">Carrier: ${shipment.carrier || 'FastFare'} | AWB: ${shipment.awb || '—'}</span>
           </td>
           <td style="text-align:center;">1</td>
           <td style="text-align:center;">996812</td>
-          <td style="text-align:right;">${(taxableValue / 0.59).toFixed(2)}</td>
-          <td style="text-align:right;">${((taxableValue / 0.59) - taxableValue).toFixed(2)}</td>
-          <td style="text-align:right;">${taxableValue.toFixed(2)}</td>
-          <td style="text-align:center;">${igstRate}%</td>
-          <td style="text-align:right;">${igstAmount.toFixed(2)}</td>
-          <td style="text-align:right;">${(taxableValue + igstAmount).toFixed(2)}</td>
+          <td style="text-align:right;">${baseFare.toFixed(2)}</td>
         </tr>
-        ${platformFee > 0 ? `
         <tr>
           <td style="text-align:center;">2</td>
-          <td><strong>Platform Fee</strong><br><span style="color:#888;font-size:10px">Transaction processing fee</span></td>
+          <td><strong>Platform Fee (20%)</strong><br><span style="color:#888;font-size:10px">Service platform charge</span></td>
           <td style="text-align:center;">1</td>
           <td style="text-align:center;">998599</td>
           <td style="text-align:right;">${platformFee.toFixed(2)}</td>
-          <td style="text-align:right;">0.00</td>
-          <td style="text-align:right;">${platformFee.toFixed(2)}</td>
-          <td style="text-align:center;">${igstRate}%</td>
-          <td style="text-align:right;">${(Math.round(platformFee * igstRate / 100 * 100) / 100).toFixed(2)}</td>
-          <td style="text-align:right;">${(platformFee + Math.round(platformFee * igstRate / 100 * 100) / 100).toFixed(2)}</td>
-        </tr>` : ''}
+        </tr>
+        <tr>
+          <td style="text-align:center;">3</td>
+          <td><strong>FastFare Commission</strong><br><span style="color:#888;font-size:10px">Logistics commission</span></td>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:center;">998599</td>
+          <td style="text-align:right;">${commission.toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td style="text-align:center;">4</td>
+          <td><strong>Fixed Fee</strong><br><span style="color:#888;font-size:10px">Processing & handling</span></td>
+          <td style="text-align:center;">1</td>
+          <td style="text-align:center;">998599</td>
+          <td style="text-align:right;">${fixedFee.toFixed(2)}</td>
+        </tr>
       </tbody>
     </table>
 
     <div style="display:flex; justify-content: flex-end; margin-top:24px;">
-      <div style="width: 350px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden;">
+      <div style="width: 380px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden;">
         <div style="background: ${BRAND_COLOR}; color: white; padding: 10px 16px; font-weight: bold; font-size: 13px;">
-          💰 Summary Section
+          💰 Invoice Summary
         </div>
         <table style="border:0; width: 100%; font-size: 12px; margin:0;">
           <tr>
-            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Gross Service Value</td>
-            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">${(taxableValue / 0.59 + platformFee).toFixed(2)}</td>
-          </tr>
-          <tr>
-            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee; color: #16a34a;">Less: Promotional Discount</td>
-            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee; color: #16a34a;">−${((taxableValue / 0.59) - taxableValue).toFixed(2)}</td>
-          </tr>
-          <tr>
-            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee; font-weight: 600;">Taxable Value</td>
-            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee; font-weight: 600;">${(taxableValue + platformFee).toFixed(2)}</td>
+            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Gross Total</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${grossTotal.toFixed(2)}</td>
           </tr>
           <tr>
             <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Add: GST @${igstRate}%</td>
-            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">${(igstAmount + (platformFee > 0 ? Math.round(platformFee * igstRate / 100 * 100) / 100 : 0)).toFixed(2)}</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${igstAmount.toFixed(2)}</td>
           </tr>
+          <tr>
+            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee; font-weight: 600;">Gross Total (Inc. GST)</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee; font-weight: 600;">₹${grossWithGst.toFixed(2)}</td>
+          </tr>
+          ${promoDiscount > 0 ? `<tr>
+            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee; color: #16a34a;">
+              Promotional Discount<br><span style="font-size:10px;color:#22c55e;">(Auto-applied offer)</span>
+            </td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee; color: #16a34a; font-weight:600;">−₹${promoDiscount.toFixed(2)}</td>
+          </tr>` : ''}
           <tr style="background: #f0f4ff;">
-            <td style="padding:12px 16px; border:0; font-weight:bold; color: ${BRAND_COLOR}; font-size: 14px;">Total Invoice Amount</td>
+            <td style="padding:12px 16px; border:0; font-weight:bold; color: ${BRAND_COLOR}; font-size: 14px;">AMOUNT PAYABLE</td>
             <td style="padding:12px 16px; text-align:right; border:0; font-weight:bold; color: ${BRAND_COLOR}; font-size: 14px;">₹${totalAmount.toFixed(2)}</td>
           </tr>
         </table>
       </div>
     </div>
 
+    <div style="margin-top:12px; text-align:right; font-size:11px; color:#888;">
+      INR ${numberToWords(Math.round(totalAmount))} Only
+    </div>
+
     <div style="margin-top:16px; font-size:11px; color:#666;">
       <p style="margin:2px 0;"><strong>Note:</strong></p>
-      <p style="margin:2px 0;">Promotional discount applied as per FastFare offer.</p>
-      <p style="margin:2px 0;">GST charged on net taxable value after discount.</p>
+      <p style="margin:2px 0;">Promotional discount auto-applied as per FastFare offer. No promo code required.</p>
+      <p style="margin:2px 0;">GST charged on net service value before discount.</p>
+      ${shipment.paymentMode === 'cod' ? '<p style="margin:2px 0;">Payment mode: Cash on Delivery — No additional COD charges applied.</p>' : ''}
     </div>
 
     <!-- Amount Due -->
@@ -355,7 +365,7 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
         Amount Due
         <span class="badge ${isPaid ? 'badge-paid' : 'badge-unpaid'}" style="font-size: 11px; padding: 2px 8px;">${isPaid ? 'PAID' : 'UNPAID'}</span>
       </div>
-      <div style="font-size:18px;font-weight:bold;color:${isPaid ? '#166534' : '#92400e'}">₹${isPaid ? '0.00' : totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+      <div style="font-size:18px;font-weight:bold;color:${isPaid ? '#166534' : '#92400e'}">₹${isPaid ? '0.00' : totalAmount.toFixed(2)}</div>
     </div>
   </div>
 
@@ -409,17 +419,15 @@ export const generateShippingLabelHTML = (shipment: LabelShipment, masked: boole
     ? `${packages[0].length || 0}×${packages[0].width || 0}×${packages[0].height || 0} cm`
     : '—';
 
-  const deliveryPhone = masked ? maskPhone(shipment.delivery?.phone || '') : (shipment.delivery?.phone || '—');
-  const pickupPhone = masked ? maskPhone(shipment.pickup?.phone || '') : (shipment.pickup?.phone || '—');
+  // Always mask phone numbers
+  const deliveryPhone = maskPhone(shipment.delivery?.phone || '');
+  const pickupPhone = maskPhone(shipment.pickup?.phone || '');
 
-  // Build masked product rows
+  // Build product rows — ALL amounts always masked with XXXXX
   const productRows = packages.map((pkg) => {
     const sku = `SKU-${(pkg._id || pkg.id || '000').toString().slice(-8).toUpperCase()}`;
     const qty = pkg.quantity || 1;
-    const price = pkg.value || 0;
-    const displayName = masked ? maskName(pkg.name || 'Package') : (pkg.name || 'Package');
-    const displayPrice = masked ? maskAmount(price) : `₹${price.toLocaleString('en-IN')}`;
-    const displayTotal = masked ? maskAmount(qty * price) : `₹${(qty * price).toLocaleString('en-IN')}`;
+    const displayName = maskName(pkg.name || 'Package');
     return `
       <tr style="border-bottom:1px solid #000">
         <td style="padding:4px;border-right:1px solid #000;text-align:left">
@@ -427,14 +435,12 @@ export const generateShippingLabelHTML = (shipment: LabelShipment, masked: boole
           <div style="font-size:10px;color:#666">SKU: ${sku}</div>
         </td>
         <td style="padding:4px;border-right:1px solid #000">${qty}</td>
-        <td style="padding:4px;border-right:1px solid #000">${displayPrice}</td>
-        <td style="padding:4px">${displayTotal}</td>
+        <td style="padding:4px;border-right:1px solid #000">XXXXX</td>
+        <td style="padding:4px">XXXXX</td>
       </tr>
     `;
   }).join('');
 
-  const grandTotal = packages.reduce((s, p) => s + ((p.value || 0) * (p.quantity || 1)), 0);
-  const displayGrandTotal = masked ? maskAmount(grandTotal) : `₹${grandTotal.toLocaleString('en-IN')}`;
   const invoiceDate = new Date(shipment.createdAt || Date.now()).toLocaleDateString('en-IN');
   const serviceType = (shipment.serviceType || 'standard').charAt(0).toUpperCase() + (shipment.serviceType || 'standard').slice(1);
   const carrier = shipment.carrier || 'FastFare';
@@ -509,7 +515,7 @@ th { font-weight: bold; padding: 4px; border-bottom: 1px solid #000; }
   </div>
 </div>
 
-<!-- Product Table (Masked) -->
+<!-- Product Table (All Amounts Masked) -->
 <div class="section" style="border-bottom:2px solid #000">
   <table>
     <thead>
@@ -524,7 +530,7 @@ th { font-weight: bold; padding: 4px; border-bottom: 1px solid #000; }
       ${productRows}
       <tr style="font-weight:bold;background:#f5f5f5">
         <td style="padding:4px;text-align:left;border-right:1px solid #000" colspan="3">Grand Total</td>
-        <td style="padding:4px">${displayGrandTotal}</td>
+        <td style="padding:4px">XXXXX</td>
       </tr>
     </tbody>
   </table>
@@ -534,7 +540,7 @@ th { font-weight: bold; padding: 4px; border-bottom: 1px solid #000; }
 <div class="footer">
   <div style="font-size:10px;color:#888">Powered by FastFare Logistics</div>
   <div style="text-align:right;font-size:10px;color:#888">
-    ${shipment.paymentMode === 'cod' ? `<strong style="color:red;font-size:12px">COD: ₹${(shipment.codAmount || 0).toLocaleString('en-IN')}</strong>` : ''}
+    ${shipment.paymentMode === 'cod' ? `<strong style="color:red;font-size:12px">COD: XXXXX</strong>` : ''}
   </div>
 </div>
 </div>
