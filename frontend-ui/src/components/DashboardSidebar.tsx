@@ -163,8 +163,8 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                         // Admin-only items - hide from non-admins
                         const adminItems = ["Users", "Warehouse", "Drivers", "Bulk Ops", "Fleet", "Fleet Tracking", "Reports", "Analytics", "Partner Mgmt", "Carriers"];
                         if (user?.role !== 'admin' && adminItems.includes(item.label)) {
-                            // Allow shipment_partner and user to see Fleet Tracking and Fleet
-                            if ((user?.role === 'shipment_partner' || user?.role === 'user') && (item.label === "Fleet Tracking" || item.label === "Fleet")) {
+                            // Allow shipment_partner to see Fleet Tracking and Fleet
+                            if (user?.role === 'shipment_partner' && (item.label === "Fleet Tracking" || item.label === "Fleet")) {
                                 return true;
                             }
                             return false;

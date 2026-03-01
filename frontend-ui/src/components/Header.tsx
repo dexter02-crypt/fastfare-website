@@ -190,7 +190,9 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/shipments')}>Shipments</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/analytics')}>Analytics</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/fleet-tracking')}>Fleet</DropdownMenuItem>
+                  {user?.role !== 'user' && (
+                    <DropdownMenuItem onClick={() => navigate('/fleet-tracking')}>Fleet</DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 
