@@ -61,7 +61,7 @@ const PressPage = () => {
                             </p>
                             <div className="flex justify-center gap-3">
                                 <Button variant="outline" className="gap-2">
-                                    <Mail className="h-4 w-4" /> Media Inquiries: press@fastfare.org
+                                    <Mail className="h-4 w-4" /> Media Inquiries: press@fastfare.in
                                 </Button>
                             </div>
                         </div>

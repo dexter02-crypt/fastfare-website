@@ -557,7 +557,7 @@ router.post('/forgot-password', async (req, res) => {
         await user.save({ validateBeforeSave: false });
 
         // Build reset URL
-        const frontendUrl = process.env.FRONTEND_URL || 'https://fastfare.org';
+        const frontendUrl = process.env.FRONTEND_URL || 'https://fastfare.in';
         const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 
         // Send email
@@ -759,7 +759,7 @@ router.post('/send-notification', protect, async (req, res) => {
                         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
                         <p style="color: #999; font-size: 12px; text-align: center;">
                             &copy; ${new Date().getFullYear()} FastFare. All rights reserved.<br/>
-                            <a href="${process.env.FRONTEND_URL || 'https://fastfare.org'}/settings" style="color: #999;">Manage notification preferences</a>
+                            <a href="${process.env.FRONTEND_URL || 'https://fastfare.in'}/settings" style="color: #999;">Manage notification preferences</a>
                         </p>
                     </div>
                 </div>

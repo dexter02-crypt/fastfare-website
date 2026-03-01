@@ -75,7 +75,7 @@ const ApiReferencePage = () => {
                     <div className="mt-12 p-6 bg-muted/50 rounded-xl">
                         <h3 className="font-semibold mb-3 flex items-center gap-2"><Code2 className="h-5 w-5" /> Quick Start Example</h3>
                         <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-sm">
-                            {`curl -X POST https://api.fastfare.org/api/shipments \\
+                            {`curl -X POST https://api.fastfare.in/api/shipments \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{

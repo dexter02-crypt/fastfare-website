@@ -5,7 +5,7 @@
 # ═══════════════════════════════════════════════
 
 set -e
-DOMAIN="fastfare.org"
+DOMAIN="fastfare.in"
 REPO="https://github.com/dexter02-crypt/fastfare-website.git"
 APP_DIR="/var/www/fastfare"
 

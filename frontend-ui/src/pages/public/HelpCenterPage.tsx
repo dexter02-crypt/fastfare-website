@@ -38,7 +38,7 @@ const HelpCenterPage = () => {
                     <div className="grid md:grid-cols-3 gap-6 mb-16">
                         {[
                             { icon: MessageCircle, title: "Live Chat", desc: "Chat with our support team in real-time. Average response time: 2 minutes.", action: "Start Chat", color: "text-green-500" },
-                            { icon: Mail, title: "Email Support", desc: "Send us a detailed query. We respond within 4 business hours.", action: "support@fastfare.org", color: "text-blue-500" },
+                            { icon: Mail, title: "Email Support", desc: "Send us a detailed query. We respond within 4 business hours.", action: "support@fastfare.in", color: "text-blue-500" },
                             { icon: Phone, title: "Phone Support", desc: "Call us Mon-Sat, 9 AM - 7 PM IST for immediate assistance.", action: "+91 1800-XXX-XXXX", color: "text-purple-500" },
                         ].map((item, i) => (
                             <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>

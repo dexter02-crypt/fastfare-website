@@ -90,7 +90,7 @@ const CookiePolicyPage = () => {
                             <li>• Clear all cookies when you close your browser</li>
                         </ul>
                         <p className="text-sm text-muted-foreground mt-4">
-                            For questions about our cookie practices, contact us at <span className="text-primary">privacy@fastfare.org</span>.
+                            For questions about our cookie practices, contact us at <span className="text-primary">privacy@fastfare.in</span>.
                         </p>
                     </div>
                 </section>

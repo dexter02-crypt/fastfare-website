@@ -63,7 +63,7 @@ const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Socket.io setup with CORS
-const WEB_ORIGINS = ['https://fastfare.org', 'https://www.fastfare.org'];
+const WEB_ORIGINS = ['https://fastfare.in', 'https://www.fastfare.in', 'https://fastfare.org', 'https://www.fastfare.org'];
 
 // CORS handler: allows web origins + native mobile apps (no Origin header)
 const corsHandler = process.env.NODE_ENV === 'production'
