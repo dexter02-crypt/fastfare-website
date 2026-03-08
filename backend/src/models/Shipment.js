@@ -75,8 +75,13 @@ const shipmentSchema = new mongoose.Schema({
     assignedVehicle: { type: String, default: null },
     status: {
         type: String,
-        enum: ['pending', 'pending_acceptance', 'accepted', 'rejected_by_carrier', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled', 'returned'],
-        default: 'pending'
+        enum: [
+            // Legacy statuses (kept for backward compatibility with existing records)
+            'pending', 'pending_acceptance', 'accepted', 'rejected_by_carrier', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled', 'returned',
+            // New unified 6-step flow
+            'payment_received', 'partner_assigned', 'pickup', 'settled'
+        ],
+        default: 'payment_received'
     },
     trackingHistory: [{
         status: String,
@@ -91,9 +96,8 @@ const shipmentSchema = new mongoose.Schema({
     shippingCost: Number,
     platformFee: { type: Number, default: 0 },
     grossTotal: { type: Number, default: 0 },
-    promoDiscount: { type: Number, default: 0 },
-    finalPayable: { type: Number, default: 0 },
-    promoType: { type: String, enum: ['AUTO_APPLIED', 'NONE', null], default: null },
+    gstAmount: { type: Number, default: 0 },
+    totalPayable: { type: Number, default: 0 },
     sellerEarning: { type: Number, default: 0 },
     settlementStatus: {
         type: String,

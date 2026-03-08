@@ -190,14 +190,10 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
   const invoiceDate = new Date(shipment.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
-  const baseFare = shipment.shippingCost || 0;
-  const platformFee = Math.round(baseFare * 0.20 * 100) / 100;
-  const commission = shipment.platformFee || Math.round(baseFare * 0.16 * 100) / 100;
-  const fixedFee = 120;
-  const grossTotal = Math.round((baseFare + platformFee + commission + fixedFee) * 100) / 100;
-  // Auto-applied promo: final payable = ₹500 (when gross > 500)
-  const promoDiscount = grossTotal > 500 ? Math.round((grossTotal - 500) * 100) / 100 : 0;
-  const totalAmount = grossTotal > 500 ? 500 : grossTotal;
+  const deliveryFare = shipment.shippingCost || 0;
+  const gstRate = 0.18;
+  const gstAmount = Math.round(deliveryFare * gstRate * 100) / 100;
+  const totalPayable = Math.round((deliveryFare + gstAmount) * 100) / 100;
   const isPaid = shipment.status === 'delivered' || shipment.paymentMode === 'prepaid' || shipment.paymentMode === 'razorpay';
 
   const placeOfSupply = shipment.delivery?.state || shipment.pickup?.state || 'Haryana';
@@ -282,33 +278,12 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
         <tr>
           <td style="text-align:center;">1</td>
           <td>
-            <strong>Base Fare — ${shipment.serviceType ? shipment.serviceType.charAt(0).toUpperCase() + shipment.serviceType.slice(1) : 'Express'} Delivery</strong><br>
+            <strong>Delivery Fare — ${shipment.serviceType ? shipment.serviceType.charAt(0).toUpperCase() + shipment.serviceType.slice(1) : 'Express'} Delivery</strong><br>
             <span style="color:#888;font-size:10px">Carrier: ${shipment.carrier || 'FastFare'} | AWB: ${shipment.awb || '—'}</span>
           </td>
           <td style="text-align:center;">1</td>
           <td style="text-align:center;">996812</td>
-          <td style="text-align:right;">${baseFare.toFixed(2)}</td>
-        </tr>
-        <tr>
-          <td style="text-align:center;">2</td>
-          <td><strong>Platform Fee (20%)</strong><br><span style="color:#888;font-size:10px">Service platform charge</span></td>
-          <td style="text-align:center;">1</td>
-          <td style="text-align:center;">998599</td>
-          <td style="text-align:right;">${platformFee.toFixed(2)}</td>
-        </tr>
-        <tr>
-          <td style="text-align:center;">3</td>
-          <td><strong>FastFare Commission</strong><br><span style="color:#888;font-size:10px">Logistics commission</span></td>
-          <td style="text-align:center;">1</td>
-          <td style="text-align:center;">998599</td>
-          <td style="text-align:right;">${commission.toFixed(2)}</td>
-        </tr>
-        <tr>
-          <td style="text-align:center;">4</td>
-          <td><strong>Fixed Fee</strong><br><span style="color:#888;font-size:10px">Processing & handling</span></td>
-          <td style="text-align:center;">1</td>
-          <td style="text-align:center;">998599</td>
-          <td style="text-align:right;">${fixedFee.toFixed(2)}</td>
+          <td style="text-align:right;">${deliveryFare.toFixed(2)}</td>
         </tr>
       </tbody>
     </table>
@@ -320,31 +295,29 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
         </div>
         <table style="border:0; width: 100%; font-size: 12px; margin:0;">
           <tr>
-            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Gross Total</td>
-            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${grossTotal.toFixed(2)}</td>
+            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Delivery Fare</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${deliveryFare.toFixed(2)}</td>
           </tr>
-          ${promoDiscount > 0 ? `<tr>
-            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee; color: #16a34a;">
-              Promotional Discount (Auto-Applied)
-            </td>
-            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee; color: #16a34a; font-weight:600;">−₹${promoDiscount.toFixed(2)}</td>
-          </tr>` : ''}
+          <tr>
+            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Taxes (GST @18%)</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${gstAmount.toFixed(2)}</td>
+          </tr>
           <tr style="background: #f0f4ff;">
-            <td style="padding:12px 16px; border:0; font-weight:bold; color: ${BRAND_COLOR}; font-size: 14px;">AMOUNT PAYABLE</td>
-            <td style="padding:12px 16px; text-align:right; border:0; font-weight:bold; color: ${BRAND_COLOR}; font-size: 14px;">₹${totalAmount.toFixed(2)}</td>
+            <td style="padding:12px 16px; border:0; font-weight:bold; color: ${BRAND_COLOR}; font-size: 14px;">TOTAL PAYABLE</td>
+            <td style="padding:12px 16px; text-align:right; border:0; font-weight:bold; color: ${BRAND_COLOR}; font-size: 14px;">₹${totalPayable.toFixed(2)}</td>
           </tr>
         </table>
       </div>
     </div>
 
     <div style="margin-top:12px; text-align:right; font-size:11px; color:#888;">
-      INR ${numberToWords(Math.round(totalAmount))} Only
+      INR ${numberToWords(Math.round(totalPayable))} Only
     </div>
 
     <div style="margin-top:16px; font-size:11px; color:#666;">
       <p style="margin:2px 0;"><strong>Note:</strong></p>
-      <p style="margin:2px 0;">Promotional discount auto-applied as per FastFare offer. No promo code required.</p>
-      <p style="margin:2px 0;">GST charged on net service value before discount.</p>
+      <p style="margin:2px 0;">GST @18% charged on delivery fare as per applicable tax regulations.</p>
+      <p style="margin:2px 0;">GSTIN: 06AXXPFXXXX0X1ZX | SAC: 996812</p>
       ${shipment.paymentMode === 'cod' ? '<p style="margin:2px 0;">Payment mode: Cash on Delivery — No additional COD charges applied.</p>' : ''}
     </div>
 
@@ -354,7 +327,7 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
         Amount Due
         <span class="badge ${isPaid ? 'badge-paid' : 'badge-unpaid'}" style="font-size: 11px; padding: 2px 8px;">${isPaid ? 'PAID' : 'UNPAID'}</span>
       </div>
-      <div style="font-size:18px;font-weight:bold;color:${isPaid ? '#166534' : '#92400e'}">₹${isPaid ? '0.00' : totalAmount.toFixed(2)}</div>
+      <div style="font-size:18px;font-weight:bold;color:${isPaid ? '#166534' : '#92400e'}">₹${isPaid ? '0.00' : totalPayable.toFixed(2)}</div>
     </div>
   </div>
 

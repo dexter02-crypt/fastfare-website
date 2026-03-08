@@ -186,8 +186,10 @@ router.post('/record-earning', protect, async (req, res) => {
         const shipment = await Shipment.findById(orderId);
         if (!shipment) return res.status(404).json({ error: 'Order not found' });
 
-        // PartnerPayout = (Distance × PartnerRate) + SlabAdd
-        const earning = Math.round(((distance * partnerRate) + slabAdd) * 100) / 100;
+        // Unified payout: Base Earning + GST @18%
+        const baseEarning = Math.round(((distance * partnerRate) + slabAdd) * 100) / 100;
+        const partnerGst = Math.round(baseEarning * 0.18 * 100) / 100;
+        const totalPayout = Math.round((baseEarning + partnerGst) * 100) / 100;
 
         // Get current balance
         const lastEntry = await PartnerLedger.findOne({ partnerId }).sort({ createdAt: -1 });
@@ -197,22 +199,24 @@ router.post('/record-earning', protect, async (req, res) => {
             partnerId,
             orderId,
             type: 'earning',
-            amount: earning,
-            description: `Delivery earning for ${shipment.awb} — ${distance}km × ₹${partnerRate}/km + ₹${slabAdd} slab`,
+            amount: totalPayout,
+            description: `Delivery earning for ${shipment.awb} — Base ₹${baseEarning} + GST ₹${partnerGst} = ₹${totalPayout}`,
             distance,
             partnerRate,
             slabAdd,
             balanceBefore,
-            balanceAfter: balanceBefore + earning
+            balanceAfter: balanceBefore + totalPayout
         });
 
         res.json({
             success: true,
             earning: {
                 id: entry._id,
-                amount: earning,
+                baseEarning,
+                partnerGst,
+                totalPayout,
                 distance,
-                formula: `(${distance} × ₹${partnerRate}) + ₹${slabAdd} = ₹${earning}`,
+                formula: `(${distance} × ₹${partnerRate}) + ₹${slabAdd} = ₹${baseEarning} base + ₹${partnerGst} GST = ₹${totalPayout}`,
                 currentBalance: entry.balanceAfter
             }
         });

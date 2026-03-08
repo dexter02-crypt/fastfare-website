@@ -322,45 +322,21 @@ const ReviewConfirm = ({
                   </div>
                 )}
                 <Separator />
-                {/* Line items */}
+                {/* Delivery Fare */}
                 <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Base Fare</span>
-                  <span className="font-medium text-foreground">₹{breakdown.baseFare}</span>
+                  <span>Delivery Fare</span>
+                  <span className="font-medium text-foreground">₹{breakdown.deliveryFare.toFixed(2)}</span>
                 </div>
+                {/* GST */}
                 <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Platform Fee (20%)</span>
-                  <span className="font-medium text-foreground">₹{breakdown.platformFee}</span>
-                </div>
-                <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Fast Fare Commission (16%)</span>
-                  <span className="font-medium text-foreground">₹{breakdown.commission}</span>
-                </div>
-                <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Fixed Fee</span>
-                  <span className="font-medium text-foreground">₹{breakdown.fixedFee}</span>
+                  <span>Taxes (GST @18%)</span>
+                  <span className="font-medium text-foreground">₹{breakdown.gstAmount.toFixed(2)}</span>
                 </div>
                 <Separator />
-                <div className="flex justify-between items-center font-semibold">
-                  <span>Gross Total</span>
-                  <span>₹{breakdown.grossTotal}</span>
-                </div>
-                {/* Auto Promo Discount */}
-                {breakdown.discount > 0 && (
-                  <>
-                    <div className="flex justify-between items-center text-green-600">
-                      <span className="flex items-center gap-1">✅ Promotional Discount (Auto)</span>
-                      <span className="font-semibold">−₹{breakdown.discount}</span>
-                    </div>
-                    <div className="text-xs text-gray-500 bg-green-50 rounded-md px-3 py-1.5">
-                      🎉 Special offer auto-applied • You save ₹{breakdown.discount}
-                    </div>
-                  </>
-                )}
-                <Separator />
-                {/* Final Amount */}
+                {/* Total Payable */}
                 <div className="flex justify-between items-center font-bold text-lg bg-primary/10 rounded-lg px-3 py-2 -mx-1">
-                  <span>AMOUNT PAYABLE</span>
-                  <span className="text-primary text-xl">₹{breakdown.finalPayable}</span>
+                  <span>TOTAL PAYABLE</span>
+                  <span className="text-primary text-xl">₹{breakdown.totalPayable.toFixed(2)}</span>
                 </div>
               </div>
             </CardContent>

@@ -45,34 +45,23 @@ router.post('/', protect, async (req, res) => {
             scheduledPickup,
             pickupDate,
             pickupSlot,
-            status: carrierId ? 'pending_acceptance' : 'pending',
+            status: carrierId ? 'partner_assigned' : 'payment_received',
             trackingHistory: [{
-                status: carrierId ? 'pending_acceptance' : 'pending',
+                status: carrierId ? 'partner_assigned' : 'payment_received',
                 location: pickup.city || 'Origin',
-                description: carrierId ? 'Shipment assigned to carrier — awaiting acceptance' : 'Shipment created'
+                description: carrierId ? 'Shipment assigned to partner' : 'Payment received — shipment created'
             }]
         };
 
         const shipment = await Shipment.create(shipmentData);
         shipment.shippingCost = calculateShippingCost(shipment);
 
-        // Auto promo discount engine: D = T − 500, F = 500
-        const baseFare = shipment.shippingCost;
-        const pFee = Math.round(baseFare * 0.20 * 100) / 100;
-        const comm = Math.round(baseFare * 0.16 * 100) / 100;
-        const fixedFee = 120;
-        const gross = Math.round((baseFare + pFee + comm + fixedFee) * 100) / 100;
-        shipment.platformFee = pFee;
-        shipment.grossTotal = gross;
-        if (gross > 500) {
-            shipment.promoDiscount = Math.round((gross - 500) * 100) / 100;
-            shipment.finalPayable = 500;
-            shipment.promoType = 'AUTO_APPLIED';
-        } else {
-            shipment.promoDiscount = 0;
-            shipment.finalPayable = gross;
-            shipment.promoType = 'NONE';
-        }
+        // GST calculation: 18% on delivery fare
+        const deliveryFare = shipment.shippingCost;
+        const gstAmount = Math.round(deliveryFare * 0.18 * 100) / 100;
+        const totalPayable = Math.round((deliveryFare + gstAmount) * 100) / 100;
+        shipment.gstAmount = gstAmount;
+        shipment.totalPayable = totalPayable;
 
         const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
         shipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -134,16 +123,23 @@ router.post('/create', protect, async (req, res) => {
             scheduledPickup,
             pickupDate,
             pickupSlot,
-            status: carrierId ? 'pending_acceptance' : 'pending',
+            status: carrierId ? 'partner_assigned' : 'payment_received',
             trackingHistory: [{
-                status: carrierId ? 'pending_acceptance' : 'pending',
+                status: carrierId ? 'partner_assigned' : 'payment_received',
                 location: pickup.city || 'Origin',
-                description: carrierId ? 'Shipment assigned to carrier — awaiting acceptance' : 'Shipment created'
+                description: carrierId ? 'Shipment assigned to partner' : 'Payment received — shipment created'
             }]
         };
 
         const shipment = await Shipment.create(shipmentData);
         shipment.shippingCost = calculateShippingCost(shipment);
+
+        // GST calculation: 18% on delivery fare
+        const deliveryFare = shipment.shippingCost;
+        const gstAmount = Math.round(deliveryFare * 0.18 * 100) / 100;
+        const totalPayable = Math.round((deliveryFare + gstAmount) * 100) / 100;
+        shipment.gstAmount = gstAmount;
+        shipment.totalPayable = totalPayable;
 
         const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
         shipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -522,7 +518,12 @@ router.put('/carrier/:id/update-status', protect, requirePartner, async (req, re
             return res.status(400).json({ success: false, message: 'status field is required' });
         }
 
-        const allowedStatuses = ['pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered'];
+        const allowedStatuses = [
+            // Legacy statuses
+            'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered',
+            // New unified flow statuses
+            'pickup', 'settled'
+        ];
         if (!allowedStatuses.includes(status)) {
             return res.status(400).json({
                 success: false,
@@ -541,8 +542,11 @@ router.put('/carrier/:id/update-status', protect, requirePartner, async (req, re
 
         // Prevent backward transitions
         const statusOrder = [
+            // Legacy flow
             'pending', 'pending_acceptance', 'accepted', 'pickup_scheduled',
-            'picked_up', 'in_transit', 'out_for_delivery', 'delivered'
+            'picked_up', 'in_transit', 'out_for_delivery', 'delivered',
+            // New unified flow
+            'payment_received', 'partner_assigned', 'pickup', 'in_transit', 'delivered', 'settled'
         ];
         const currentIdx = statusOrder.indexOf(shipment.status);
         const newIdx = statusOrder.indexOf(status);

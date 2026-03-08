@@ -131,6 +131,14 @@ router.post('/trigger', protect, async (req, res) => {
         stats.lastUpdated = new Date();
         await stats.save();
 
+        // ── Compute GST admin ledger fields ──
+        const outputGst = shipment.gstAmount || 0;          // GST collected from customer
+        const partnerPayout = shipment.shippingCost ? Math.round(shipment.shippingCost * 0.5 * 100) / 100 : 0; // partner base earning ~50% of fare
+        const partnerGst = Math.round(partnerPayout * 0.18 * 100) / 100; // input GST (partner's GST)
+        const netGstPayableToGovt = Math.round((outputGst - partnerGst) * 100) / 100;
+        const totalInflow = shipment.totalPayable || (shipment.shippingCost + outputGst);
+        const fastfareNetMargin = Math.round((totalInflow - (partnerPayout + partnerGst) - netGstPayableToGovt) * 100) / 100;
+
         res.json({
             success: true,
             settlement: {
@@ -141,7 +149,15 @@ router.post('/trigger', protect, async (req, res) => {
                 shippingCost,
                 tier: seller.tier,
                 settlementDate,
-                batchId: schedule._id
+                batchId: schedule._id,
+                // Admin ledger fields
+                net_gst_payable_to_govt: netGstPayableToGovt,
+                fastfare_net_margin: fastfareNetMargin,
+                gst_breakdown: {
+                    output_gst: outputGst,
+                    input_gst: partnerGst,
+                    partner_base_payout: partnerPayout
+                }
             }
         });
     } catch (error) {
