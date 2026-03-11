@@ -273,10 +273,10 @@ const PartnerOrders = () => {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
-      if (data.success && data.drivers) {
+      if (data.success && data.fleet) {
         // Find WmsDriver phone numbers from /api/partner-team/drivers to enrich if needed
         // Or just map what we have from summary
-        setActiveDrivers(data.drivers);
+        setActiveDrivers(data.fleet);
       }
     } catch (err) {
       toast({ title: "Error", description: "Failed to load drivers", variant: "destructive" });
@@ -298,9 +298,9 @@ const PartnerOrders = () => {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          assigned_driver_id: driver.driver_id,
-          assigned_driver_name: driver.name,
-          assigned_driver_phone: driver.phone || driver.driver_id, // summary might omit phone
+          assigned_driver_id: driver.driverId,
+          assigned_driver_name: driver.driverName,
+          assigned_driver_phone: driver.phone || driver.driverId, // summary might omit phone
         })
       });
       const data = await res.json();
@@ -1001,7 +1001,7 @@ const PartnerOrders = () => {
                 <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-2">
                   {activeDrivers.map((driver) => (
                     <div
-                      key={driver.driver_id}
+                      key={driver.driverId}
                       className="flex items-center justify-between p-3 border rounded-lg hover:border-primary/50 transition-colors bg-white"
                     >
                       <div className="flex items-center gap-3">
@@ -1009,11 +1009,11 @@ const PartnerOrders = () => {
                           <User className="h-5 w-5 text-blue-600" />
                         </div>
                         <div>
-                          <p className="font-semibold text-sm">{driver.name}</p>
-                          <p className="text-xs text-muted-foreground font-mono">{driver.driver_id}</p>
+                          <p className="font-semibold text-sm">{driver.driverName || "Driver"}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{driver.driverId}</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <div className={`h-2 w-2 rounded-full ${driver.is_online ? 'bg-green-500' : 'bg-gray-300'}`} />
-                            <span className="text-xs text-muted-foreground">{driver.is_online ? 'Online' : 'Offline'}</span>
+                            <div className={`h-2 w-2 rounded-full ${driver.online ? 'bg-green-500' : 'bg-gray-300'}`} />
+                            <span className="text-xs text-muted-foreground">{driver.online ? 'Online' : 'Offline'}</span>
                           </div>
                         </div>
                       </div>
