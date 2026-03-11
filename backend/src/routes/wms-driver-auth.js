@@ -29,7 +29,8 @@ const authDriver = (req, res, next) => {
 router.post('/login', async (req, res) => {
     const { email, driverId, password } = req.body;
     // Accept login via email OR driverId field
-    let loginId = email || driverId;
+    let loginId = (email || driverId || '').trim();
+    let safePassword = (password || '').trim();
 
     // Ensure driverId is uppercase, or convert email to lowercase
     if (loginId && loginId.includes('@')) {
@@ -43,7 +44,7 @@ router.post('/login', async (req, res) => {
             $or: [{ email: loginId }, { driverId: loginId }]
         });
 
-        if (driver && (await bcrypt.compare(password, driver.password))) {
+        if (driver && (await bcrypt.compare(safePassword, driver.password))) {
             res.json({
                 success: true,
                 _id: driver.id,
