@@ -103,6 +103,14 @@ const userSchema = new mongoose.Schema({
         default: 0,
         min: 0
     },
+    creditLimit: {
+        type: Number,
+        default: null
+    },
+    apiKeys: {
+        production: { type: String, default: null },
+        test: { type: String, default: null }
+    },
     kyc: {
         status: {
             type: String,

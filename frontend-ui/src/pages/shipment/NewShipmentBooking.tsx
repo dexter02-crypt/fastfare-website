@@ -66,6 +66,7 @@ const initialServiceData = {
   serviceType: "express",
   carrier: "",
   carrierId: "",
+  shippingCost: 0,
   insurance: false,
   fragileHandling: false,
   signatureRequired: false,
@@ -78,6 +79,7 @@ const NewShipmentBooking = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [tcError, setTcError] = useState(false);
 
   const [pickupData, setPickupData] = useState(initialAddressData);
   const [deliveryData, setDeliveryData] = useState(initialAddressData);
@@ -90,7 +92,16 @@ const NewShipmentBooking = () => {
   const handleNext = async () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
+      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
     } else {
+      // Bug 10 — Validate T&C before submitting
+      if (!termsAccepted) {
+        setTcError(true);
+        document.getElementById('tc-checkbox-wrapper')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      setTcError(false);
       // Submit booking
       setIsSubmitting(true);
       try {
@@ -112,10 +123,12 @@ const NewShipmentBooking = () => {
             paymentMode: packageData.paymentMode,
             codAmount: packageData.codAmount,
 
-            // Service Details (Flattened)
+            // Service Details (Flattened) — Bug 7: pass carrier data correctly
             serviceType: serviceData.serviceType,
             carrier: serviceData.carrier,
             carrierId: serviceData.carrierId || undefined,
+            shippingCost: serviceData.shippingCost || undefined,
+            service: serviceData.serviceType,
             insurance: serviceData.insurance,
             fragileHandling: serviceData.fragileHandling,
             signatureRequired: serviceData.signatureRequired,
@@ -168,7 +181,7 @@ const NewShipmentBooking = () => {
             description: `AWB: ${data.shipment?.awb || data.shipment?._id}`,
           });
 
-          navigate("/shipment/success", { state: { shipment: data.shipment } });
+          navigate("/shipment/success", { state: { shipment: data.shipment, totalAmount: data.totalAmount } });
         }; // end of submitBooking
 
         // Payment Processing Logic
@@ -242,11 +255,13 @@ const NewShipmentBooking = () => {
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
     }
   };
 
   const handleEditStep = (step: number) => {
     setCurrentStep(step);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
   };
 
   const canProceed = () => {
@@ -302,7 +317,8 @@ const NewShipmentBooking = () => {
                   service: serviceData,
                 }}
                 termsAccepted={termsAccepted}
-                onTermsChange={setTermsAccepted}
+                onTermsChange={(v: boolean) => { setTermsAccepted(v); setTcError(false); }}
+                tcError={tcError}
                 onEditStep={handleEditStep}
               />
             </div>

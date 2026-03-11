@@ -27,6 +27,10 @@ router.post('/', protect, async (req, res) => {
             provider, expectedArrival, vehicleId, items, notes
         });
         const savedShipment = await newShipment.save();
+
+        const io = req.app.get('io');
+        if (io) io.emit('wms_update', { target: 'inbound', id: savedShipment._id });
+
         res.status(201).json(savedShipment);
     } catch (err) {
         res.status(400).json({ message: err.message });
@@ -43,6 +47,10 @@ router.put('/:id/status', protect, async (req, res) => {
         shipment.status = status;
         if (status === 'arrived') shipment.actualArrival = new Date();
         await shipment.save();
+
+        const io = req.app.get('io');
+        if (io) io.emit('wms_update', { target: 'inbound', id: shipment._id });
+
         res.json(shipment);
     } catch (err) {
         res.status(500).json({ message: err.message });

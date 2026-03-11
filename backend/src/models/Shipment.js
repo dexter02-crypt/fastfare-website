@@ -73,6 +73,26 @@ const shipmentSchema = new mongoose.Schema({
     assignedDriver: { type: String, default: null },   // Driver ID from mobile app
     assignedDriverName: { type: String, default: null },
     assignedVehicle: { type: String, default: null },
+    assigned_driver_id: { type: String, default: null },
+    assigned_driver_name: { type: String, default: null },
+    assigned_driver_phone: { type: String, default: null },
+    driver_assigned_at: { type: Date, default: null },
+    driver_location_lat: { type: Number, default: null },
+    driver_location_lng: { type: Number, default: null },
+    driver_location_updated_at: { type: Date, default: null },
+    qr_token: {
+        type: String,
+        unique: true,
+        sparse: true   // generated at label print time, not at creation
+    },
+    scan_pickup: {
+        driver_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        driver_name: String,
+        driver_phone: String,
+        scanned_at: Date,
+        location_lat: Number,
+        location_lng: Number
+    },
     status: {
         type: String,
         enum: [

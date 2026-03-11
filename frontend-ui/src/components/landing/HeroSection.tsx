@@ -15,7 +15,8 @@ const HeroSection = () => {
   const [weight, setWeight] = useState("0.5");
 
   const handleCheckRates = () => {
-    navigate("/rates");
+    if (!pickupPincode || !deliveryPincode || !weight) return;
+    navigate('/rates?from=' + pickupPincode + '&to=' + deliveryPincode + '&weight=' + weight);
   };
 
   return (

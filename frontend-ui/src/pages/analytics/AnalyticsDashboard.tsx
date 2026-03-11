@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "@/config";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,24 +39,39 @@ const AnalyticsDashboard = () => {
   ]);
 
   // Chart Data — populated from API
-  const volumeData: { name: string; shipments: number }[] = [];
-
-  const statusData: { name: string; value: number; color: string }[] = [];
-
-  const carrierData: { name: string; onTime: number; volume: number }[] = [];
-
-  const geoData: { name: string; value: number }[] = [];
-
-  const trendData: { month: string; revenue: number; shipments: number }[] = [];
+  const [volumeData, setVolumeData] = useState<{ name: string; shipments: number }[]>([]);
+  const [statusData, setStatusData] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [carrierData, setCarrierData] = useState<{ name: string; onTime: number; volume: number }[]>([]);
+  const [geoData, setGeoData] = useState<{ name: string; value: number }[]>([]);
+  const [trendData, setTrendData] = useState<{ month: string; revenue: number; shipments: number }[]>([]);
+  const [carrierPerformance, setCarrierPerformance] = useState<{ name: string; deliveries: number; onTime: number; rating: number }[]>([]);
+  const [topCities, setTopCities] = useState<{ city: string; shipments: number; revenue: string }[]>([]);
 
   // Data update based on filter
   useEffect(() => {
-    setStats([
-      { label: "Total Shipments", value: "0", change: "0%", trend: "up" },
-      { label: "Delivered", value: "0", change: "0%", trend: "up" },
-      { label: "In Transit", value: "0", change: "0%", trend: "up" },
-      { label: "RTO Rate", value: "0%", change: "0%", trend: "up" },
-    ]);
+    const fetchAnalytics = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE_URL}/api/reports/analytics/dashboard?dateRange=${dateRange}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          setStats(json.data.stats || []);
+          setVolumeData(json.data.volumeData || []);
+          setStatusData(json.data.statusData || []);
+          setCarrierData(json.data.carrierData || []);
+          setGeoData(json.data.geoData || []);
+          setTrendData(json.data.trendData || []);
+          setCarrierPerformance(json.data.carrierPerformance || []);
+          setTopCities(json.data.topCities || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch analytics:", error);
+      }
+    };
+
+    fetchAnalytics();
   }, [dateRange]);
 
   const handleExport = () => {
@@ -71,9 +87,7 @@ const AnalyticsDashboard = () => {
     toast.success("Report downloaded successfully");
   };
 
-  const carrierPerformance: { name: string; deliveries: number; onTime: number; rating: number }[] = [];
-
-  const topCities: { city: string; shipments: number; revenue: string }[] = [];
+  // Helper components
 
   return (
     <div className="min-h-screen bg-background">

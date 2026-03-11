@@ -15,6 +15,8 @@ const Footer = () => {
       { label: "Help Center", href: "/help-center" },
       { label: "Logistics Guide", href: "/logistics-guide" },
       { label: "Community", href: "/community" },
+      { label: "Services Explained", href: "/services-explained" },
+      { label: "Refund & Cancellation", href: "/refund-policy" },
     ],
     company: [
       { label: "About Us", href: "/about" },
@@ -26,6 +28,7 @@ const Footer = () => {
       { label: "Privacy Policy", href: "/privacy" },
       { label: "Terms of Service", href: "/terms" },
       { label: "Cookie Policy", href: "/cookie-policy" },
+      { label: "Refund & Cancellation", href: "/refund-policy" },
     ],
   };
 
@@ -85,7 +88,7 @@ const Footer = () => {
 
         <div className="border-t border-border mt-12 pt-8 flex flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
           <p className="text-sm text-muted-foreground">
-            © 2024 FastFare Technologies Inc. All rights reserved.
+            © 2026 FastFare Technologies Pvt. Ltd. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
             <Link to="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">

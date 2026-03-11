@@ -23,12 +23,13 @@ const wmsActions = [
     { label: "WMS Reports", desc: "Analytics", icon: TrendingUp, href: "/wms/reports", color: "from-indigo-500 to-indigo-600" },
 ];
 
-const activity: { id: string; dest: string; status: string; eta: string }[] = [];
+// Use state for recent activity
 
 const PartnerDashboard = () => {
     const user = authApi.getCurrentUser();
     const navigate = useNavigate();
     const [carrierStats, setCarrierStats] = useState({ pending: 0, accepted: 0, inTransit: 0, delivered: 0, total: 0 });
+    const [recentActivity, setRecentActivity] = useState<{ id: string; dest: string; status: string; eta: string }[]>([]);
 
     useEffect(() => {
         if (user?.role === "shipment_partner") {
@@ -37,7 +38,20 @@ const PartnerDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` },
             })
                 .then((r) => r.json())
-                .then((d) => { if (d.success) setCarrierStats(d.stats); })
+                .then((d) => {
+                    if (d.success) {
+                        setCarrierStats(d.stats);
+                        if (d.recentShipments && Array.isArray(d.recentShipments)) {
+                            const formatted = d.recentShipments.map((s: any) => ({
+                                id: s.awb,
+                                dest: s.delivery?.city || "Unknown",
+                                status: s.status.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+                                eta: s.estimatedDelivery ? new Date(s.estimatedDelivery).toLocaleDateString() : "Pending"
+                            }));
+                            setRecentActivity(formatted);
+                        }
+                    }
+                })
                 .catch(console.error);
         }
     }, [user]);
@@ -232,7 +246,7 @@ const PartnerDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {activity.map((item) => (
+                                {recentActivity.length > 0 ? recentActivity.map((item) => (
                                     <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="px-6 py-4 font-semibold text-gray-900">{item.id}</td>
                                         <td className="px-6 py-4 text-gray-600">{item.dest}</td>
@@ -248,7 +262,13 @@ const PartnerDashboard = () => {
                                             </Button>
                                         </td>
                                     </tr>
-                                ))}
+                                )) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                                            No recent activity found.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>

@@ -61,8 +61,18 @@ export const locationSocket = (io) => {
         });
 
         socket.on('join_driver', (data) => {
-            if (data && data.driverId) {
-                socket.join(`driver_${data.driverId}`);
+            const dId = data.driverId || data.driver_id;
+            if (dId) {
+                socket.join(`driver_${dId}`);
+                socket.join(dId); // Ensure they join their own raw ID room too
+            }
+        });
+
+        // Join partner room
+        socket.on('join_partner', (data) => {
+            const pId = data.partnerId || data.partner_id;
+            if (pId) {
+                socket.join(`partner_${pId}`);
             }
         });
 
@@ -97,12 +107,101 @@ export const locationSocket = (io) => {
             io.to('dashboard').emit('driver_status_update', data);
         });
 
+        // Driver explicitly sends location update
+        socket.on('driver_location_update', (data) => {
+            if (data.driver_id) {
+                updateDriverPosition({
+                    driverId: data.driver_id,
+                    lat: data.lat,
+                    lng: data.lng,
+                    timestamp: data.timestamp || Date.now(),
+                    socketId: socket.id,
+                    status: data.status,
+                    online: true
+                });
+
+                // Broadcast to listeners (Partner/User)
+                io.emit('driver_location_broadcast', data);
+            }
+        });
+
+        // Driver came online explicitly
+        socket.on('driver_came_online', (data) => {
+            if (data.driver_id) {
+                updateDriverPosition({
+                    driverId: data.driver_id,
+                    online: true,
+                    timestamp: Date.now(),
+                    socketId: socket.id
+                });
+                io.emit('driver_came_online', data);
+            }
+        });
+
         // Driver explicitly stops tracking
-        socket.on('driver_offline', (data) => {
-            if (data && data.driverId) {
-                driverPositions.delete(data.driverId);
-                io.to('dashboard').emit('driver_went_offline', { driverId: data.driverId });
-                io.emit('driver_went_offline', { driverId: data.driverId });
+        socket.on('driver_went_offline', (data) => {
+            const dId = data.driverId || data.driver_id;
+            if (dId) {
+                driverPositions.delete(dId);
+                io.to('dashboard').emit('driver_went_offline', { driver_id: dId });
+                io.to('fleet-room').emit('driver:went-offline', { driverId: dId });
+                io.emit('driver_went_offline', { driver_id: dId });
+            }
+        });
+
+        // Bug 6: fleet-room events emitted by the driver app
+        socket.on('driver:go-online', (data) => {
+            if (data.driverId) {
+                updateDriverPosition({
+                    driverId: data.driverId,
+                    driverName: data.driverName || data.driverId,
+                    lat: data.lat,
+                    lng: data.lng,
+                    online: true,
+                    timestamp: data.timestamp || Date.now(),
+                    socketId: socket.id
+                });
+                // Broadcast to fleet tracking room and dashboard
+                io.to('fleet-room').emit('driver:location', {
+                    driverId: data.driverId,
+                    driverName: data.driverName,
+                    lat: data.lat,
+                    lng: data.lng,
+                    online: true,
+                    timestamp: data.timestamp || Date.now()
+                });
+                io.to('dashboard').emit('locationUpdate', data);
+            }
+        });
+
+        socket.on('driver:location', (data) => {
+            if (data.driverId) {
+                updateDriverPosition({
+                    driverId: data.driverId,
+                    driverName: data.driverName || data.driverId,
+                    lat: data.lat,
+                    lng: data.lng,
+                    online: true,
+                    timestamp: data.timestamp || Date.now(),
+                    socketId: socket.id
+                });
+                io.to('fleet-room').emit('driver:location', data);
+                io.to('dashboard').emit('locationUpdate', data);
+                io.emit('driver_location_broadcast', {
+                    driver_id: data.driverId,
+                    lat: data.lat,
+                    lng: data.lng,
+                    timestamp: data.timestamp
+                });
+            }
+        });
+
+        socket.on('driver:went-offline', (data) => {
+            const dId = data.driverId || data.driver_id;
+            if (dId) {
+                driverPositions.delete(dId);
+                io.to('fleet-room').emit('driver:went-offline', { driverId: dId });
+                io.to('dashboard').emit('driver_went_offline', { driver_id: dId });
             }
         });
 

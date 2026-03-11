@@ -22,6 +22,10 @@ import {
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 import { API_BASE_URL } from "@/config";
+import { formatDate, formatDateTime } from "@/utils/dateFormat";
+import { formatStatus, getStatusStyle } from "@/utils/formatStatus";
+import Header from "@/components/Header";
+import { authApi } from "@/lib/api";
 
 interface TrackingData {
   awb: string;
@@ -50,6 +54,7 @@ const TrackingResults = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const isLoggedIn = authApi.isAuthenticated();
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -97,7 +102,7 @@ const TrackingResults = () => {
             return {
               status: statusLabels[s] || s,
               description: historyEntry?.description || statusDescriptions[s] || '',
-              time: historyEntry ? new Date(historyEntry.timestamp).toLocaleString() : (i <= currentIdx ? 'Completed' : 'Pending'),
+              time: historyEntry ? formatDateTime(historyEntry.timestamp) : (i <= currentIdx ? 'Completed' : 'Pending'),
               location: historyEntry?.location || (i <= currentIdx ? t.origin || '—' : '—'),
               completed: i <= currentIdx,
               current: i === currentIdx,
@@ -110,20 +115,20 @@ const TrackingResults = () => {
             status: t.status || "pending",
             carrier: t.carrier || "FastFare",
             estimatedDelivery: t.estimatedDelivery
-              ? new Date(t.estimatedDelivery).toLocaleDateString()
+              ? formatDate(t.estimatedDelivery)
               : "—",
             deliveryTime: "",
             pickup: t.pickup ? {
               city: t.pickup.city || t.origin || "Origin",
               address: [t.pickup.address, t.pickup.city, t.pickup.state, t.pickup.pincode].filter(Boolean).join(", "),
-              date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : undefined,
+              date: t.createdAt ? formatDate(t.createdAt) : undefined,
             } : { city: t.origin || "Origin", address: "" },
             delivery: t.delivery ? {
               city: t.delivery.city || t.destination || "Destination",
               address: [t.delivery.address, t.delivery.city, t.delivery.state, t.delivery.pincode].filter(Boolean).join(", "),
               name: t.delivery.name || t.recipientName || "",
             } : { city: t.destination || "Destination", address: "", name: t.recipientName || "" },
-            currentLocation: t.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || "Pending",
+            currentLocation: formatStatus(t.status) || 'Pending',
             timeline,
           });
           return;
@@ -156,7 +161,7 @@ const TrackingResults = () => {
               {
                 status: "Scanned",
                 description: "Package scanned at origin",
-                time: parcel.scannedAt ? new Date(parcel.scannedAt).toLocaleString() : "—",
+                time: parcel.scannedAt ? formatDateTime(parcel.scannedAt) : '—',
                 location: parcel.sender?.city || "Origin",
                 completed: true,
                 current: parcel.status === "scanned",
@@ -180,7 +185,7 @@ const TrackingResults = () => {
               {
                 status: "Delivered",
                 description: "Package delivered successfully",
-                time: parcel.deliveredAt ? new Date(parcel.deliveredAt).toLocaleString() : "Pending",
+                time: parcel.deliveredAt ? formatDateTime(parcel.deliveredAt) : 'Pending',
                 location: parcel.receiver?.city || "Destination",
                 completed: parcel.status === "delivered",
                 current: parcel.status === "delivered",
@@ -254,33 +259,37 @@ const TrackingResults = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/track")}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <a href="/" className="flex items-center gap-2">
-                <img src={logo} alt="FastFare" className="h-8 w-auto" />
-              </a>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Share2 className="h-4 w-4 mr-2" /> Share
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate("/login")}>
-                Login
-              </Button>
+      {/* Header — Bug 20: auth-aware */}
+      {isLoggedIn ? (
+        <Header />
+      ) : (
+        <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("/track")}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <a href="/" className="flex items-center gap-2">
+                  <img src={logo} alt="FastFare" className="h-8 w-auto" />
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm">
+                  <Share2 className="h-4 w-4 mr-2" /> Share
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate("/login")}>
+                  Login
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -324,9 +333,9 @@ const TrackingResults = () => {
                     </div>
                   )}
                 </div>
-                <Badge className={`${getStatusColor(trackingData.status)} text-sm px-4 py-1`}>
+                <Badge style={{ ...getStatusStyle(trackingData.status), padding: '4px 12px', borderRadius: '20px', fontSize: '13px' }}>
                   <Truck className="h-4 w-4 mr-2" />
-                  {trackingData.status.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())}
+                  {formatStatus(trackingData.status)}
                 </Badge>
               </div>
             </div>

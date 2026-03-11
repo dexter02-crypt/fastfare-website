@@ -139,6 +139,11 @@ router.post('/trigger', protect, async (req, res) => {
         const totalInflow = shipment.totalPayable || (shipment.shippingCost + outputGst);
         const fastfareNetMargin = Math.round((totalInflow - (partnerPayout + partnerGst) - netGstPayableToGovt) * 100) / 100;
 
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('settlement_update', { sellerId: seller._id, action: 'triggered' });
+        }
+
         res.json({
             success: true,
             settlement: {
@@ -300,6 +305,11 @@ router.post('/process', protect, admin, async (req, res) => {
                 await schedule.save();
 
                 results.push({ batchId: schedule._id, status: 'completed', amount: schedule.totalAmount, orders: schedule.orderIds.length });
+
+                const io = req.app.get('io');
+                if (io) {
+                    io.emit('settlement_update', { sellerId: schedule.sellerId, action: 'processed' });
+                }
             } catch (batchError) {
                 schedule.status = 'failed';
                 schedule.failureReason = batchError.message;

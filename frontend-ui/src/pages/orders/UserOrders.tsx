@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatDate } from "@/utils/dateFormat";
+import { formatStatus, getStatusStyle } from "@/utils/formatStatus";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -80,6 +82,14 @@ interface OrderData {
   assignedDriver: string | null;
   assignedDriverName: string | null;
   assignedVehicle: string | null;
+  scan_pickup: {
+    driver_id: string;
+    driver_name: string;
+    driver_phone: string;
+    scanned_at: string;
+    location_lat: number;
+    location_lng: number;
+  } | null;
   driverLocation: {
     lat: number;
     lng: number;
@@ -178,7 +188,7 @@ const UserOrders = () => {
       case "cancelled":
         return <Badge variant="destructive">Cancelled</Badge>;
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge style={{ ...getStatusStyle(status), padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '500' }}>{formatStatus(status)}</Badge>;
     }
   };
 
@@ -211,7 +221,9 @@ const UserOrders = () => {
     setDetailsOpen(true);
   };
 
-  const formatDate = (d: string) => d ? new Date(d).toLocaleDateString() : "—";
+  // Bug 19 — use shared formatDate utility
+  // const formatDate = (d: string) => d ? new Date(d).toLocaleDateString() : '—';
+  // Now imported from @/utils/dateFormat
 
   return (
     <DashboardLayout>
@@ -305,7 +317,20 @@ const UserOrders = () => {
                           </TableCell>
                           <TableCell>{getStatusBadge(order.status)}</TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {order.assignedDriverName ? (
+                            {order.scan_pickup?.driver_name ? (
+                              <div className="flex flex-col text-sm">
+                                <span className="font-medium flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  {order.scan_pickup.driver_name}
+                                </span>
+                                {order.scan_pickup.scanned_at && (
+                                  <span className="text-xs flex items-center gap-1 text-green-600">
+                                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                                    ✓ Scanned
+                                  </span>
+                                )}
+                              </div>
+                            ) : order.assignedDriverName ? (
                               <div className="flex flex-col text-sm">
                                 <span className="font-medium flex items-center gap-1">
                                   <User className="h-3 w-3" />
@@ -318,6 +343,10 @@ const UserOrders = () => {
                                   </span>
                                 )}
                               </div>
+                            ) : order.status === "partner_assigned" ? (
+                              <span className="text-orange-500 text-sm font-medium">Not assigned</span>
+                            ) : ["payment_received", "pending_acceptance", "pending"].includes(order.status) ? (
+                              <span className="text-muted-foreground text-sm">Awaiting Partner</span>
                             ) : (
                               <span className="text-muted-foreground text-sm">Not assigned</span>
                             )}

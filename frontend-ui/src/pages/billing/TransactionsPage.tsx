@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { API_BASE_URL } from "@/config";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
@@ -9,9 +10,38 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Search, Download, ArrowUpRight, ArrowDownRight, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const transactions: { id: string; type: string; amount: string; date: string; status: string; method: string }[] = [];
-
 const TransactionsPage = () => {
+    const [transactions, setTransactions] = useState<{ id: string; type: string; amount: string; date: string; status: string; method: string }[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchTransactions = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const res = await fetch(`${API_BASE_URL}/api/payment/wallet`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data && data.transactions) {
+                    const formatted = data.transactions.map((txn: any) => ({
+                        id: txn.id,
+                        type: txn.type,
+                        amount: `₹${txn.amount}`,
+                        date: new Date(txn.createdAt).toLocaleDateString(),
+                        status: txn.status,
+                        method: txn.type === 'recharge' ? 'Razorpay' : 'Wallet'
+                    }));
+                    setTransactions(formatted);
+                }
+            } catch (error) {
+                console.error("Failed to fetch transactions:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTransactions();
+    }, []);
     const [searchTerm, setSearchTerm] = useState("");
 
     const filteredTransactions = transactions.filter(txn =>

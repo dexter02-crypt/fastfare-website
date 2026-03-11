@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,17 +31,18 @@ import {
   User,
   Phone,
   Mail,
-  Weight,
   Box,
   CreditCard,
   FileText,
-  Navigation
+  Navigation,
+  Loader2
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "react-router-dom";
+import { API_BASE_URL } from "@/config";
 
-// Activity data — populated from API
-const activityData: {
+// Activity data type
+type ActivityItem = {
   id: string;
   customer: string;
   customerEmail: string;
@@ -60,18 +61,71 @@ const activityData: {
   packages: number;
   paymentMode: string;
   awb: string;
-}[] = [];
+};
 
 const PartnerActivity = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  const [selectedOrder, setSelectedOrder] = useState<typeof activityData[0] | null>(null);
+  const [activityData, setActivityData] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<ActivityItem | null>(null);
   const [orderDialog, setOrderDialog] = useState(false);
 
-  const handleOrderClick = (order: typeof activityData[0]) => {
+  const handleOrderClick = (order: ActivityItem) => {
     setSelectedOrder(order);
     setOrderDialog(true);
   };
+
+  useEffect(() => {
+    const fetchActivity = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE_URL}/api/shipments/carrier/incoming`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        const data = await res.json();
+        if (data.success && data.shipments) {
+          const mapped: ActivityItem[] = data.shipments.map((s: any) => ({
+            id: s._id,
+            awb: s.awb,
+            customer: s.sender?.user_id?.name || s.pickup?.name || "Customer",
+            customerEmail: s.sender?.user_id?.email || "N/A",
+            customerPhone: s.pickup?.phone || "N/A",
+            pickup: {
+              city: s.pickup?.city || "",
+              address: s.pickup?.address || "",
+              contact: s.pickup?.name || "",
+              phone: s.pickup?.phone || ""
+            },
+            delivery: {
+              city: s.delivery?.city || "",
+              address: s.delivery?.address || "",
+              contact: s.delivery?.name || "",
+              phone: s.delivery?.phone || ""
+            },
+            status: s.status,
+            date: new Date(s.createdAt).toLocaleDateString(),
+            eta: "TBD",
+            amount: s.shippingCost || 0,
+            truck: s.assignedVehicle || null,
+            driver: s.assignedDriverName || s.assigned_driver_name || null,
+            driverPhone: s.assigned_driver_phone || null,
+            weight: `${s.totalWeight || 0} kg`,
+            dimensions: "Standard",
+            packages: s.packages?.reduce((acc: number, pkg: any) => acc + (pkg.quantity || 1), 0) || 1,
+            paymentMode: s.paymentMode || "prepaid"
+          }));
+          setActivityData(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to fetch activity:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchActivity();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -86,7 +140,7 @@ const PartnerActivity = () => {
     }
   };
 
-  const filterByTab = (item: typeof activityData[0]) => {
+  const filterByTab = (item: ActivityItem) => {
     switch (activeTab) {
       case "transit": return item.status === "in_transit";
       case "delivered": return item.status === "delivered";
@@ -175,7 +229,13 @@ const PartnerActivity = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredActivity.length === 0 ? (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredActivity.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         No activity found
@@ -251,7 +311,7 @@ const PartnerActivity = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               <Package className="h-5 w-5 text-primary" />
-              Order Details - {selectedOrder?.id}
+              Order Details - {selectedOrder?.awb}
             </DialogTitle>
           </DialogHeader>
 

@@ -202,44 +202,56 @@ router.put('/:id/deliver', authDriver, async (req, res) => {
     }
 });
 
-// ─── PUT /api/parcels/:id/assign-driver ─── Auto-assign available driver
-router.put('/:id/assign-driver', protect, async (req, res) => {
+// ─── PATCH /api/parcels/:id/assign-driver ─── Partner assigns specific driver
+router.patch('/:id/assign-driver', protect, async (req, res) => {
     try {
+        const { assigned_driver_id, assigned_driver_name, assigned_driver_phone, driver_assigned_at } = req.body;
+
         const parcel = await Parcel.findById(req.params.id);
         if (!parcel) {
             return res.status(404).json({ success: false, message: 'Parcel not found' });
         }
 
-        if (parcel.assignedDriver) {
-            return res.status(400).json({ success: false, message: 'Driver already assigned' });
-        }
+        parcel.assigned_driver_id = assigned_driver_id;
+        parcel.assigned_driver_name = assigned_driver_name;
+        parcel.assigned_driver_phone = assigned_driver_phone;
+        parcel.driver_assigned_at = driver_assigned_at || new Date();
+        parcel.status = 'dispatched'; // or driver_assigned
 
-        // Try to find an available WMS driver
-        let WmsDriver;
+        // Also find WmsDriver and increment counter (if WmsDriver model was loaded)
         try {
-            WmsDriver = (await import('../models/WmsDriver.js')).default;
-        } catch (e) {
-            // WmsDriver model may not exist
-        }
-
-        let driverName = 'Pending Assignment';
-        if (WmsDriver) {
-            const driver = await WmsDriver.findOne({ status: 'available' });
+            const WmsDriver = (await import('../models/WmsDriver.js')).default;
+            const driver = await WmsDriver.findOne({ driverId: assigned_driver_id });
             if (driver) {
                 parcel.assignedDriver = driver._id;
-                driver.status = 'on_trip';
+                driver.active_shipment_count = (driver.active_shipment_count || 0) + 1;
                 await driver.save();
-                driverName = driver.name;
             }
+        } catch (e) {
+            console.log('Could not update WmsDriver count', e);
         }
 
-        parcel.status = 'dispatched';
         await parcel.save();
+
+        // Socket.io broadcasts
+        const io = req.app.get('io');
+        if (io) {
+            io.to(assigned_driver_id).emit('driver_assigned', {
+                shipment_id: parcel._id,
+                parcel_id: parcel.parcelId,
+                pickup_address: parcel.sender?.address,
+                delivery_address: parcel.receiver?.address
+            });
+            // Update partner dashboard counters
+            io.to('partner_' + req.user._id.toString()).emit('partner_shipment_updated', {
+                timestamp: new Date()
+            });
+        }
 
         res.json({
             success: true,
-            message: `Driver assigned: ${driverName}`,
-            parcel
+            message: `Driver assigned: ${assigned_driver_name}`,
+            updated_parcel: parcel
         });
     } catch (error) {
         console.error('Assign driver error:', error);

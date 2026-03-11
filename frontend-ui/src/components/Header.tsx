@@ -18,6 +18,7 @@ import {
   Zap,
   FileText,
   Truck,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
@@ -48,6 +49,8 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
   const [localMobileMenuOpen, setLocalMobileMenuOpen] = useState(false);
   const isAuthenticated = authApi.isAuthenticated();
   const user = authApi.getCurrentUser();
+  const hasUnreadNotifications = false; // TODO: Hook up to real notifications state when implemented
+  const isHomepage = location.pathname === '/';
   const [searchQuery, setSearchQuery] = useState("");
   const { balance } = useWallet();
 
@@ -138,7 +141,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
           </Link>
         </div>
 
-        {isAuthenticated ? (
+        {isAuthenticated && !isHomepage ? (
           /* Authenticated Header */
           <>
             {/* Search Bar - Center Left */}
@@ -199,7 +202,9 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               {/* Notifications */}
               <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
                 <Bell className="h-5 w-5 text-muted-foreground" />
-                <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full" />
+                {hasUnreadNotifications && (
+                  <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full" />
+                )}
               </Button>
 
               {/* User Profile */}
@@ -237,6 +242,9 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/dashboard')}>
                     <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings')}>
+                    <Settings className="mr-2 h-4 w-4" /> Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
@@ -324,7 +332,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
         )}
 
         {/* Mobile Menu Toggle - public pages */}
-        {!isAuthenticated && (
+        {(!isAuthenticated || isHomepage) && (
           <button
             className="md:hidden p-2 ml-auto"
             onClick={toggleMobileMenu}

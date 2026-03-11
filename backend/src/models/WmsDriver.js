@@ -45,7 +45,12 @@ const wmsDriverSchema = new mongoose.Schema({
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
-    }
+    },
+    is_online: { type: Boolean, default: false },
+    current_location_lat: { type: Number, default: null },
+    current_location_lng: { type: Number, default: null },
+    location_updated_at: { type: Date, default: null },
+    active_shipment_count: { type: Number, default: 0 }
 
 }, { timestamps: true });
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { formatDate } from "@/utils/dateFormat";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,9 +81,9 @@ const ShipmentSuccess = () => {
       : shipment.serviceType === "economy" ? "Economy"
         : "Standard";
   const estimatedDelivery = shipment.estimatedDelivery
-    ? new Date(shipment.estimatedDelivery).toLocaleDateString()
+    ? formatDate(shipment.estimatedDelivery)
     : "—";
-  const totalAmount = shipment.shippingCost || 0;
+  const totalAmount = location.state?.totalAmount || shipment.shippingCost || 0;
 
   const handleCopyAwb = () => {
     navigator.clipboard.writeText(awbNumber);
@@ -314,6 +315,8 @@ const ShipmentSuccess = () => {
         open={showScheduleModal}
         onOpenChange={setShowScheduleModal}
         awb={awbNumber}
+        shipmentId={shipment._id || shipment.id}
+        pickupAddress={shipment.pickup}
       />
     </div>
   );

@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
+import { formatDate } from "@/utils/dateFormat";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +19,23 @@ import { useToast } from "@/hooks/use-toast";
 
 const recentTransactions: { id: string; type: string; amount: string; date: string; status: string }[] = [];
 
-const invoices: { id: string; period: string; amount: string; status: string; dueDate: string }[] = [];
+interface Invoice {
+  _id: string;
+  invoiceNo: string;
+  awb: string;
+  amount: number;
+  date: string;
+  paymentMode: string;
+  status: string;
+  carrier: string;
+}
+
+interface BillingSummary {
+  walletBalance: number;
+  thisMonthSpend: number;
+  pendingPayments: number;
+  creditLimit: number | null;
+}
 
 interface Transaction {
   id: string;
@@ -43,6 +60,9 @@ const BillingDashboard = () => {
 
   const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [billingData, setBillingData] = useState<BillingSummary | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
 
 
   useEffect(() => {
@@ -66,39 +86,51 @@ const BillingDashboard = () => {
     fetchWalletData();
   }, []);
 
-  const recentTxns = walletData?.transactions || [];
-  const balance = walletData?.balance !== undefined ? walletData.balance : 0;
-
-  // Calculate this month's spend/earnings
-  const currentMonth = new Date().getMonth();
-  const monthlyAmount = recentTxns
-    .filter((t: Transaction) => {
-      const isThisMonth = new Date(t.createdAt).getMonth() === currentMonth;
-      if (userRole === 'shipment_partner') {
-        return isThisMonth && t.amount > 0; // Sum earnings
+  // Bug 26 — fetch billing summary
+  useEffect(() => {
+    const fetchBilling = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/api/billing/summary`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setBillingData(data);
+        }
+      } catch (err) {
+        console.error('Billing fetch error:', err);
       }
-      return isThisMonth && t.amount < 0; // Sum spend
-    })
-    .reduce((sum: number, t: Transaction) => sum + Math.abs(t.amount), 0);
+    };
+    fetchBilling();
+  }, []);
 
-  const stats = [
-    {
-      label: userRole === 'shipment_partner' ? "Account Funds" : "Wallet Balance",
-      value: `₹${balance.toLocaleString()}`,
-      change: "+₹0.00",
-      trend: "neutral",
-      icon: Wallet
-    },
-    {
-      label: userRole === 'shipment_partner' ? "This Month's Earnings" : "This Month's Spend",
-      value: `₹${monthlyAmount.toLocaleString()}`, // Dynamic value
-      change: "",
-      trend: "neutral",
-      icon: TrendingUp
-    },
-    { label: "Pending Payments", value: "₹0", change: "0 invoices", trend: "neutral", icon: Clock },
-    { label: "Credit Limit", value: "₹0", change: "₹0 used", trend: "neutral", icon: CreditCard },
-  ];
+  // Bug 27 — fetch invoices
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/api/billing/invoices`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setInvoices(data);
+        }
+      } catch (err) {
+        console.error('Invoices fetch error:', err);
+      } finally {
+        setInvoicesLoading(false);
+      }
+    };
+    fetchInvoices();
+  }, []);
+
+  const recentTxns = walletData?.transactions || [];
+  const balance = billingData?.walletBalance ?? walletData?.balance ?? 0;
+
+  // Use billing API for spend, fallback to wallet transactions
+  const monthlyAmount = billingData?.thisMonthSpend ?? 0;
 
   return (
     <DashboardLayout>
@@ -125,7 +157,7 @@ const BillingDashboard = () => {
                   <Wallet className="h-7 w-7 text-primary" />
                 </div>
               </div>
-              <p className="text-4xl font-bold tracking-tight">₹{balance.toLocaleString()}</p>
+              <p className="text-4xl font-bold tracking-tight">₹{balance.toLocaleString('en-IN')}</p>
               <p className="text-sm text-muted-foreground mt-1">Wallet Balance</p>
             </CardContent>
           </Card>
@@ -137,8 +169,10 @@ const BillingDashboard = () => {
                   <TrendingUp className="h-7 w-7 text-orange-600" />
                 </div>
               </div>
-              <p className="text-4xl font-bold tracking-tight">₹{monthlyAmount.toLocaleString()}</p>
-              <p className="text-sm text-muted-foreground mt-1">This Month's Spend</p>
+              <p className="text-4xl font-bold tracking-tight">₹{monthlyAmount.toLocaleString('en-IN')}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {userRole === 'shipment_partner' ? "This Month's Earnings" : "This Month's Spend"}
+              </p>
             </CardContent>
           </Card>
 
@@ -149,7 +183,7 @@ const BillingDashboard = () => {
                   <Clock className="h-7 w-7 text-blue-600" />
                 </div>
               </div>
-              <p className="text-4xl font-bold tracking-tight">₹0</p>
+              <p className="text-4xl font-bold tracking-tight">₹{(billingData?.pendingPayments ?? 0).toLocaleString('en-IN')}</p>
               <p className="text-sm text-muted-foreground mt-1">Pending Payments</p>
             </CardContent>
           </Card>
@@ -160,7 +194,12 @@ const BillingDashboard = () => {
                   <CreditCard className="h-7 w-7 text-purple-600" />
                 </div>
               </div>
-              <p className="text-4xl font-bold tracking-tight">--</p>
+              <p className="text-4xl font-bold tracking-tight">
+                {billingData?.creditLimit !== null && billingData?.creditLimit !== undefined
+                  ? '₹' + Number(billingData.creditLimit).toLocaleString('en-IN')
+                  : <span className="text-muted-foreground text-lg">Not Applicable</span>
+                }
+              </p>
               <p className="text-sm text-muted-foreground mt-1">Credit Limit</p>
             </CardContent>
           </Card>
@@ -181,7 +220,7 @@ const BillingDashboard = () => {
                   <div key={txn.id} className="flex items-center justify-between p-3 rounded-lg border">
                     <div>
                       <p className="font-medium text-sm capitalize">{txn.type}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(txn.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(txn.createdAt)}</p>
                     </div>
                     <span className={`font-semibold ${txn.amount > 0 ? "text-green-500" : "text-foreground"}`}>
                       {txn.amount > 0 ? "+" : ""}₹{Math.abs(txn.amount).toLocaleString()}
@@ -194,7 +233,7 @@ const BillingDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Invoices (Static for now as no backend) */}
+          {/* Invoices — Bug 27 */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -203,27 +242,46 @@ const BillingDashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {invoices.map((invoice) => (
-                  <div key={invoice.id} className="flex items-center justify-between p-4 rounded-lg border">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Receipt className="h-5 w-5 text-primary" />
+              {invoicesLoading ? (
+                <p className="text-center text-muted-foreground py-4">Loading invoices...</p>
+              ) : invoices.length === 0 ? (
+                <div className="text-center py-8">
+                  <Receipt className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No invoices yet.</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Invoices will appear here after shipments are created.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {invoices.slice(0, 10).map((inv) => (
+                    <div key={inv._id} className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Receipt className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm text-primary">{inv.invoiceNo}</p>
+                          <p className="text-xs text-muted-foreground">AWB: {inv.awb} • {formatDate(inv.date)}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{invoice.id}</p>
-                        <p className="text-sm text-muted-foreground">{invoice.period}</p>
+                      <div className="text-right">
+                        <p className="font-semibold text-sm">₹{inv.amount.toLocaleString('en-IN')}</p>
+                        <Badge
+                          variant={inv.status === 'Paid' ? 'default' : 'secondary'}
+                          className="text-xs mt-1"
+                          style={{
+                            background: inv.status === 'Paid' ? '#dcfce7' : '#dbeafe',
+                            color: inv.status === 'Paid' ? '#16a34a' : '#1d4ed8'
+                          }}
+                        >
+                          {inv.status}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold">{invoice.amount}</p>
-                      <Badge variant={invoice.status === "Paid" ? "default" : "secondary"}>
-                        {invoice.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

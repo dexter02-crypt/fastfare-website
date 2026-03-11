@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,13 +20,23 @@ import {
   Settings, Bell, Shield, Key, Globe, Building2, Users,
   CreditCard, Package, Truck, Save, RefreshCw, Smartphone,
   Lock, Monitor, Laptop, AlertTriangle, CheckCircle, X, Loader2,
-  Download
+  Download, LogOut
 } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/config";
 
-// Active sessions — populated from API
-const mockSessions: { id: string; device: string; icon: typeof Monitor; location: string; ip: string; lastActive: string; isCurrent: boolean }[] = [];
+// Active sessions - only show current local session to avoid fake sessions until backend supports real sessions
+const mockSessions = [
+  {
+    id: "current-session",
+    device: navigator.userAgent.includes("Windows") ? "Windows PC - Browser" : navigator.userAgent.includes("Mac") ? "Mac - Browser" : "Current Device",
+    icon: Monitor,
+    location: "Current Location",
+    ip: "Local",
+    lastActive: "Active Now",
+    isCurrent: true
+  }
+];
 
 const SettingsPage = () => {
   const [notifications, setNotifications] = useState({
@@ -69,10 +79,44 @@ const SettingsPage = () => {
     toast.success("Settings saved successfully");
   };
 
-  const regenerateKey = (type: 'production' | 'test') => {
-    const newKey = `ff_${type === 'production' ? 'prod' : 'test'}_${Math.random().toString(36).substring(7)}${Math.random().toString(36).substring(7)}`;
-    setKeys(prev => ({ ...prev, [type]: newKey }));
-    toast.info(`New ${type} API key generated`);
+  // Bug 29 — fetch API keys from backend
+  useEffect(() => {
+    const fetchApiKeys = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/api/settings/api-keys`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setKeys(data);
+        }
+      } catch (err) {
+        console.error('API keys fetch error:', err);
+      }
+    };
+    fetchApiKeys();
+  }, []);
+
+  const regenerateKey = async (type: 'production' | 'test') => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/settings/api-keys/regenerate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ keyType: type })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setKeys(prev => ({ ...prev, [type]: data.key }));
+        toast.success(`New ${type} API key generated`);
+      }
+    } catch (err) {
+      toast.error('Failed to regenerate key');
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -150,6 +194,14 @@ const SettingsPage = () => {
   const handleTerminateAllOther = () => {
     setSessions(prev => prev.filter(s => s.isCurrent));
     toast.success("All other sessions terminated");
+  };
+
+  const handleSignoutAll = () => {
+    toast.success("Signed out of all sessions successfully");
+    setSessions([]);
+    setTimeout(() => {
+      window.location.href = "/login";
+    }, 1000);
   };
 
   return (
@@ -792,6 +844,10 @@ const SettingsPage = () => {
                 Terminate All Other Sessions
               </Button>
             )}
+            <Button variant="outline" className="text-red-800 border-red-200 bg-red-50 hover:bg-red-100" onClick={handleSignoutAll}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out of All Sessions
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

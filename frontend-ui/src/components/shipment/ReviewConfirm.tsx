@@ -62,6 +62,7 @@ interface ReviewConfirmProps {
   termsAccepted: boolean;
   onTermsChange: (accepted: boolean) => void;
   onEditStep: (step: number) => void;
+  tcError?: boolean;
 }
 
 const ReviewConfirm = ({
@@ -69,6 +70,7 @@ const ReviewConfirm = ({
   termsAccepted,
   onTermsChange,
   onEditStep,
+  tcError,
 }: ReviewConfirmProps) => {
   const { pickup, delivery, packages, service } = bookingData;
 
@@ -345,25 +347,39 @@ const ReviewConfirm = ({
       })()}
 
       {/* Terms and Conditions */}
-      <div className="flex items-start gap-3 p-4 border rounded-lg">
-        <Checkbox
-          id="terms"
-          checked={termsAccepted}
-          onCheckedChange={(checked) => onTermsChange(checked as boolean)}
-        />
-        <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
-          I agree to the{" "}
-          <a href="#" className="text-primary hover:underline">
-            Terms and Conditions
-          </a>{" "}
-          and{" "}
-          <a href="#" className="text-primary hover:underline">
-            Shipping Policy
-          </a>
-          . I confirm that the package contents comply with the carrier's shipping
-          guidelines.
-        </Label>
+      <div
+        id="tc-checkbox-wrapper"
+        style={{
+          border: tcError ? '2px solid #ef4444' : '2px solid transparent',
+          borderRadius: '6px',
+          padding: '4px'
+        }}
+      >
+        <div className="flex items-start gap-3 p-4 border rounded-lg">
+          <Checkbox
+            id="terms"
+            checked={termsAccepted}
+            onCheckedChange={(checked) => onTermsChange(checked as boolean)}
+          />
+          <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
+            I agree to the{" "}
+            <a href="#" className="text-primary hover:underline">
+              Terms and Conditions
+            </a>{" "}
+            and{" "}
+            <a href="#" className="text-primary hover:underline">
+              Shipping Policy
+            </a>
+            . I confirm that the package contents comply with the carrier's shipping
+            guidelines.
+          </Label>
+        </div>
       </div>
+      {tcError && (
+        <p style={{ color: '#ef4444', fontSize: '13px', marginTop: '4px', marginLeft: '4px' }}>
+          ⚠ Please accept the Terms and Conditions to proceed.
+        </p>
+      )}
     </div>
   );
 };

@@ -98,7 +98,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 </div>
             </div>
 
-            {/* Main Content Area */}
             <div
                 className={cn(
                     "transition-all duration-300",

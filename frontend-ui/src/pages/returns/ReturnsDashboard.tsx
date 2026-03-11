@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { formatDate } from "@/utils/dateFormat";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -168,6 +169,7 @@ const ReturnsDashboard = () => {
                     <TableHead>Reason</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -177,12 +179,21 @@ const ReturnsDashboard = () => {
                       <TableCell className="font-mono text-sm">{item.shipmentId}</TableCell>
                       <TableCell>{REASON_LABELS[item.reasonCode] || item.reasonCode}</TableCell>
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
-                      <TableCell>{new Date(item.createdAt).toLocaleDateString("en-IN")}</TableCell>
+                      <TableCell>{formatDate(item.createdAt)}</TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          onClick={() => navigate(`/shipment/${item.shipmentId}`)}
+                          style={{ padding: '6px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+                        >
+                          View
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                         <RotateCcw className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
                         <p className="font-medium">No return requests found</p>
                         <p className="text-sm mt-1">Return requests will appear here when created from shipment details.</p>

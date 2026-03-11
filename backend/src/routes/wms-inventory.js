@@ -26,6 +26,10 @@ router.post('/', protect, async (req, res) => {
             location: { zone: location?.zone || 'Receiving', rack: location?.rack, bin: location?.bin }
         });
         const savedItem = await newItem.save();
+
+        const io = req.app.get('io');
+        if (io) io.emit('wms_update', { target: 'inventory', id: savedItem._id });
+
         res.status(201).json(savedItem);
     } catch (err) {
         res.status(400).json({ message: err.message });
@@ -38,6 +42,10 @@ router.put('/:id', protect, async (req, res) => {
         const query = req.user.role === 'admin' ? { _id: req.params.id } : { _id: req.params.id, owner: req.user._id };
         const updatedItem = await Inventory.findOneAndUpdate(query, req.body, { new: true });
         if (!updatedItem) return res.status(404).json({ message: 'Item not found' });
+
+        const io = req.app.get('io');
+        if (io) io.emit('wms_update', { target: 'inventory', id: updatedItem._id });
+
         res.json(updatedItem);
     } catch (err) {
         res.status(400).json({ message: err.message });

@@ -152,10 +152,30 @@ const KYCVerification = () => {
     await mockCompleteVerification(verificationDetails, "aadhaar");
   };
 
-    const mockCompleteVerification = async (details: VerificationDetails | null, type: string) => {
+  const mockCompleteVerification = async (details: VerificationDetails | null, type: string) => {
     setStep("processing");
 
     await new Promise(resolve => setTimeout(resolve, 3000));
+
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        await fetch(`${API_BASE_URL}/api/kyc/update-status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            status: "verified",
+            aadhaarVerified: type === "aadhaar",
+            gstVerified: type === "gst"
+          })
+        });
+      }
+    } catch (err) {
+      console.error("Failed to update status on backend:", err);
+    }
 
     const mockResponse = {
       success: true,
@@ -170,6 +190,20 @@ const KYCVerification = () => {
     setKycStatus(mockResponse.kyc);
     localStorage.setItem("kycStatus", "verified");
     localStorage.removeItem("kycSkippedAt");
+
+    // Update local user object as well
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const userObj = JSON.parse(userStr);
+        if (!userObj.kyc) userObj.kyc = {};
+        userObj.kyc.status = "verified";
+        localStorage.setItem("user", JSON.stringify(userObj));
+      } catch (e) {
+        console.error("Could not update user item in localStorage", e);
+      }
+    }
+
     setIsLoading(false);
     setShowSuccessDialog(true);
     setStep("complete");
@@ -672,17 +706,17 @@ const KYCVerification = () => {
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => {
-                  if (confirm("Are you sure you want to skip KYC? Some features may be restricted.")) {
-                    const user = JSON.parse(localStorage.getItem("user") || "{}");
-                    user.kycSkipped = true;
-                    localStorage.setItem("user", JSON.stringify(user));
-                    
-                    // Set keys for Dashboard reminder
-                    localStorage.setItem("kycStatus", "pending");
-                    localStorage.setItem("kycSkippedAt", new Date().toISOString());
-                    
-                    navigate("/dashboard");
-                  }
+                if (confirm("Are you sure you want to skip KYC? Some features may be restricted.")) {
+                  const user = JSON.parse(localStorage.getItem("user") || "{}");
+                  user.kycSkipped = true;
+                  localStorage.setItem("user", JSON.stringify(user));
+
+                  // Set keys for Dashboard reminder
+                  localStorage.setItem("kycStatus", "pending");
+                  localStorage.setItem("kycSkippedAt", new Date().toISOString());
+
+                  navigate("/dashboard");
+                }
               }}>
                 Skip for now
               </Button>

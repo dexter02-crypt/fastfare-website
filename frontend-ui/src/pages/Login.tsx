@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "@/config";
 
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,9 +24,14 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { refreshBalance } = useWallet();
+  const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<RoleType>("user");
+  const [selectedRole, setSelectedRole] = useState<RoleType>(() => {
+    const roleParam = searchParams.get("role");
+    if (roleParam === "partner") return "shipment_partner";
+    return "user";
+  });
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -65,11 +70,18 @@ const Login = () => {
 
       await refreshBalance();
 
+      // Check for redirect param (e.g. from pickup scan page)
+      const redirectPath = searchParams.get("redirect");
+      if (redirectPath) {
+        navigate(redirectPath, { replace: true });
+        return;
+      }
+
       // Route based on role (replace history so back button doesn't go to login)
       if (data.user.role === "admin") {
         navigate("/dashboard", { replace: true });
       } else if (data.user.role === "shipment_partner") {
-        navigate("/fleet-tracking", { replace: true });
+        navigate("/dashboard", { replace: true });
       } else {
         navigate("/dashboard", { replace: true });
       }

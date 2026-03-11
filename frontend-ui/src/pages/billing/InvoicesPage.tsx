@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { API_BASE_URL } from "@/config";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
@@ -21,9 +22,40 @@ interface Invoice {
     date: string;
 }
 
-const invoices: Invoice[] = [];
+// Render will use state variable instead
 
 const InvoicesPage = () => {
+    const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchInvoices = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const res = await fetch(`${API_BASE_URL}/api/billing/invoices`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    const formatted = data.map(inv => ({
+                        id: inv.invoiceNo,
+                        period: new Date(inv.date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+                        amount: `₹${inv.amount}`,
+                        status: inv.status,
+                        dueDate: "N/A", // Not provided by backend, COD is paid on delivery, Paid is paid.
+                        date: new Date(inv.date).toLocaleDateString()
+                    }));
+                    setInvoices(formatted);
+                }
+            } catch (error) {
+                console.error("Failed to fetch invoices:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchInvoices();
+    }, []);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);

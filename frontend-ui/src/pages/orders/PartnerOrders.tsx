@@ -224,6 +224,12 @@ const PartnerOrders = () => {
   const [assigning, setAssigning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // --- Assign Driver Modal State ---
+  const [assignDriverModalOpen, setAssignDriverModalOpen] = useState(false);
+  const [activeDrivers, setActiveDrivers] = useState<any[]>([]);
+  const [driversLoading, setDriversLoading] = useState(false);
+  const [parcelToAssign, setParcelToAssign] = useState<string | null>(null);
+
   // --- Shipments State ---
   const [shipments, setShipments] = useState<ShipmentData[]>([]);
   const [shipmentsTab, setShipmentsTab] = useState("new");
@@ -257,17 +263,45 @@ const PartnerOrders = () => {
     }
   };
 
-  // Auto-assign driver to a parcel
-  const handleAssignDriver = async (parcelId: string) => {
+  const openAssignModal = async (parcelId: string) => {
+    setParcelToAssign(parcelId);
+    setAssignDriverModalOpen(true);
+    setDriversLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE_URL}/api/partner/fleet-view/summary`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      if (data.success && data.drivers) {
+        // Find WmsDriver phone numbers from /api/partner-team/drivers to enrich if needed
+        // Or just map what we have from summary
+        setActiveDrivers(data.drivers);
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to load drivers", variant: "destructive" });
+    } finally {
+      setDriversLoading(false);
+    }
+  };
+
+  // Assign specific driver to a parcel
+  const handleAssignSpecificDriver = async (parcelId: string, driver: any) => {
     setAssigning(parcelId);
+    setAssignDriverModalOpen(false);
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE_URL}/api/parcels/${parcelId}/assign-driver`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify({
+          assigned_driver_id: driver.driver_id,
+          assigned_driver_name: driver.name,
+          assigned_driver_phone: driver.phone || driver.driver_id, // summary might omit phone
+        })
       });
       const data = await res.json();
       if (data.success) {
@@ -662,7 +696,7 @@ const PartnerOrders = () => {
                                       size="sm"
                                       className="bg-blue-600 hover:bg-blue-700"
                                       disabled={assigning === p._id}
-                                      onClick={() => handleAssignDriver(p._id)}
+                                      onClick={() => openAssignModal(p._id)}
                                     >
                                       {assigning === p._id ? (
                                         <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -929,18 +963,75 @@ const PartnerOrders = () => {
                     className="w-full bg-blue-600 hover:bg-blue-700"
                     disabled={assigning === selectedParcel._id}
                     onClick={() => {
-                      handleAssignDriver(selectedParcel._id);
                       setDetailsOpen(false);
+                      openAssignModal(selectedParcel._id);
                     }}
                   >
                     <Truck className="h-4 w-4 mr-2" />
-                    Auto-Assign Driver
+                    Assign Driver
                   </Button>
                 )}
               </div>
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Assign Driver Modal */}
+        <Dialog open={assignDriverModalOpen} onOpenChange={setAssignDriverModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" />
+                Select Driver to Assign
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {driversLoading ? (
+                <div className="flex justify-center flex-col items-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                  <p className="text-sm text-muted-foreground">Loading drivers...</p>
+                </div>
+              ) : activeDrivers.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground bg-gray-50 rounded-lg">
+                  <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No drivers found for this partner team.</p>
+                  <p className="text-xs mt-1">Please add drivers in the Team section.</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-2">
+                  {activeDrivers.map((driver) => (
+                    <div
+                      key={driver.driver_id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:border-primary/50 transition-colors bg-white"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="bg-blue-50 p-2 rounded-full">
+                          <User className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">{driver.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{driver.driver_id}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className={`h-2 w-2 rounded-full ${driver.is_online ? 'bg-green-500' : 'bg-gray-300'}`} />
+                            <span className="text-xs text-muted-foreground">{driver.is_online ? 'Online' : 'Offline'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => parcelToAssign && handleAssignSpecificDriver(parcelToAssign, driver)}
+                        disabled={assigning === parcelToAssign}
+                      >
+                        Assign
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Schedule Pickup Modal */}
         <AnimatePresence>
           {scheduleShipment && (

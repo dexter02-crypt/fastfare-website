@@ -25,7 +25,8 @@ import {
     Box,
     RotateCcw,
     Radio,
-    Crown
+    Crown,
+    Tag
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { authApi } from "@/lib/api";
@@ -60,6 +61,7 @@ const primaryNavItems: NavItem[] = [
     { label: "Partner Mgmt", href: "/admin/partners", icon: Users },
     { label: "Carriers", href: "/admin/carriers", icon: Truck },
     { label: "Team", href: "/partner/team", icon: Users },
+    { label: "Pricing & Services", href: "/partner/pricing", icon: Tag },
     // WMS Items (visible to partners)
     { label: "Warehouse Hub", href: "/wms", icon: Warehouse },
     { label: "WMS Fleet", href: "/wms/fleet", icon: Truck },

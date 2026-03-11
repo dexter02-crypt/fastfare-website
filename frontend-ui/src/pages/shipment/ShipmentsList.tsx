@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { formatDate } from "@/utils/dateFormat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -277,7 +278,7 @@ const ShipmentsList = () => {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground whitespace-nowrap hidden md:table-cell">
-                          {shipment.createdAt ? new Date(shipment.createdAt).toLocaleDateString() : '—'}
+                          {shipment.createdAt ? formatDate(shipment.createdAt) : '—'}
                         </TableCell>
                         <TableCell className="font-medium">
                           ₹{(shipment.shippingCost || 0).toLocaleString()}

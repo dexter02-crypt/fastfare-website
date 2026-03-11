@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "@/config";
 import { generateShippingLabelHTML, generateTaxInvoiceHTML, generateManifestHTML } from "@/utils/documentGenerators";
-import { useState, useEffect } from "react";
+import { formatDate, formatDateTime } from "@/utils/dateFormat";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,9 +24,12 @@ import {
   Loader2,
   RefreshCw,
   FileText,
+  Map,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { toast, useToast } from "@/hooks/use-toast";
+import { io, Socket } from "socket.io-client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ShipmentAddress {
   name: string;
@@ -55,6 +59,7 @@ interface TrackingEvent {
 
 interface Shipment {
   id: string;
+  _id?: string;
   awb: string;
   orderId?: string;
   status: string;
@@ -69,6 +74,24 @@ interface Shipment {
   shippingCost?: number;
   createdAt?: string;
   estimatedDelivery?: string;
+  scan_pickup?: {
+    driver_id: string;
+    driver_name: string;
+    driver_phone: string;
+    scanned_at: string;
+    location_lat: number;
+    location_lng: number;
+  };
+  assignedPartner?: {
+    _id?: string;
+    name?: string;
+    businessName?: string;
+    phone?: string;
+  } | string | null;
+  assignedDriverName?: string | null;
+  assigned_driver_id?: string | null;
+  driver_location_lat?: number | null;
+  driver_location_lng?: number | null;
 }
 
 const ShipmentDetails = () => {
@@ -78,6 +101,12 @@ const ShipmentDetails = () => {
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showLiveMap, setShowLiveMap] = useState(false);
+  const [driverLocation, setDriverLocation] = useState<{ lat: number, lng: number } | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
 
   useEffect(() => {
     const fetchShipment = async () => {
@@ -124,6 +153,95 @@ const ShipmentDetails = () => {
     fetchShipment();
   }, [id, navigate]);
 
+  // Socket setup for live tracking
+  useEffect(() => {
+    if (!shipment?._id) return;
+
+    const socket = io(API_BASE_URL, { transports: ["websocket", "polling"] });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      // The exact shipment ID tracking room name depends on backend logic,
+      // But typically we can just listen globally to the location broadcast
+      // or join a specific tracking room if the backend requires it.
+      socket.emit("join_tracking", `tracking_${shipment._id}`);
+      socket.emit("join_tracking", shipment._id); // Also try raw ID
+    });
+
+    socket.on("shipment_status_updated", (data: any) => {
+      if (data.shipmentId === shipment._id) {
+        setShipment(prev => prev ? { ...prev, status: data.status } : null);
+        toast({ title: "Status Updated", description: "Shipment status changed to " + formatStatus(data.status) });
+      }
+    });
+
+    socket.on("driver_location_broadcast", (data: any) => {
+      if (shipment.assigned_driver_id && data.driver_id === shipment.assigned_driver_id) {
+        setDriverLocation({ lat: data.lat, lng: data.lng });
+      }
+    });
+
+    // Handle generic locationUpdate from older implementation
+    socket.on("locationUpdate", (data: any) => {
+      if (data.driverId === shipment.assigned_driver_id || data.driver_id === shipment.assigned_driver_id) {
+        setDriverLocation({ lat: data.lat, lng: data.lng });
+      }
+    });
+
+    return () => { socket.disconnect(); };
+  }, [shipment?._id, shipment?.assigned_driver_id]);
+
+  // Live Map Initializer
+  useEffect(() => {
+    if (!showLiveMap || !mapRef.current) return;
+
+    const initMap = () => {
+      if (!window.google?.maps) return;
+
+      const pos = driverLocation ||
+        (shipment?.driver_location_lat ? { lat: shipment.driver_location_lat, lng: shipment.driver_location_lng } : null) ||
+        (shipment?.scan_pickup?.location_lat ? { lat: shipment.scan_pickup.location_lat, lng: shipment.scan_pickup.location_lng } : { lat: 20.5937, lng: 78.9629 });
+
+      if (!mapInstanceRef.current) {
+        mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+          center: pos,
+          zoom: 15,
+          mapTypeControl: false,
+          streetViewControl: false,
+        });
+
+        markerRef.current = new window.google.maps.Marker({
+          position: pos,
+          map: mapInstanceRef.current,
+          title: "Driver Location",
+          icon: {
+            path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            fillColor: "#3B82F6",
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: "#1E40AF",
+            scale: 6,
+          },
+        });
+      } else {
+        if (driverLocation) {
+          markerRef.current.setPosition(driverLocation);
+          mapInstanceRef.current.panTo(driverLocation);
+        }
+      }
+    };
+
+    if (window.google?.maps) {
+      initMap();
+    } else {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${localStorage.getItem('GOOGLE_MAPS_API_KEY') || ""}`;
+      script.async = true;
+      script.onload = initMap;
+      document.head.appendChild(script);
+    }
+  }, [showLiveMap, driverLocation, shipment]);
+
   const handleCopyAwb = () => {
     if (shipment?.awb) {
       navigator.clipboard.writeText(shipment.awb);
@@ -134,12 +252,36 @@ const ShipmentDetails = () => {
     }
   };
 
-  const handlePrintLabel = () => {
-    const labelWindow = window.open('', '_blank', 'width=800,height=600');
-    if (labelWindow && shipment) {
-      labelWindow.document.write(generateShippingLabelHTML(shipment, true));
-      labelWindow.document.close();
-      setTimeout(() => labelWindow.print(), 500);
+  const handlePrintLabel = async () => {
+    if (!shipment) return;
+    try {
+      // Generate QR token and get data URL from backend
+      const token = localStorage.getItem('token');
+      const shipmentId = shipment._id || shipment.id || id;
+      const qrRes = await fetch(`${API_BASE_URL}/api/scan/generate-qr/${shipmentId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      let qrDataURL: string | undefined;
+      if (qrRes.ok) {
+        const qrData = await qrRes.json();
+        qrDataURL = qrData.qrDataURL;
+      }
+
+      const labelWindow = window.open('', '_blank', 'width=800,height=600');
+      if (labelWindow) {
+        labelWindow.document.write(generateShippingLabelHTML(shipment, true, qrDataURL));
+        labelWindow.document.close();
+        setTimeout(() => labelWindow.print(), 500);
+      }
+    } catch (err) {
+      // Fallback: print without QR
+      const labelWindow = window.open('', '_blank', 'width=800,height=600');
+      if (labelWindow) {
+        labelWindow.document.write(generateShippingLabelHTML(shipment, true));
+        labelWindow.document.close();
+        setTimeout(() => labelWindow.print(), 500);
+      }
     }
   };
 
@@ -305,6 +447,17 @@ const ShipmentDetails = () => {
                 <XCircle className="h-4 w-4 mr-2" /> Cancel
               </Button>
             )}
+            {/* Bug 5: View Live Location button */}
+            {shipment.assignedDriverName && ['in_transit', 'out_for_delivery', 'picked_up', 'dispatched'].includes(shipment.status) && (
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => setShowLiveMap(true)}
+              >
+                <MapPin className="h-4 w-4 mr-2" /> 📍 View Live Location
+              </Button>
+            )}
           </div>
         </div>
 
@@ -388,7 +541,7 @@ const ShipmentDetails = () => {
                         className="flex items-center justify-between p-3 bg-muted rounded-lg print:bg-transparent print:border"
                       >
                         <div>
-                          <p className="font-medium">{getSafeValue(pkg.name, "Unknown Package")}</p>
+                          <p className="font-medium">{getSafeValue(pkg.name, "Package")}</p>
                           <p className="text-sm text-muted-foreground print:text-black">
                             Qty: {getSafeValue(pkg.quantity, 1)} | Weight: {getSafeValue(pkg.weight, 0)} kg | Dims: {getSafeValue(pkg.length, 0)}x{getSafeValue(pkg.width, 0)}x{getSafeValue(pkg.height, 0)} cm
                           </p>
@@ -441,12 +594,14 @@ const ShipmentDetails = () => {
                       <div key={index} className="flex gap-4 pb-8 last:pb-0">
                         <div className="relative flex flex-col items-center">
                           <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center ${index === 0
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-green-100 text-green-600"
+                            className={`w-10 h-10 rounded-full flex items-center justify-center ${event.status === 'picked_up_by_driver'
+                              ? 'bg-purple-100 text-purple-600'
+                              : index === 0
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-green-100 text-green-600'
                               }`}
                           >
-                            {index === 0 ? <Truck className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+                            {event.status === 'picked_up_by_driver' ? <Truck className="h-5 w-5" /> : index === 0 ? <Truck className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
                           </div>
                           {index < shipment.trackingHistory.length - 1 && (
                             <div className="absolute top-10 w-0.5 h-full bg-green-200" />
@@ -504,7 +659,7 @@ const ShipmentDetails = () => {
                   <Calendar className="h-5 w-5 text-primary" />
                   <div>
                     <p className="text-sm text-muted-foreground">Created</p>
-                    <p className="font-medium">{shipment.createdAt ? new Date(shipment.createdAt).toLocaleDateString() : "N/A"}</p>
+                    <p className="font-medium">{shipment.createdAt ? formatDate(shipment.createdAt) : "N/A"}</p>
                   </div>
                 </div>
                 <Separator />
@@ -515,12 +670,85 @@ const ShipmentDetails = () => {
                       Expected Delivery
                     </p>
                     <p className="font-medium">
-                      {shipment.estimatedDelivery ? new Date(shipment.estimatedDelivery).toLocaleDateString() : 'N/A'}
+                      {shipment.estimatedDelivery ? formatDate(shipment.estimatedDelivery) : 'N/A'}
                     </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Driver Info Card — Bug 37: show when assignedPartner OR scan_pickup exists */}
+            {(shipment.scan_pickup?.scanned_at || shipment.assignedPartner || shipment.assignedDriverName) && (
+              <Card className="border-purple-200 bg-purple-50/30">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Truck className="h-5 w-5 text-purple-600" />
+                    Driver Info
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">👤</span>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Driver</p>
+                      <p className="font-medium">
+                        {shipment.scan_pickup?.driver_name
+                          || (typeof shipment.assignedPartner === 'object' ? shipment.assignedPartner?.businessName || shipment.assignedPartner?.name : null)
+                          || shipment.assignedDriverName
+                          || 'Assigned'}
+                      </p>
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Phone</p>
+                      <p className="font-medium">
+                        {shipment.scan_pickup?.driver_phone
+                          || (typeof shipment.assignedPartner === 'object' ? shipment.assignedPartner?.phone : null)
+                          || '—'}
+                      </p>
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">{shipment.scan_pickup?.scanned_at ? 'Picked up' : 'Status'}</p>
+                      <p className="font-medium">
+                        {shipment.scan_pickup?.scanned_at
+                          ? formatDateTime(shipment.scan_pickup.scanned_at)
+                          : 'Partner Assigned'}
+                      </p>
+                    </div>
+                  </div>
+                  {(shipment.scan_pickup?.location_lat && shipment.scan_pickup?.location_lng) && (
+                    <>
+                      <Separator />
+                      <div className="flex items-center gap-3">
+                        <MapPin className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Scan Location</p>
+                          <p className="font-medium text-xs">
+                            {shipment.scan_pickup.location_lat.toFixed(4)}, {shipment.scan_pickup.location_lng.toFixed(4)}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="pt-2">
+                    <Button
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      onClick={() => setShowLiveMap(true)}
+                    >
+                      <Map className="h-4 w-4 mr-2" /> View Live Location
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Actions */}
             <Card className="bg-primary/5 border-primary/20">
@@ -551,6 +779,29 @@ const ShipmentDetails = () => {
           </div>
         </div>
       </div>
+
+      {/* Live Map Modal */}
+      <Dialog open={showLiveMap} onOpenChange={setShowLiveMap}>
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-4 border-b bg-muted/50">
+            <DialogTitle className="flex items-center gap-2">
+              <Map className="h-5 w-5 text-primary" />
+              Live Driver Location
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 w-full bg-gray-100 relative">
+            <div ref={mapRef} className="absolute inset-0 w-full h-full" />
+            {!driverLocation && !shipment?.driver_location_lat && !shipment?.scan_pickup?.location_lat && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
+                <div className="text-center">
+                  <MapPin className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-50" />
+                  <p className="font-medium text-gray-700">Waiting for driver location...</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

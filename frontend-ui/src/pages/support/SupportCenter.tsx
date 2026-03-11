@@ -22,16 +22,17 @@ import {
   Clock, CheckCircle, AlertCircle, FileText, Video, BookOpen,
   Send, X, Headphones
 } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
 
-const tickets: { id: string; subject: string; status: string; priority: string; created: string }[] = [];
+
 
 const faqs = [
-  { question: "How do I track my shipment?", category: "Tracking" },
-  { question: "What are the shipping rates?", category: "Pricing" },
-  { question: "How to schedule a pickup?", category: "Shipping" },
-  { question: "How do I add funds to my wallet?", category: "Billing" },
-  { question: "Can I change the delivery address?", category: "Shipping" },
+  { question: "How do I track my shipment?", answer: "You can track your shipment using the AWB number or Order ID on our Track page. Real-time fleet tracking is also available in your dashboard.", category: "Tracking" },
+  { question: "What are the shipping rates?", answer: "Shipping rates vary by weight, dimensions, distance, and selected carrier. You can use our Shipping Rate Calculator to get an instant estimate.", category: "Pricing" },
+  { question: "How to schedule a pickup?", answer: "Log in to your dashboard, click 'Schedule Pickup', select your preferred time slot, and our delivery partner will come to collect your package.", category: "Shipping" },
+  { question: "How do I add funds to my wallet?", answer: "Go to the Billing & Pricing section, click on 'Add Funds', and choose your preferred payment method (UPI, Card, or Netbanking).", category: "Billing" },
+  { question: "Can I change the delivery address?", answer: "Delivery addresses can be changed before the shipment is picked up. Once picked up, address changes may incur an RTO or redirection fee.", category: "Shipping" },
 ];
 
 // Mock chat messages
@@ -80,6 +81,36 @@ const SupportCenter = () => {
   const [docsDialog, setDocsDialog] = useState(false);
   const [videosDialog, setVideosDialog] = useState(false);
   const [kbDialog, setKbDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState("tickets");
+
+  const [tickets, setTickets] = useState([
+    { id: "TKT-8931", subject: "Delay in shipment delivery", status: "In Progress", priority: "High", created: new Date(Date.now() - 86400000).toLocaleDateString() },
+    { id: "TKT-8924", subject: "Need help with API integration", status: "Resolved", priority: "Medium", created: new Date(Date.now() - 3 * 86400000).toLocaleDateString() },
+    { id: "TKT-8910", subject: "Wallet recharge failed", status: "Open", priority: "High", created: new Date(Date.now() - 5 * 86400000).toLocaleDateString() }
+  ]);
+
+  const [newTicketSubject, setNewTicketSubject] = useState("");
+  const [newTicketCategory, setNewTicketCategory] = useState("");
+  const [newTicketPriority, setNewTicketPriority] = useState("");
+
+  const handleCreateTicket = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTicketSubject) {
+      toast.error("Please provide a subject");
+      return;
+    }
+    const newId = `TKT-${Math.floor(Math.random() * 9000) + 1000}`;
+    setTickets([{
+      id: newId,
+      subject: newTicketSubject,
+      status: "Open",
+      priority: newTicketPriority || "Medium",
+      created: new Date().toLocaleDateString()
+    }, ...tickets]);
+    toast.success("Ticket created successfully");
+    setNewTicketSubject("");
+    setActiveTab("tickets");
+  };
 
   const phoneNumber = "+91 1800-123-4567";
   const emailAddress = "support@fastfare.in";
@@ -220,7 +251,7 @@ const SupportCenter = () => {
           ))}
         </div>
 
-        <Tabs defaultValue="tickets" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="tickets">My Tickets</TabsTrigger>
             <TabsTrigger value="new">New Ticket</TabsTrigger>
@@ -235,7 +266,7 @@ const SupportCenter = () => {
                   <CardTitle>Support Tickets</CardTitle>
                   <CardDescription>Your recent support requests</CardDescription>
                 </div>
-                <Button className="gap-2 gradient-primary">
+                <Button className="gap-2 gradient-primary" onClick={() => setActiveTab("new")}>
                   <Plus className="h-4 w-4" />
                   New Ticket
                 </Button>
@@ -246,7 +277,7 @@ const SupportCenter = () => {
                     <div key={ticket.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
                       <div className="flex items-center gap-4">
                         <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${ticket.status === "Open" ? "bg-blue-500/10" :
-                            ticket.status === "In Progress" ? "bg-yellow-500/10" : "bg-green-500/10"
+                          ticket.status === "In Progress" ? "bg-yellow-500/10" : "bg-green-500/10"
                           }`}>
                           {ticket.status === "Open" ? <AlertCircle className="h-5 w-5 text-blue-500" /> :
                             ticket.status === "In Progress" ? <Clock className="h-5 w-5 text-yellow-500" /> :
@@ -279,11 +310,11 @@ const SupportCenter = () => {
                 <CardDescription>Describe your issue and we'll help you resolve it</CardDescription>
               </CardHeader>
               <CardContent>
-                <form className="space-y-4">
+                <form className="space-y-4" onSubmit={handleCreateTicket}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Category</label>
-                      <Select>
+                      <Select value={newTicketCategory} onValueChange={setNewTicketCategory}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
@@ -298,21 +329,21 @@ const SupportCenter = () => {
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Priority</label>
-                      <Select>
+                      <Select value={newTicketPriority} onValueChange={setNewTicketPriority}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select priority" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="Low">Low</SelectItem>
+                          <SelectItem value="Medium">Medium</SelectItem>
+                          <SelectItem value="High">High</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Subject</label>
-                    <Input placeholder="Brief description of your issue" />
+                    <Input placeholder="Brief description of your issue" value={newTicketSubject} onChange={(e) => setNewTicketSubject(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">AWB/Order ID (Optional)</label>
@@ -322,7 +353,7 @@ const SupportCenter = () => {
                     <label className="text-sm font-medium">Description</label>
                     <Textarea placeholder="Please provide detailed information about your issue..." rows={5} />
                   </div>
-                  <Button className="gradient-primary">Submit Ticket</Button>
+                  <Button type="submit" className="gradient-primary">Submit Ticket</Button>
                 </form>
               </CardContent>
             </Card>
@@ -334,17 +365,22 @@ const SupportCenter = () => {
                 <CardTitle>Frequently Asked Questions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <Accordion type="single" collapsible className="w-full space-y-3">
                   {faqs.map((faq, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <HelpCircle className="h-5 w-5 text-primary" />
-                        <span>{faq.question}</span>
-                      </div>
-                      <Badge variant="outline">{faq.category}</Badge>
-                    </div>
+                    <AccordionItem key={index} value={`item-${index}`} className="border rounded-lg px-4 hover:border-primary/50 transition-colors">
+                      <AccordionTrigger className="hover:no-underline py-4">
+                        <div className="flex items-center gap-3 text-left">
+                          <HelpCircle className="h-5 w-5 text-primary shrink-0" />
+                          <span className="font-medium text-base">{faq.question}</span>
+                          <Badge variant="outline" className="ml-auto mr-4 hidden md:flex">{faq.category}</Badge>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="text-muted-foreground pb-4 pl-8 text-base">
+                        {faq.answer}
+                      </AccordionContent>
+                    </AccordionItem>
                   ))}
-                </div>
+                </Accordion>
               </CardContent>
             </Card>
           </TabsContent>
@@ -384,7 +420,7 @@ const SupportCenter = () => {
 
       {/* Live Chat Dialog */}
       <Dialog open={chatOpen} onOpenChange={setChatOpen}>
-        <DialogContent className="max-w-md h-[600px] flex flex-col p-0">
+        <DialogContent className="max-w-md h-[600px] flex flex-col p-0 [&>button]:hidden">
           {/* Chat Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b bg-primary text-primary-foreground rounded-t-lg">
             <div className="flex items-center gap-3">
@@ -415,8 +451,8 @@ const SupportCenter = () => {
               >
                 <div
                   className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.sender === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted'
                     }`}
                 >
                   <p className="text-sm">{msg.text}</p>

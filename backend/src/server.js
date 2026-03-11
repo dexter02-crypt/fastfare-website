@@ -30,12 +30,14 @@ import wmsTrackingRoutes, { setWmsTrackingIo } from './routes/wms-tracking.js';
 import wmsDriverAuthRoutes from './routes/wms-driver-auth.js';
 
 // Mobile app routes
+import driverAppRoutes from './routes/driver-app.js';
 import partnerAuthRoutes from './routes/partner-auth.js';
 import parcelRoutes from './routes/parcels.js';
 import mobileTripsRoutes from './routes/mobile-trips.js';
 import driverLocationsRoutes from './routes/driver-locations.js';
 import partnerTeamRoutes from './routes/partner-team.js';
 import scanPartnerAuthRoutes from './routes/scan-partner-auth.js';
+import fleetViewRoutes from './routes/fleet-view.js';
 
 // Carrier routes
 
@@ -54,6 +56,20 @@ import tierRoutes from './routes/tiers.js';
 import codRoutes from './routes/cod.js';
 import partnerLedgerRoutes from './routes/partner-ledger.js';
 import adminOverrideRoutes from './routes/admin-overrides.js';
+
+// QR Scan-to-Pickup routes
+import scanRoutes from './routes/scan.js';
+
+// Billing & Settings routes (Bugs 26-29)
+import billingRoutes from './routes/billing.js';
+import settingsRoutes from './routes/settings.js';
+
+// User-facing My Reports routes
+import userReportsRoutes from './routes/user-reports.js';
+
+// Partner Pricing & Rate Calculator
+import partnerPricingRoutes from './routes/partner-pricing.js';
+import ratesRoutes from './routes/rates.js';
 
 
 
@@ -117,6 +133,7 @@ app.use('/api/kyc', kycRoutes);
 app.use('/api/fleet', fleetRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/alerts', alertsRoutes);
+app.use('/api/user/reports', userReportsRoutes);
 
 // ─── WMS Routes (Warehouse Management System) ───
 app.use('/api/wms/vehicles', wmsVehicleRoutes);
@@ -133,11 +150,13 @@ app.use('/api/wms/driver-auth', wmsDriverAuthRoutes);
 // ─── Mobile App Routes ───
 app.use('/api/partner-auth', partnerAuthRoutes);
 app.use('/api/driver-auth', wmsDriverAuthRoutes);
+app.use('/api/driver', driverAppRoutes);
 app.use('/api/parcels', parcelRoutes);
 app.use('/api/trips', mobileTripsRoutes);
 app.use('/api/driver-locations', driverLocationsRoutes);
 app.use('/api/partner-team', partnerTeamRoutes);
 app.use('/api/scan-partner-auth', scanPartnerAuthRoutes);
+app.use('/api/partner/fleet-view', fleetViewRoutes);
 
 // ─── Carrier Routes (Now Partner-driven) ───
 app.use('/api/carriers', carrierRoutes);
@@ -149,7 +168,16 @@ app.use('/api/seller', sellerStatsRoutes);
 app.use('/api/tiers', tierRoutes);
 app.use('/api/cod', codRoutes);
 app.use('/api/partner', partnerLedgerRoutes);
+app.use('/api/partner/pricing', partnerPricingRoutes);
 app.use('/api/admin', adminOverrideRoutes);
+app.use('/api/rates', ratesRoutes);
+
+// ─── QR Scan-to-Pickup Routes ───
+app.use('/api/scan', scanRoutes);
+
+// ─── Billing & Settings Routes (Bugs 26-29) ───
+app.use('/api/billing', billingRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

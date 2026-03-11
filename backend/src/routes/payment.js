@@ -106,6 +106,11 @@ router.post('/verify', protect, async (req, res) => {
             { new: true }
         );
 
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('notification_received', { message: `Wallet recharged by ₹${transaction.amount}` });
+        }
+
         res.json({
             success: true,
             message: 'Payment verified successfully',

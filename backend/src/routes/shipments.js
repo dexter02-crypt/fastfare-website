@@ -53,8 +53,16 @@ router.post('/', protect, async (req, res) => {
             }]
         };
 
+        console.log('Saving carrier:', req.body.carrier, 'id:', req.body.carrierId);
+
         const shipment = await Shipment.create(shipmentData);
-        shipment.shippingCost = calculateShippingCost(shipment);
+
+        // Bug 7: Use shippingCost from request if provided, otherwise calculate
+        if (req.body.shippingCost && req.body.shippingCost > 0) {
+            shipment.shippingCost = req.body.shippingCost;
+        } else {
+            shipment.shippingCost = calculateShippingCost(shipment);
+        }
 
         // GST calculation: 18% on delivery fare
         const deliveryFare = shipment.shippingCost;
@@ -90,7 +98,8 @@ router.post('/', protect, async (req, res) => {
 
         res.status(201).json({
             success: true,
-            shipment
+            shipment,
+            totalAmount: parseFloat((shipment.shippingCost * 1.18).toFixed(2))
         });
     } catch (error) {
         console.error('Create shipment error:', error);
@@ -266,6 +275,7 @@ router.get('/my-orders', protect, async (req, res) => {
         }
 
         const shipments = await Shipment.find(query)
+            .populate('assignedPartner', 'name phone businessName')
             .sort({ createdAt: -1 })
             .lean();
 
@@ -307,6 +317,7 @@ router.get('/my-orders', protect, async (req, res) => {
                 assignedDriver: s.assignedDriver,
                 assignedDriverName: s.assignedDriverName,
                 assignedVehicle: s.assignedVehicle,
+                scan_pickup: s.scan_pickup || null,
                 driverLocation,
                 createdAt: s.createdAt
             };
@@ -352,7 +363,7 @@ router.put('/:id', protect, async (req, res) => {
         }
 
         // Only allow updates if not yet picked up
-        if (!['pending', 'pickup_scheduled'].includes(shipment.status)) {
+        if (!['pending', 'payment_received', 'partner_assigned', 'pickup_scheduled', 'accepted', 'pending_acceptance'].includes(shipment.status)) {
             return res.status(400).json({ error: 'Cannot update shipment after pickup' });
         }
 
@@ -448,9 +459,15 @@ router.get('/carrier/stats', protect, requirePartner, async (req, res) => {
             Shipment.countDocuments({ carrierId: cid })
         ]);
 
+        const recentShipments = await Shipment.find({ carrierId: cid })
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .select('awb status delivery.city estimatedDelivery');
+
         res.json({
             success: true,
-            stats: { pending, accepted, inTransit, delivered, total }
+            stats: { pending, accepted, inTransit, delivered, total },
+            recentShipments
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -612,6 +629,60 @@ router.put('/carrier/:id/update-status', protect, requirePartner, async (req, re
 
         res.json({ success: true, message: `Shipment updated to '${status}'`, shipment });
     } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ─── PATCH /api/shipments/:id/status ─── Driver updates shipment status
+router.patch('/:id/status', async (req, res) => {
+    try {
+        const { status, driver_id, timestamp } = req.body;
+
+        if (!status || !driver_id) {
+            return res.status(400).json({ success: false, message: 'status and driver_id fields are required' });
+        }
+
+        const shipment = await Shipment.findById(req.params.id);
+        if (!shipment) {
+            return res.status(404).json({ success: false, message: 'Shipment not found' });
+        }
+
+        shipment.status = status;
+        shipment.trackingHistory.push({
+            status,
+            description: `Driver updated status to ${status}`,
+            timestamp: timestamp ? new Date(timestamp) : new Date()
+        });
+
+        if (status === 'delivered') {
+            shipment.actualDelivery = new Date();
+        }
+
+        await shipment.save();
+
+        // Socket.io broadcasts
+        const io = req.app.get('io');
+        if (io) {
+            // Emit to the user who created the shipment
+            if (shipment.user) {
+                io.to(shipment.user.toString()).emit('shipment_status_updated', {
+                    shipment_id: shipment._id,
+                    new_status: status,
+                    timestamp: new Date()
+                });
+            }
+            // General broadcast
+            io.emit('shipment_update', {
+                shipmentId: shipment._id,
+                awb: shipment.awb,
+                status,
+                timestamp: new Date()
+            });
+        }
+
+        res.json({ success: true, message: `Status updated to ${status}`, updated_shipment: shipment });
+    } catch (error) {
+        console.error('Driver status update error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

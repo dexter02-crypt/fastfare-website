@@ -12,6 +12,7 @@ interface ServiceFormData {
   serviceType: string;
   carrier: string;
   carrierId: string;
+  shippingCost: number;
   insurance: boolean;
   fragileHandling: boolean;
   signatureRequired: boolean;
@@ -40,11 +41,18 @@ interface CarrierOption {
 
 const serviceTypes = [
   { id: "express", name: "Express Delivery", description: "Guaranteed within 12 hours", icon: Zap, multiplier: 1.5 },
-  // TEMPORARILY HIDDEN
-  // { id: "standard", name: "Standard Delivery", description: "Regular delivery within 3-5 business days", icon: Truck, multiplier: 1 },
+  { id: "standard", name: "Standard Delivery", description: "Regular delivery within 3-5 business days", icon: Truck, multiplier: 1 },
 ];
 
-const logoColors = ["🔵", "🔴", "🟣", "🟠", "🟢", "🟤", "⚫"];
+const logoColors = ['🟢', '🟤', '⚫'];
+
+// Bug 14 — real carrier logos
+const CARRIER_LOGOS: Record<string, string> = {
+  'BlueDart': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Blue_dart_logo.svg/200px-Blue_dart_logo.svg.png',
+  'Delhivery': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Delhivery_Logo.svg/200px-Delhivery_Logo.svg.png',
+  'FedEx': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/FedEx_Corporation_-_2016_Logo.svg/200px-FedEx_Corporation_-_2016_Logo.svg.png',
+  'DTDC': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/DTDC_Logo.svg/200px-DTDC_Logo.svg.png',
+};
 
 const ServiceSelection = ({ data, onChange, pickupPincode, deliveryPincode }: ServiceSelectionProps) => {
   const [carriers, setCarriers] = useState<CarrierOption[]>([]);
@@ -88,10 +96,13 @@ const ServiceSelection = ({ data, onChange, pickupPincode, deliveryPincode }: Se
 
   const handleCarrierSelect = (carrierId: string) => {
     const carrier = carriers.find((c) => c._id === carrierId);
+    const service = serviceTypes.find((s) => s.id === data.serviceType);
+    const price = Math.round((carrier?.baseFare || 0) * (service?.multiplier || 1));
     onChange({
       ...data,
       carrier: carrier?.businessName || "",
       carrierId: carrierId,
+      shippingCost: price,
     });
   };
 
@@ -168,7 +179,20 @@ const ServiceSelection = ({ data, onChange, pickupPincode, deliveryPincode }: Se
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
                     <RadioGroupItem value={carrier._id} id={`carrier-${carrier._id}`} />
-                    <div className="text-2xl">{logoColors[idx % logoColors.length]}</div>
+                    {CARRIER_LOGOS[carrier.businessName] ? (
+                      <img
+                        src={CARRIER_LOGOS[carrier.businessName]}
+                        alt={carrier.businessName}
+                        style={{
+                          width: '48px', height: '48px', objectFit: 'contain',
+                          background: 'white', padding: '4px', borderRadius: '6px',
+                          border: '1px solid #e5e7eb'
+                        }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="text-2xl">{logoColors[idx % logoColors.length]}</div>
+                    )}
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <Label htmlFor={`carrier-${carrier._id}`} className="font-semibold cursor-pointer">

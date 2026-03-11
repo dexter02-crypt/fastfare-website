@@ -194,7 +194,11 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
   const gstRate = 0.18;
   const gstAmount = Math.round(deliveryFare * gstRate * 100) / 100;
   const totalPayable = Math.round((deliveryFare + gstAmount) * 100) / 100;
-  const isPaid = shipment.status === 'delivered' || shipment.paymentMode === 'prepaid' || shipment.paymentMode === 'razorpay';
+
+  // Bug 35 — fix COD invoice status
+  const isCOD = shipment.paymentMode === 'cod';
+  const isPaid = !isCOD && (shipment.status === 'delivered' || shipment.paymentMode === 'prepaid' || shipment.paymentMode === 'razorpay');
+  const invoiceStatus = isCOD ? 'COD' : isPaid ? 'PAID' : 'PENDING';
 
   const placeOfSupply = shipment.delivery?.state || shipment.pickup?.state || 'Haryana';
 
@@ -229,12 +233,12 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
         FastFare Logistics Pvt Ltd<br>
         Plot No. 123, Sector 44, Gurugram<br>
         Haryana — 122003, India<br>
-        <strong>PAN:</strong> AXXPFXXXX0 &nbsp; <strong>GSTIN:</strong> 06AXXPFXXXX0X1ZX
+        <strong>PAN:</strong> ${user.gstin ? user.gstin.substring(2, 12) : 'N/A'} &nbsp; <strong>GSTIN:</strong> ${user.gstin || 'Not Provided'}
       </div>
     </div>
     <div style="text-align:right">
       <div style="font-size:20px;font-weight:bold;color:${BRAND_COLOR};margin-bottom:8px">TAX INVOICE</div>
-      <span class="badge ${isPaid ? 'badge-paid' : 'badge-unpaid'}">${isPaid ? 'PAID' : 'UNPAID'}</span>
+      <span class="badge ${invoiceStatus === 'PAID' ? 'badge-paid' : invoiceStatus === 'COD' ? 'badge-paid' : 'badge-unpaid'}" style="${invoiceStatus === 'COD' ? 'background:#dbeafe;color:#1d4ed8' : ''}">${invoiceStatus}</span>
     </div>
   </div>
 
@@ -317,17 +321,17 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
     <div style="margin-top:16px; font-size:11px; color:#666;">
       <p style="margin:2px 0;"><strong>Note:</strong></p>
       <p style="margin:2px 0;">GST @18% charged on delivery fare as per applicable tax regulations.</p>
-      <p style="margin:2px 0;">GSTIN: 06AXXPFXXXX0X1ZX | SAC: 996812</p>
-      ${shipment.paymentMode === 'cod' ? '<p style="margin:2px 0;">Payment mode: Cash on Delivery — No additional COD charges applied.</p>' : ''}
+      <p style="margin:2px 0;">GSTIN: ${user.gstin || 'Not Provided'} | SAC: 996812</p>
+      ${isCOD ? '<p style="margin:2px 0;">Payment mode: Cash on Delivery — Amount collected at delivery.</p>' : ''}
     </div>
 
     <!-- Amount Due -->
-    <div style="margin-top:20px;padding:12px 16px;background:#f8f9fa;border-left:4px solid ${isPaid ? '#10b981' : '#f59e0b'};border-radius:4px;display:flex;justify-content:space-between;align-items:center">
+    <div style="margin-top:20px;padding:12px 16px;background:#f8f9fa;border-left:4px solid ${invoiceStatus === 'PAID' ? '#10b981' : invoiceStatus === 'COD' ? '#3b82f6' : '#f59e0b'};border-radius:4px;display:flex;justify-content:space-between;align-items:center">
       <div style="font-weight:600; font-size: 14px; display: flex; align-items: center; gap: 8px;">
-        Amount Due
-        <span class="badge ${isPaid ? 'badge-paid' : 'badge-unpaid'}" style="font-size: 11px; padding: 2px 8px;">${isPaid ? 'PAID' : 'UNPAID'}</span>
+        ${isCOD ? 'Payment Mode' : 'Amount Due'}
+        <span class="badge ${invoiceStatus === 'PAID' ? 'badge-paid' : invoiceStatus === 'COD' ? 'badge-paid' : 'badge-unpaid'}" style="font-size: 11px; padding: 2px 8px; ${invoiceStatus === 'COD' ? 'background:#dbeafe;color:#1d4ed8' : ''}">${invoiceStatus}</span>
       </div>
-      <div style="font-size:18px;font-weight:bold;color:${isPaid ? '#166534' : '#92400e'}">₹${isPaid ? '0.00' : totalPayable.toFixed(2)}</div>
+      <div style="font-size:${isCOD ? '13' : '18'}px;font-weight:bold;color:${invoiceStatus === 'PAID' ? '#166534' : invoiceStatus === 'COD' ? '#1d4ed8' : '#92400e'}">${isCOD ? 'Cash on Delivery — Collected at delivery' : isPaid ? '₹0.00' : '₹' + totalPayable.toFixed(2)}</div>
     </div>
   </div>
 
@@ -336,9 +340,9 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
     <div style="font-weight:600;margin-bottom:8px;color:${BRAND_COLOR}">Bank & Commercial Details</div>
     <table style="font-size:12px;border:0;width:auto">
       <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">Account Name:</td><td style="border:0;padding:2px 0">FastFare Logistics Pvt Ltd</td></tr>
-      <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">Account No:</td><td style="border:0;padding:2px 0">XXXXXXXXXXXX7890</td></tr>
-      <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">IFSC Code:</td><td style="border:0;padding:2px 0">HDFC0001234</td></tr>
-      <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">Bank Name:</td><td style="border:0;padding:2px 0">HDFC Bank Ltd</td></tr>
+      <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">Account No:</td><td style="border:0;padding:2px 0">Contact billing@fastfare.in</td></tr>
+      <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">IFSC Code:</td><td style="border:0;padding:2px 0">Contact billing@fastfare.in</td></tr>
+      <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">Bank Name:</td><td style="border:0;padding:2px 0">Contact billing@fastfare.in</td></tr>
     </table>
     <div style="margin-top:24px;text-align:right">
       <div style="font-size:11px;color:#888">For FastFare Logistics Pvt Ltd</div>
@@ -372,40 +376,63 @@ interface LabelShipment {
   createdAt?: string;
 }
 
-export const generateShippingLabelHTML = (shipment: LabelShipment, masked: boolean = true): string => {
+export const generateShippingLabelHTML = (shipment: LabelShipment, masked: boolean = true, qrDataURL?: string): string => {
   const awb = shipment.awb || shipment._id || 'N/A';
-  const orderId = shipment.orderId || shipment._id || 'N/A';
   const packages = shipment.packages || [];
   const totalWeight = shipment.totalWeight || packages.reduce((s, p) => s + ((p.weight || 0) * (p.quantity || 1)), 0);
   const dims = packages.length > 0
     ? `${packages[0].length || 0}×${packages[0].width || 0}×${packages[0].height || 0} cm`
     : '—';
 
-  // Always mask phone numbers
-  const deliveryPhone = maskPhone(shipment.delivery?.phone || '');
-  const pickupPhone = maskPhone(shipment.pickup?.phone || '');
+  // Bug 4 — Show full phone numbers (no masking on label)
+  const deliveryPhone = shipment.delivery?.phone || '—';
+  const pickupPhone = shipment.pickup?.phone || '—';
 
-  // Build product rows — ALL amounts always masked with XXXXX
+  // Bug 5 — Date helper: "09 Mar 2026"
+  const formatLabelDate = (dateInput: string | number | Date) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const d = new Date(dateInput);
+    return String(d.getDate()).padStart(2, '0') + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  };
+
+  // Bug 2 — Show real prices, not XXXXX
+  let grandTotal = 0;
   const productRows = packages.map((pkg) => {
     const sku = `SKU-${(pkg._id || pkg.id || '000').toString().slice(-8).toUpperCase()}`;
     const qty = pkg.quantity || 1;
-    const displayName = maskName(pkg.name || 'Package');
+    const displayName = pkg.name || 'Package';  // Bug 3 — full name, no truncation
+    const unitPrice = pkg.value || 0;
+    const lineTotal = unitPrice * qty;
+    grandTotal += lineTotal;
     return `
       <tr style="border-bottom:1px solid #000">
-        <td style="padding:4px;border-right:1px solid #000;text-align:left">
+        <td style="padding:4px;border-right:1px solid #000;text-align:left;white-space:normal;word-wrap:break-word;word-break:break-word;overflow:visible;max-width:200px">
           <div style="font-weight:bold">${displayName}</div>
           <div style="font-size:10px;color:#666">SKU: ${sku}</div>
         </td>
         <td style="padding:4px;border-right:1px solid #000">${qty}</td>
-        <td style="padding:4px;border-right:1px solid #000">XXXXX</td>
-        <td style="padding:4px">XXXXX</td>
+        <td style="padding:4px;border-right:1px solid #000">₹${unitPrice}</td>
+        <td style="padding:4px">₹${lineTotal}</td>
       </tr>
     `;
   }).join('');
 
-  const invoiceDate = new Date(shipment.createdAt || Date.now()).toLocaleDateString('en-IN');
+  const invoiceDate = formatLabelDate(shipment.createdAt || Date.now());
   const serviceType = (shipment.serviceType || 'standard').charAt(0).toUpperCase() + (shipment.serviceType || 'standard').slice(1);
   const carrier = shipment.carrier || 'FastFare';
+
+  // Bug 2 — COD / Prepaid footer
+  const codFooter = (shipment.paymentMode || '').toLowerCase() === 'cod'
+    ? `<strong style="color:red;font-size:12px">COD: ₹${shipment.codAmount || 0}</strong>`
+    : `<strong style="color:green;font-size:12px">PREPAID</strong>`;
+
+  // Bug 1 — QR code section (embedded as img from backend data URL)
+  const qrSection = qrDataURL ? `
+    <div style="text-align:center; margin-top:6px;">
+      <img src="${qrDataURL}" style="width:100px; height:100px;" />
+      <p style="font-size:9px; margin:3px 0 0; color:#333;">Scan to confirm pickup</p>
+    </div>
+  ` : '';
 
   return `<!DOCTYPE html>
 <html><head><title>Shipping Label - ${awb}</title>
@@ -446,7 +473,7 @@ th { font-weight: bold; padding: 4px; border-bottom: 1px solid #000; }
   <div style="font-size:13px;margin-top:4px">Phone No.: ${deliveryPhone}</div>
 </div>
 
-<!-- Details & AWB Barcode -->
+<!-- Details & AWB Barcode + QR -->
 <div class="flex" style="border-bottom:2px solid #000">
   <div class="half half-left" style="font-size:13px">
     <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Dimensions:</span><span>${dims}</span></div>
@@ -457,10 +484,11 @@ th { font-weight: bold; padding: 4px; border-bottom: 1px solid #000; }
   <div class="half" style="text-align:center">
     <div style="font-size:16px;font-weight:bold;margin-bottom:8px">${carrier}</div>
     <div class="barcode-container"><svg id="barcode-awb"></svg></div>
+    ${qrSection}
   </div>
 </div>
 
-<!-- Return Address & Order Barcode -->
+<!-- Return Address (Bug 6 — removed MongoDB _id barcode) -->
 <div class="flex" style="border-bottom:2px solid #000">
   <div class="half half-left" style="font-size:13px">
     <p style="font-size:11px;color:#666;margin:0 0 4px">(If undelivered, return to)</p>
@@ -470,14 +498,13 @@ th { font-weight: bold; padding: 4px; border-bottom: 1px solid #000; }
     <div style="font-weight:bold;margin-top:4px">${shipment.pickup?.pincode || '—'}</div>
     <div style="margin-top:4px">Phone No.: ${pickupPhone}</div>
   </div>
-  <div class="half" style="text-align:center">
-    <div style="font-size:13px;margin-bottom:8px">Order #: ${orderId}</div>
-    <div class="barcode-container"><svg id="barcode-order"></svg></div>
+  <div class="half" style="text-align:center;display:flex;flex-direction:column;justify-content:center">
+    <div style="font-size:13px">AWB: <strong>${awb}</strong></div>
     <div style="margin-top:8px;font-size:11px">Invoice Date: ${invoiceDate}</div>
   </div>
 </div>
 
-<!-- Product Table (All Amounts Masked) -->
+<!-- Product Table -->
 <div class="section" style="border-bottom:2px solid #000">
   <table>
     <thead>
@@ -492,7 +519,7 @@ th { font-weight: bold; padding: 4px; border-bottom: 1px solid #000; }
       ${productRows}
       <tr style="font-weight:bold;background:#f5f5f5">
         <td style="padding:4px;text-align:left;border-right:1px solid #000" colspan="3">Grand Total</td>
-        <td style="padding:4px">XXXXX</td>
+        <td style="padding:4px">₹${grandTotal}</td>
       </tr>
     </tbody>
   </table>
@@ -502,7 +529,7 @@ th { font-weight: bold; padding: 4px; border-bottom: 1px solid #000; }
 <div class="footer">
   <div style="font-size:10px;color:#888">Powered by FastFare Logistics</div>
   <div style="text-align:right;font-size:10px;color:#888">
-    ${shipment.paymentMode === 'cod' ? `<strong style="color:red;font-size:12px">COD: XXXXX</strong>` : ''}
+    ${codFooter}
   </div>
 </div>
 </div>
@@ -510,7 +537,6 @@ th { font-weight: bold; padding: 4px; border-bottom: 1px solid #000; }
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     try { JsBarcode('#barcode-awb', '${awb}', { width: 2, height: 50, fontSize: 12, margin: 4 }); } catch(e) {}
-    try { JsBarcode('#barcode-order', '${orderId}', { width: 1.5, height: 40, fontSize: 10, margin: 4 }); } catch(e) {}
   });
 <\/script>
 </body></html>`;

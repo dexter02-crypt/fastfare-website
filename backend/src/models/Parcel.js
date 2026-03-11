@@ -39,6 +39,13 @@ const parcelSchema = new mongoose.Schema({
 
     assignedDriver: { type: mongoose.Schema.Types.ObjectId, ref: 'WmsDriver' },
     tripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip' },
+    assigned_driver_id: { type: String, default: null },
+    assigned_driver_name: { type: String, default: null },
+    assigned_driver_phone: { type: String, default: null },
+    driver_assigned_at: { type: Date, default: null },
+    driver_location_lat: { type: Number, default: null },
+    driver_location_lng: { type: Number, default: null },
+    driver_location_updated_at: { type: Date, default: null },
 
     scannedAt: { type: Date, default: Date.now },
     deliveredAt: { type: Date },

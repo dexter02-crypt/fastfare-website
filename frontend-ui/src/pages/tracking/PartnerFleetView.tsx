@@ -48,7 +48,7 @@ const PartnerFleetView = () => {
         const fetchFleet = async () => {
             try {
                 const token = localStorage.getItem("token");
-                const res = await fetch(`${API_BASE_URL}/api/parcels/partner/fleet-view`, {
+                const res = await fetch(`${API_BASE_URL}/api/partner/fleet-view/summary`, {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });
                 const data = await res.json();
