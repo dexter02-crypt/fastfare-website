@@ -29,7 +29,15 @@ const authDriver = (req, res, next) => {
 router.post('/login', async (req, res) => {
     const { email, driverId, password } = req.body;
     // Accept login via email OR driverId field
-    const loginId = email || driverId;
+    let loginId = email || driverId;
+
+    // Ensure driverId is uppercase, or convert email to lowercase
+    if (loginId && loginId.includes('@')) {
+        loginId = loginId.toLowerCase();
+    } else if (loginId) {
+        loginId = loginId.toUpperCase();
+    }
+
     try {
         const driver = await WmsDriver.findOne({
             $or: [{ email: loginId }, { driverId: loginId }]
