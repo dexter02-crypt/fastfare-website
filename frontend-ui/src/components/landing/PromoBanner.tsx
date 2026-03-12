@@ -11,7 +11,7 @@ const PromoBanner = () => {
           <MapPin className="h-4 w-4 shrink-0" />
           <span className="font-semibold whitespace-nowrap">Delhi ↔ Jaipur</span>
         </div>
-        <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0 shrink-0">Special Rates</Badge>
+        <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0 shrink-0 hidden sm:inline-flex">Special Rates</Badge>
         <span className="whitespace-nowrap">Starting ₹49/kg</span>
         <Link to="/shipment/new">
           <Button size="sm" variant="secondary" className="h-8 text-xs bg-white text-orange-600 hover:bg-white/90 border-0 min-h-[44px] sm:min-h-0 sm:h-7 px-4 touch-action-manipulation">

@@ -347,8 +347,10 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
         {/* Mobile Menu Toggle - public pages */}
         {(!isAuthenticated || isHomepage) && (
           <button
-            className="md:hidden p-2 ml-auto"
+            className="md:hidden flex items-center justify-center w-[44px] h-[44px] ml-auto relative z-[200]"
             onClick={toggleMobileMenu}
+            aria-label="Toggle menu"
+            style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -357,27 +359,49 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background p-4">
-          <nav className="flex flex-col gap-4">
+        <div className="md:hidden fixed inset-0 z-[9999] bg-background overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          {/* Close header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <Link to="/" onClick={closeMobileMenu}>
+              <img src={logo} alt="FastFare" className="h-8 w-auto" />
+            </Link>
+            <button
+              onClick={closeMobileMenu}
+              className="flex items-center justify-center w-[44px] h-[44px]"
+              style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+            >
+              <X size={22} className="text-gray-700" />
+            </button>
+          </div>
+          <nav className="flex flex-col px-6 py-4 gap-1">
             {isAuthenticated ? null : (
               <>
                 {navLinks.map((link) => (
                   <Link
                     key={link.label}
                     to={link.href}
-                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    className="flex items-center py-3.5 text-[16px] font-medium text-foreground border-b border-border/30"
                     onClick={closeMobileMenu}
+                    style={{ minHeight: '52px', WebkitTapHighlightColor: 'transparent' }}
                   >
                     {link.label}
                   </Link>
                 ))}
-                <div className="flex flex-col gap-2 pt-4 border-t border-border">
-
+                <Link
+                  to="/track"
+                  className="flex items-center gap-2 py-3.5 text-[16px] font-medium text-foreground border-b border-border/30"
+                  onClick={closeMobileMenu}
+                  style={{ minHeight: '52px' }}
+                >
+                  <Package className="h-4 w-4" />
+                  Track Order
+                </Link>
+                <div className="flex flex-col gap-3 pt-6">
                   <Link to="/login" onClick={closeMobileMenu}>
-                    <Button variant="ghost" className="w-full">Log in</Button>
+                    <Button variant="outline" className="w-full h-[52px] text-[15px] font-semibold rounded-xl">Log in</Button>
                   </Link>
                   <Link to="/register" onClick={closeMobileMenu}>
-                    <Button className="w-full gradient-primary">Get Started Free</Button>
+                    <Button className="w-full h-[52px] text-[15px] font-semibold rounded-xl gradient-primary">Get Started Free</Button>
                   </Link>
                 </div>
               </>
