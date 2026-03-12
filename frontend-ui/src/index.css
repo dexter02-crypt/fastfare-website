@@ -321,10 +321,15 @@
     iframe,
     embed,
     object,
-    canvas,
-    svg {
+    canvas {
       max-width: 100% !important;
       height: auto;
+    }
+
+    /* SVG icons — constrain size but don't break them */
+    svg:not(.recharts-surface) {
+      max-width: 100% !important;
+      /* Do NOT set height: auto on inline SVG icons — it makes them blow up */
     }
 
     .container,
@@ -354,6 +359,107 @@
     h4 {
       overflow-wrap: break-word;
       word-break: break-word;
+    }
+
+    /* ═══════════════════════════════════════════ */
+    /* PROMO BANNER — constrain to slim strip     */
+    /* ═══════════════════════════════════════════ */
+    .bg-gradient-to-r.from-orange-500 {
+      max-height: 48px !important;
+      overflow: hidden !important;
+      display: flex !important;
+      align-items: center !important;
+      padding: 0 12px !important;
+    }
+
+    .bg-gradient-to-r.from-orange-500 .container {
+      flex-wrap: nowrap !important;
+      gap: 8px !important;
+      padding: 0 !important;
+      justify-content: space-between !important;
+      flex-direction: row !important;
+    }
+
+    /* All SVG icons inside the banner — nuclear constraint */
+    .bg-gradient-to-r.from-orange-500 svg {
+      width: 14px !important;
+      height: 14px !important;
+      min-width: 14px !important;
+      min-height: 14px !important;
+      max-width: 14px !important;
+      max-height: 14px !important;
+      flex-shrink: 0 !important;
+    }
+
+    /* Text inside banner — keep compact */
+    .bg-gradient-to-r.from-orange-500 span,
+    .bg-gradient-to-r.from-orange-500 .font-semibold {
+      font-size: 13px !important;
+      white-space: nowrap !important;
+      line-height: 1 !important;
+    }
+
+    /* Hide "Special Rates" badge on mobile — save space */
+    .bg-gradient-to-r.from-orange-500 .bg-white\/20 {
+      display: none !important;
+    }
+
+    /* Ship Now button inside banner — compact */
+    .bg-gradient-to-r.from-orange-500 button,
+    .bg-gradient-to-r.from-orange-500 a button {
+      height: 32px !important;
+      min-height: 32px !important;
+      padding: 0 12px !important;
+      font-size: 12px !important;
+      flex-shrink: 0 !important;
+      white-space: nowrap !important;
+    }
+
+    /* ═══════════════════════════════════════════ */
+    /* MOBILE MENU — full screen overlay          */
+    /* ═══════════════════════════════════════════ */
+    .fixed.inset-0.z-\[9999\].bg-background {
+      background: white !important;
+      padding: 60px 24px 24px !important;
+    }
+
+    .fixed.inset-0.z-\[9999\].bg-background nav {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 0 !important;
+    }
+
+    .fixed.inset-0.z-\[9999\].bg-background nav a {
+      display: flex !important;
+      align-items: center !important;
+      padding: 16px 0 !important;
+      font-size: 16px !important;
+      font-weight: 500 !important;
+      color: #111827 !important;
+      text-decoration: none !important;
+      border-bottom: 1px solid #f3f4f6 !important;
+      min-height: 52px !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    .fixed.inset-0.z-\[9999\].bg-background nav button,
+    .fixed.inset-0.z-\[9999\].bg-background nav a button {
+      min-height: 48px !important;
+      font-size: 15px !important;
+      font-weight: 600 !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    /* Close button positioning */
+    .fixed.inset-0.z-\[9999\].bg-background>button[aria-label="Close menu"] {
+      position: absolute !important;
+      top: 16px !important;
+      right: 16px !important;
+      z-index: 10000 !important;
+      min-width: 44px !important;
+      min-height: 44px !important;
     }
 
     /* Modal / Dialog -> Bottom Sheet */

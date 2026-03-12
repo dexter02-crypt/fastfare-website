@@ -57,10 +57,6 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
   // Unified mobile menu state: use prop if provided (authenticated layout), else local
   const mobileMenuOpen = onMobileMenuToggle ? (propMobileMenuOpen ?? false) : localMobileMenuOpen;
   const toggleMobileMenu = onMobileMenuToggle || (() => setLocalMobileMenuOpen(prev => !prev));
-
-  // Mobile search state for authenticated users
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-
   const closeMobileMenu = () => {
     if (onMobileMenuToggle && propMobileMenuOpen) onMobileMenuToggle();
     setLocalMobileMenuOpen(false);
@@ -117,8 +113,8 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between gap-4">
         <div className="flex items-center gap-2 shrink-0">
-          {/* Mobile Menu Button - for public pages only */}
-          {!isAuthenticated && onMobileMenuToggle && (
+          {/* Mobile Menu Button - for authenticated dashboard sidebar */}
+          {isAuthenticated && onMobileMenuToggle && (
             <Button
               variant="ghost"
               size="icon"
@@ -136,21 +132,20 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               size="icon"
               onClick={() => navigate(-1)}
               title="Go Back"
-              className="md:hidden -ml-2 h-8 w-8"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
           <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-2">
-            <img src={logo} alt="FastFare" className="h-6 md:h-8 w-auto max-h-[32px]" />
+            <img src={logo} alt="FastFare" className="h-8 w-auto" />
           </Link>
         </div>
 
         {isAuthenticated && !isHomepage ? (
           /* Authenticated Header */
           <>
-            {/* Search Bar - Center Left (Desktop) */}
-            <div className="flex-1 max-w-md hidden lg:flex">
+            {/* Search Bar - Center Left */}
+            <div className="flex-1 max-w-md hidden md:flex">
               <form onSubmit={handleSearch} className="relative w-full">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -164,18 +159,10 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-2 lg:gap-4 shrink-0">
-
-              {/* Mobile Search Toggle */}
-              <button
-                className="flex lg:hidden items-center justify-center w-[44px] h-[44px] text-gray-600"
-                onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-              >
-                <Search size={24} />
-              </button>
+            <div className="flex items-center gap-3 md:gap-4 shrink-0">
               {/* Wallet Balance */}
               <div
-                className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/20 cursor-pointer hover:bg-primary/10 transition-colors"
+                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/20 cursor-pointer hover:bg-primary/10 transition-colors"
                 onClick={() => navigate('/billing/recharge')}
                 title="Wallet Balance"
               >
@@ -183,13 +170,13 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                 <span className="text-sm font-semibold text-primary">₹{balance?.toLocaleString('en-IN') || '0'}</span>
               </div>
               {/* Track Order Link */}
-              <div className="hidden lg:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onClick={() => navigate('/track')}>
+              <div className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onClick={() => navigate('/track')}>
                 <MapPin className="h-4 w-4" />
                 <span className="hidden lg:inline">Track Order</span>
               </div>
 
               {/* Help */}
-              <div className="hidden lg:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer" onClick={() => navigate('/support')}>
+              <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer" onClick={() => navigate('/support')}>
                 <HelpCircle className="h-5 w-5" />
                 <span className="hidden lg:inline">Need Help</span>
               </div>
@@ -197,7 +184,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               {/* All Products */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="hidden lg:flex">
+                  <Button variant="ghost" size="icon" className="hidden md:flex">
                     <Grid className="h-5 w-5 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -213,12 +200,12 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               </DropdownMenu>
 
               {/* Notifications */}
-              <button className="relative flex items-center justify-center w-[44px] h-[44px] text-gray-600" onClick={() => navigate('/notifications')}>
-                <Bell size={24} className="text-muted-foreground" />
+              <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
+                <Bell className="h-5 w-5 text-muted-foreground" />
                 {hasUnreadNotifications && (
                   <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full" />
                 )}
-              </button>
+              </Button>
 
               {/* User Profile */}
               <DropdownMenu>
@@ -232,14 +219,14 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                           : 'bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 shadow-[0_0_8px_rgba(180,83,9,0.3)]'
                       : ''
                       }`}>
-                      <Avatar className={`h-8 w-8 lg:h-9 lg:w-9 border-2 border-background`}>
+                      <Avatar className={`h-9 w-9 border-2 border-background`}>
                         <AvatarImage src="" />
                         <AvatarFallback className="bg-primary/10 text-primary">
                           {getInitials(user?.businessName || "U")}
                         </AvatarFallback>
                       </Avatar>
                     </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground hidden lg:block" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground hidden md:block" />
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -347,224 +334,79 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
         {/* Mobile Menu Toggle - public pages */}
         {(!isAuthenticated || isHomepage) && (
           <button
-            className="md:hidden flex items-center justify-center w-[44px] h-[44px] ml-auto relative z-[200]"
+            className="md:hidden p-2 ml-auto"
             onClick={toggleMobileMenu}
-            aria-label="Toggle menu"
-            style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         )}
       </div>
 
-      {/* Mobile Menu — Backdrop */}
+      {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div
-          onClick={closeMobileMenu}
-          style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            zIndex: 9998,
-          }}
-        />
-      )}
+        <div className="md:hidden fixed inset-0 z-[9999] bg-background overflow-y-auto">
+          <nav className="flex flex-col gap-4">
+            {(isAuthenticated && !isHomepage) ? (
+              <>
+                <form onSubmit={handleSearch} className="relative w-full mb-4">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Order ID"
+                    className="w-full bg-muted/50 pl-9 h-9"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </form>
+                <Link to="/dashboard" onClick={closeMobileMenu}>
+                  <Button variant="ghost" className="w-full justify-start">
+                    <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
+                  </Button>
+                </Link>
+                <Link to="/shipments" onClick={closeMobileMenu}>
+                  <Button variant="ghost" className="w-full justify-start">
+                    <Grid className="mr-2 h-4 w-4" /> Shipments
+                  </Button>
+                </Link>
+                <Button variant="ghost" className="w-full justify-start" onClick={() => navigate('/billing/recharge')}>
+                  <Wallet className="mr-2 h-4 w-4" /> Wallet: ₹{balance.toLocaleString()}
+                </Button>
+                <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.label}
+                    to={link.href}
+                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={closeMobileMenu}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+                <div className="flex flex-col gap-2 pt-4 border-t border-border">
 
-      {/* Mobile Menu — Slide-in Panel (always mounted, slides via transform) */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: '280px',
-          maxWidth: '85vw',
-          backgroundColor: 'white',
-          zIndex: 9999,
-          overflowY: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
-        }}
-      >
-        {/* Menu Header — logo + close button */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 20px',
-          height: '56px',
-          borderBottom: '1px solid #f3f4f6',
-          flexShrink: 0,
-        }}>
-          <Link to="/" onClick={closeMobileMenu} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-            <img src={logo} alt="FastFare" style={{ height: '28px', width: 'auto' }} />
-          </Link>
+                  <Link to="/login" onClick={closeMobileMenu}>
+                    <Button variant="ghost" className="w-full">Log in</Button>
+                  </Link>
+                  <Link to="/register" onClick={closeMobileMenu}>
+                    <Button className="w-full gradient-primary">Get Started Free</Button>
+                  </Link>
+                </div>
+              </>
+            )}
+          </nav>
+          {/* Close button */}
           <button
             onClick={closeMobileMenu}
+            className="absolute top-4 right-4 p-2"
             aria-label="Close menu"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '44px',
-              height: '44px',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              WebkitTapHighlightColor: 'transparent',
-              touchAction: 'manipulation',
-            }}
           >
-            <X size={22} color="#374151" />
+            <X size={24} />
           </button>
-        </div>
-
-        {/* Navigation Links */}
-        {(!isAuthenticated || isHomepage) && (
-          <nav style={{
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '8px 0',
-            flex: 1,
-          }}>
-            {navLinks.map((link) => (
-              <Link
-                key={link.label}
-                to={link.href}
-                onClick={closeMobileMenu}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '14px 24px',
-                  fontSize: '16px',
-                  fontWeight: '500',
-                  color: '#111827',
-                  textDecoration: 'none',
-                  borderBottom: '1px solid #f9fafb',
-                  minHeight: '52px',
-                  WebkitTapHighlightColor: 'transparent',
-                  touchAction: 'manipulation',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <Link
-              to="/track"
-              onClick={closeMobileMenu}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '14px 24px',
-                fontSize: '16px',
-                fontWeight: '500',
-                color: '#111827',
-                textDecoration: 'none',
-                borderBottom: '1px solid #f9fafb',
-                minHeight: '52px',
-                WebkitTapHighlightColor: 'transparent',
-                touchAction: 'manipulation',
-                boxSizing: 'border-box',
-              }}
-            >
-              <Package size={16} color="#111827" />
-              Track Order
-            </Link>
-          </nav>
-        )}
-
-        {/* CTA Buttons at bottom */}
-        {(!isAuthenticated || isHomepage) && (
-          <div style={{
-            padding: '20px',
-            borderTop: '1px solid #f3f4f6',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            flexShrink: 0,
-            paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-          }}>
-            <Link
-              to="/login"
-              onClick={closeMobileMenu}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '52px',
-                border: '2px solid #2563eb',
-                borderRadius: '10px',
-                color: '#2563eb',
-                fontWeight: '600',
-                fontSize: '15px',
-                textDecoration: 'none',
-                WebkitTapHighlightColor: 'transparent',
-                touchAction: 'manipulation',
-                boxSizing: 'border-box',
-              }}
-            >
-              Sign In
-            </Link>
-            <Link
-              to="/register"
-              onClick={closeMobileMenu}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '52px',
-                backgroundColor: '#2563eb',
-                borderRadius: '10px',
-                color: 'white',
-                fontWeight: '700',
-                fontSize: '15px',
-                textDecoration: 'none',
-                WebkitTapHighlightColor: 'transparent',
-                touchAction: 'manipulation',
-                boxSizing: 'border-box',
-              }}
-            >
-              Get Started Free
-            </Link>
-          </div>
-        )}
-      </div>
-
-      {/* Mobile Search Overlay */}
-      {mobileSearchOpen && isAuthenticated && (
-        <div className="lg:hidden fixed inset-0 bg-background z-[2000] flex flex-col p-0 animate-in fade-in duration-150">
-          <div className="flex items-center px-2 h-[52px] border-b border-gray-200 gap-2">
-            <button className="flex items-center justify-center w-[44px] h-[44px]" onClick={() => setMobileSearchOpen(false)}>
-              <ArrowLeft size={24} className="text-gray-600" />
-            </button>
-            <form onSubmit={(e) => { handleSearch(e); setMobileSearchOpen(false); }} className="relative flex-1">
-              <input
-                type="search"
-                placeholder="Search by Order ID..."
-                className="w-full h-[44px] text-[16px] border-none outline-none px-2 bg-transparent"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoFocus
-              />
-            </form>
-            {searchQuery && (
-              <button
-                className="flex items-center justify-center w-[44px] h-[44px] text-gray-500"
-                onClick={() => setSearchQuery("")}
-              >
-                <X size={20} />
-              </button>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {/* Search results placeholder */}
-          </div>
         </div>
       )}
     </header>
