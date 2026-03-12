@@ -344,69 +344,146 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[9999] bg-background overflow-y-auto">
-          <nav className="flex flex-col gap-4">
-            {(isAuthenticated && !isHomepage) ? (
-              <>
-                <form onSubmit={handleSearch} className="relative w-full mb-4">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Order ID"
-                    className="w-full bg-muted/50 pl-9 h-9"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </form>
-                <Link to="/dashboard" onClick={closeMobileMenu}>
-                  <Button variant="ghost" className="w-full justify-start">
-                    <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
-                  </Button>
-                </Link>
-                <Link to="/shipments" onClick={closeMobileMenu}>
-                  <Button variant="ghost" className="w-full justify-start">
-                    <Grid className="mr-2 h-4 w-4" /> Shipments
-                  </Button>
-                </Link>
-                <Button variant="ghost" className="w-full justify-start" onClick={() => navigate('/billing/recharge')}>
-                  <Wallet className="mr-2 h-4 w-4" /> Wallet: ₹{balance.toLocaleString()}
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" /> Logout
-                </Button>
-              </>
-            ) : (
-              <>
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.label}
-                    to={link.href}
-                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                    onClick={closeMobileMenu}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-                <div className="flex flex-col gap-2 pt-4 border-t border-border">
+        <div
+          className="md:hidden"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            backgroundColor: '#ffffff',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {/* Header row — logo + close */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 20px',
+            height: '56px',
+            borderBottom: '1px solid #e5e7eb',
+            flexShrink: 0,
+          }}>
+            <Link to="/" onClick={closeMobileMenu} style={{ display: 'flex', alignItems: 'center' }}>
+              <img src={logo} alt="FastFare" style={{ height: '28px', width: 'auto' }} />
+            </Link>
+            <button
+              onClick={closeMobileMenu}
+              aria-label="Close menu"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '44px',
+                height: '44px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={22} color="#374151" />
+            </button>
+          </div>
 
-                  <Link to="/login" onClick={closeMobileMenu}>
-                    <Button variant="ghost" className="w-full">Log in</Button>
-                  </Link>
-                  <Link to="/register" onClick={closeMobileMenu}>
-                    <Button className="w-full gradient-primary">Get Started Free</Button>
-                  </Link>
-                </div>
-              </>
-            )}
-          </nav>
-          {/* Close button */}
-          <button
-            onClick={closeMobileMenu}
-            className="absolute top-4 right-4 p-2"
-            aria-label="Close menu"
-          >
-            <X size={24} />
-          </button>
+          {/* Flat navigation links */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {[
+              { label: 'Home', href: '/' },
+              { label: 'Pricing', href: '/pricing' },
+              { label: 'Track Shipment', href: '/track' },
+              { label: 'Integrations', href: '#integrations' },
+              // Solutions sub-items
+              { label: 'Courier Services', href: '/solutions/courier' },
+              { label: 'Warehousing', href: '/solutions/warehousing' },
+              { label: 'Returns Management', href: '/solutions/returns' },
+              // Products sub-items
+              { label: 'Bulk Shipping', href: '/products/bulk' },
+              { label: 'Express Delivery', href: '/products/express' },
+              { label: 'International Shipping', href: '/products/international' },
+              // Resources sub-items
+              { label: 'Documentation', href: '/resources/docs' },
+              { label: 'API', href: '/resources/api' },
+              { label: 'Support', href: '/support' },
+            ].map((item) => (
+              <Link
+                key={item.href + item.label}
+                to={item.href}
+                onClick={closeMobileMenu}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0 24px',
+                  minHeight: '52px',
+                  fontSize: '16px',
+                  fontWeight: 500,
+                  color: '#111827',
+                  textDecoration: 'none',
+                  borderBottom: '1px solid #f3f4f6',
+                  backgroundColor: '#ffffff',
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation',
+                  boxSizing: 'border-box',
+                  width: '100%',
+                }}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* CTA Buttons */}
+          <div style={{
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            borderTop: '1px solid #e5e7eb',
+          }}>
+            <Link
+              to="/login"
+              onClick={closeMobileMenu}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '52px',
+                border: '2px solid #2563eb',
+                borderRadius: '10px',
+                color: '#2563eb',
+                fontWeight: 600,
+                fontSize: '15px',
+                textDecoration: 'none',
+                backgroundColor: '#ffffff',
+                boxSizing: 'border-box',
+              }}
+            >
+              Sign In
+            </Link>
+            <Link
+              to="/register"
+              onClick={closeMobileMenu}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '52px',
+                backgroundColor: '#2563eb',
+                borderRadius: '10px',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '15px',
+                textDecoration: 'none',
+                border: 'none',
+                boxSizing: 'border-box',
+              }}
+            >
+              Get Started Free
+            </Link>
+          </div>
         </div>
       )}
     </header>
