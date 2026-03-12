@@ -76,7 +76,7 @@ const OrganizationSetup = () => {
                 maxLength={15}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Industry</label>
                 <Select
@@ -128,7 +128,7 @@ const OrganizationSetup = () => {
                 onChange={(e) => updateFormData("address", e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">City *</label>
                 <Input
@@ -209,7 +209,7 @@ const OrganizationSetup = () => {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Delivery Destinations</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {["Domestic - Metro", "Domestic - Tier 2", "Domestic - Rural", "International"].map((dest) => (
                   <label key={dest} className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
                     <Checkbox
@@ -296,13 +296,12 @@ const OrganizationSetup = () => {
             <div key={step.id} className="flex items-center">
               <div className="flex flex-col items-center">
                 <div
-                  className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${
-                    currentStep > step.id
+                  className={`h-12 w-12 rounded-full flex items-center justify-center transition-colors ${currentStep > step.id
                       ? "bg-green-500 text-white"
                       : currentStep === step.id
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  }`}
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                    }`}
                 >
                   {currentStep > step.id ? (
                     <Check className="h-6 w-6" />
@@ -316,9 +315,8 @@ const OrganizationSetup = () => {
               </div>
               {index < steps.length - 1 && (
                 <div
-                  className={`h-0.5 w-16 mx-2 ${
-                    currentStep > step.id ? "bg-green-500" : "bg-muted"
-                  }`}
+                  className={`h-0.5 w-8 sm:w-16 mx-1 sm:mx-2 ${currentStep > step.id ? "bg-green-500" : "bg-muted"
+                    }`}
                 />
               )}
             </div>

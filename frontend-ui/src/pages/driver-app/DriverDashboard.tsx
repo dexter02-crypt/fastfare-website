@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
     LogOut, MapPin, Truck, CheckCircle, Package,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import { API_BASE_URL } from "@/config";
 import { io, Socket } from "socket.io-client";
+import { registerBackgroundReconnect } from "@/utils/nativeUtils";
 
 interface ShipmentData {
     _id: string;
@@ -31,11 +33,26 @@ const DriverDashboard = () => {
     const [scannerOpen, setScannerOpen] = useState(false);
     const [scanLoading, setScanLoading] = useState(false);
     const [scannedShipment, setScannedShipment] = useState<ShipmentData | null>(null);
+    const [showManualEntry, setShowManualEntry] = useState(false);
+    const [manualAwb, setManualAwb] = useState("");
     const scannerRef = useRef<any>(null);
     const scannerContainerRef = useRef<HTMLDivElement>(null);
 
+    const BACKEND_URL = import.meta.env.VITE_SOCKET_URL
+        || import.meta.env.VITE_API_URL
+        || 'http://localhost:3000';
+
     const socketRef = useRef<Socket | null>(null);
     const locationIntervalRef = useRef<any>(null);
+    const watchIdRef = useRef<number | null>(null);
+
+    // ─── RESTORE DUTY STATE ON MOUNT ───
+    useEffect(() => {
+        const savedDutyState = localStorage.getItem('driver_on_duty') === 'true';
+        if (savedDutyState) {
+            setIsSharingLocation(true);
+        }
+    }, []);
 
     useEffect(() => {
         const token = localStorage.getItem("driver_token");
@@ -56,27 +73,52 @@ const DriverDashboard = () => {
 
         fetchShipments();
 
-        // Setup Socket — emit fleet:go-online so fleet-tracking page can see driver
-        const socket = io(API_BASE_URL, { transports: ["websocket", "polling"] });
-        socketRef.current = socket;
+        // ─── SOCKET CONNECTION ───
+        console.log('[Driver] Connecting socket to:', BACKEND_URL);
 
-        socket.on("connect", () => {
-            // Read driver_id from storage (driverObj scoped inside try above)
-            const dId = localStorage.getItem("driver_id") || JSON.parse(localStorage.getItem("driver_info") || "{}").driver_id;
-            // Join driver room for receiving assignments
-            socket.emit("join_driver", { driver_id: dId });
-            // Join fleet room so the partner fleet-tracking page can see this driver
-            socket.emit("join_tracking", "fleet-room");
+        socketRef.current = io(BACKEND_URL, {
+            auth: { token: localStorage.getItem("driver_token") },
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000,
         });
 
-        socket.on("driver_assigned", () => {
+        socketRef.current.on('connect', () => {
+            console.log('[Driver] Socket connected:', socketRef.current?.id);
+            const savedDutyState = localStorage.getItem('driver_on_duty') === 'true';
+            if (savedDutyState) {
+                // Re-register with backend on page reload if previously on duty
+                emitDriverOnline();
+            }
+        });
+
+        socketRef.current.on('connect_error', (err) => {
+            console.error('[Driver] Socket connection FAILED:', err.message);
+        });
+
+        // Listen for server requesting re-registration
+        socketRef.current.on('driver:request-online', () => {
+            if (localStorage.getItem('driver_on_duty') === 'true') {
+                emitDriverOnline();
+            }
+        });
+
+        socketRef.current.on("driver_assigned", () => {
             toast.info("A new shipment has been assigned to you.");
             fetchShipments();
         });
 
+        // Fix 9: Background reconnection
+        const cleanupBg = registerBackgroundReconnect(() => {
+            if (socketRef.current && !socketRef.current.connected) {
+                socketRef.current.connect();
+            }
+        });
+
         return () => {
-            stopLocationSharing();
-            if (socketRef.current) socketRef.current.disconnect();
+            socketRef.current?.disconnect();
+            cleanupBg();
         };
     }, [navigate]);
 
@@ -104,23 +146,51 @@ const DriverDashboard = () => {
         setActionLoading(shipmentId);
         try {
             const token = localStorage.getItem("driver_token");
-            const res = await fetch(`${API_BASE_URL}/api/shipments/${shipmentId}/status`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: newStatus })
-            });
-            const data = await res.json();
-            if (data.success) {
-                toast.success(`Marked as ${newStatus.replace(/_/g, ' ')}`);
-                fetchShipments(); // refresh local list
+
+            // Use dedicated driver action APIs for pickup/delivered
+            if (newStatus === 'picked_up') {
+                const res = await fetch(`${API_BASE_URL}/api/driver/shipments/${shipmentId}/pickup`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    toast.success('Marked as picked up');
+                    fetchShipments();
+                } else {
+                    toast.error(data.message || 'Failed to update');
+                }
+            } else if (newStatus === 'delivered') {
+                const res = await fetch(`${API_BASE_URL}/api/driver/shipments/${shipmentId}/delivered`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    toast.success('Marked as delivered');
+                    fetchShipments();
+                } else {
+                    toast.error(data.message || 'Failed to update');
+                }
             } else {
-                toast.error(data.message || "Failed to update");
+                // Generic status update fallback
+                const res = await fetch(`${API_BASE_URL}/api/shipments/${shipmentId}/status`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    toast.success(`Marked as ${newStatus.replace(/_/g, ' ')}`);
+                    fetchShipments();
+                } else {
+                    toast.error(data.message || 'Failed to update');
+                }
             }
         } catch (err) {
-            toast.error("Failed to update status");
+            toast.error('Failed to update status');
         } finally {
             setActionLoading(null);
         }
@@ -147,98 +217,98 @@ const DriverDashboard = () => {
         }
     };
 
-    const startLocationSharing = () => {
-        if (!navigator.geolocation) {
-            toast.error("Geolocation is not supported by your browser");
-            return;
-        }
+    // ─── ON DUTY TOGGLE ───
+    const emitDriverOnline = () => {
+        if (!navigator.geolocation) return;
 
-        navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-            if (result.state === 'denied') {
-                toast.error("Please allow location access to start tracking");
+        navigator.geolocation.getCurrentPosition((pos) => {
+            const dId = localStorage.getItem("driver_id");
+            const dName = driver?.name || 'Driver';
+
+            socketRef.current?.emit('driver:online', {
+                driverId: dId,
+                driverName: dName,
+                vehicleNumber: driver?.vehicle_number || '',
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                timestamp: Date.now(),
+            });
+            startWatchPosition();
+            updateDriverCloudStatus(true, pos.coords.latitude, pos.coords.longitude);
+        }, (err) => {
+            console.error('[Driver] Geolocation error:', err);
+            if (err.code === 1) {
+                toast.error("Location access denied. Cannot go On Duty without location permission.");
+                setIsSharingLocation(false);
+                localStorage.setItem('driver_on_duty', 'false');
             }
         });
-
-        setIsSharingLocation(true);
-        toast.success("Location tracking started");
-
-        const track = () => {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-
-                    if (socketRef.current && driver) {
-                        const dId = driver.driver_id;
-                        // Existing event for shipment detail page
-                        socketRef.current.emit("driver_location_update", {
-                            driver_id: dId,
-                            driverName: driver.name,
-                            lat,
-                            lng,
-                            status: 'on_duty'
-                        });
-                        // Bug 6: fleet-room events for /fleet-tracking page
-                        socketRef.current.emit("driver:go-online", {
-                            driverId: dId,
-                            driverName: driver.name,
-                            lat, lng,
-                            timestamp: Date.now()
-                        });
-                        socketRef.current.emit("driver:location", {
-                            driverId: dId,
-                            driverName: driver.name,
-                            lat, lng,
-                            online: true,
-                            timestamp: Date.now()
-                        });
-                    }
-
-                    // Sync to DB
-                    updateDriverCloudStatus(true, lat, lng);
-                },
-                (err) => {
-                    console.error("Error getting location", err);
-                    if (err.code === 1) {
-                        toast.error("Location permission denied. Cannot share location.");
-                        stopLocationSharing();
-                    }
-                },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-            );
-        };
-
-        track(); // Run immediately
-        locationIntervalRef.current = setInterval(track, 10000); // And then every 10 seconds
     };
 
-    const stopLocationSharing = () => {
-        setIsSharingLocation(false);
-        if (locationIntervalRef.current) {
-            clearInterval(locationIntervalRef.current);
-            locationIntervalRef.current = null;
-        }
+    const startWatchPosition = () => {
+        if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+        if (locationIntervalRef.current !== null) clearInterval(locationIntervalRef.current);
 
-        if (socketRef.current && driver) {
-            socketRef.current.emit("driver_went_offline", { driver_id: driver.driver_id });
-            // Bug 6: also emit fleet-room offline event
-            socketRef.current.emit("driver:went-offline", { driverId: driver.driver_id });
-        }
+        const id = navigator.geolocation.watchPosition(
+            (pos) => {
+                socketRef.current?.emit('driver:location-update', {
+                    driverId: localStorage.getItem("driver_id"),
+                    driverName: driver?.name || 'Driver',
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    speed: pos.coords.speed || 0,
+                    heading: pos.coords.heading || 0,
+                    accuracy: pos.coords.accuracy,
+                    timestamp: Date.now(),
+                });
+                updateDriverCloudStatus(true, pos.coords.latitude, pos.coords.longitude);
+            },
+            (err) => console.error('[Driver] Watch error:', err),
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+        );
+        watchIdRef.current = id;
 
-        updateDriverCloudStatus(false);
-        toast.info("Location tracking stopped");
+        // Also set a 10-second interval as fallback in case watchPosition doesn't fire
+        const intervalId = setInterval(() => {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                socketRef.current?.emit('driver:location-update', {
+                    driverId: localStorage.getItem("driver_id"),
+                    driverName: driver?.name || 'Driver',
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    speed: 0,
+                    timestamp: Date.now(),
+                });
+            });
+        }, 10000);
+        locationIntervalRef.current = intervalId;
+    };
+
+    const handleDutyToggle = (newValue: boolean) => {
+        setIsSharingLocation(newValue);
+        // Persist duty state to localStorage so it survives page refresh
+        localStorage.setItem('driver_on_duty', newValue ? 'true' : 'false');
+
+        if (newValue) {
+            emitDriverOnline();
+            toast.success("Location tracking started");
+        } else {
+            if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+            if (locationIntervalRef.current !== null) clearInterval(locationIntervalRef.current);
+            socketRef.current?.emit('driver:offline', {
+                driverId: localStorage.getItem("driver_id"),
+            });
+            updateDriverCloudStatus(false);
+            toast.info("Location tracking stopped");
+        }
     };
 
     const toggleLocation = () => {
-        if (isSharingLocation) {
-            stopLocationSharing();
-        } else {
-            startLocationSharing();
-        }
+        handleDutyToggle(!isSharingLocation);
     };
 
     const handleLogout = () => {
-        stopLocationSharing();
+        handleDutyToggle(false);
         localStorage.removeItem("driver_token");
         localStorage.removeItem("driver_info");
         navigate("/driver-app/login");
@@ -246,6 +316,7 @@ const DriverDashboard = () => {
 
     const getStatusBadge = (status: string) => {
         const map: Record<string, { label: string; color: string }> = {
+            driver_assigned: { label: "Assigned", color: "bg-indigo-100 text-indigo-800" },
             pending_acceptance: { label: "New", color: "bg-orange-100 text-orange-800" },
             pickup_scheduled: { label: "Pickup Sched.", color: "bg-cyan-100 text-cyan-800" },
             picked_up: { label: "Picked Up", color: "bg-purple-100 text-purple-800" },
@@ -261,55 +332,108 @@ const DriverDashboard = () => {
 
     // Bug 7: handle QR scan
     const openScanner = async () => {
-        setScannerOpen(true);
-        setScannedShipment(null);
-        // Dynamically import html5-qrcode to avoid SSR issues
-        setTimeout(async () => {
-            if (!scannerContainerRef.current) return;
-            try {
-                // @ts-ignore -- html5-qrcode loaded dynamically
-                const { Html5Qrcode } = await import('html5-qrcode');
-                const html5QrCode = new Html5Qrcode("qr-reader");
-                scannerRef.current = html5QrCode;
-                await html5QrCode.start(
-                    { facingMode: "environment" },
-                    { fps: 10, qrbox: { width: 250, height: 250 } },
-                    async (decodedText: string) => {
-                        // Expected format: FF-AWB-{awbNumber}
-                        const awbMatch = decodedText.match(/FF-AWB-(.+)/) || decodedText.match(/([A-Z0-9\-]+)$/);
-                        const awb = awbMatch ? awbMatch[1] : decodedText;
+        // Step 1: Check if browser supports camera
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setShowManualEntry(true);
+            return;
+        }
 
-                        await html5QrCode.stop();
-                        scannerRef.current = null;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            stream.getTracks().forEach(track => track.stop());
 
-                        setScanLoading(true);
-                        try {
-                            const token = localStorage.getItem("driver_token");
-                            const res = await fetch(`${API_BASE_URL}/api/driver/shipments/scan/${encodeURIComponent(awb)}`, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            });
-                            const data = await res.json();
-                            if (data.success) {
-                                setScannedShipment(data.shipment);
-                                toast.success(`Shipment found: ${data.shipment.awb}`);
-                            } else {
-                                toast.error(data.message || "Shipment not found or not assigned to you");
+            setScannerOpen(true);
+            setScannedShipment(null);
+
+            // Dynamically import html5-qrcode to avoid SSR issues
+            setTimeout(async () => {
+                if (!scannerContainerRef.current) return;
+                try {
+                    // @ts-ignore -- html5-qrcode loaded dynamically
+                    const { Html5Qrcode } = await import('html5-qrcode');
+                    const html5QrCode = new Html5Qrcode("qr-reader");
+                    scannerRef.current = html5QrCode;
+                    await html5QrCode.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: { width: 250, height: 250 } },
+                        async (decodedText: string) => {
+                            // Expected format: FF-AWB-{awbNumber}
+                            const awbMatch = decodedText.match(/FF-AWB-(.+)/) || decodedText.match(/([A-Z0-9\-]+)$/);
+                            const awb = awbMatch ? awbMatch[1] : decodedText;
+
+                            await html5QrCode.stop();
+                            scannerRef.current = null;
+
+                            setScanLoading(true);
+                            try {
+                                const token = localStorage.getItem("driver_token");
+                                const res = await fetch(`${API_BASE_URL}/api/driver/shipments/scan/${encodeURIComponent(awb)}`, {
+                                    headers: { Authorization: `Bearer ${token}` }
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                    setScannedShipment(data.shipment);
+                                    toast.success(`Shipment found: ${data.shipment.awb}`);
+                                } else {
+                                    toast.error(data.message || "Shipment not found or not assigned to you");
+                                    setScannerOpen(false);
+                                }
+                            } catch (err) {
+                                toast.error("Network error during scan");
                                 setScannerOpen(false);
+                            } finally {
+                                setScanLoading(false);
                             }
-                        } catch (err) {
-                            toast.error("Network error during scan");
-                            setScannerOpen(false);
-                        } finally {
-                            setScanLoading(false);
-                        }
-                    },
-                    undefined
-                );
-            } catch (err: any) {
-                toast.error("Camera access denied. Please allow camera permission.");
-                setScannerOpen(false);
+                        },
+                        undefined
+                    );
+                } catch (err: any) {
+                    toast.error("Error initializing camera scanner.");
+                    setScannerOpen(false);
+                    setShowManualEntry(true);
+                }
+            }, 300);
+
+        } catch (err: any) {
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                setShowManualEntry(true);
+                toast.error('Camera permission denied. You can enter the AWB number manually below.');
+            } else if (err.name === 'NotFoundError') {
+                setShowManualEntry(true);
+                toast.info('No camera found. Please enter the AWB number manually.');
+            } else {
+                setShowManualEntry(true);
+                toast.error('Camera unavailable. Use manual entry below.');
             }
-        }, 300);
+        }
+    };
+
+    const handleManualSubmit = async () => {
+        if (!manualAwb.trim()) {
+            toast.error("Please enter AWB number");
+            return;
+        }
+
+        setScanLoading(true);
+        try {
+            const token = localStorage.getItem("driver_token");
+            const res = await fetch(`${API_BASE_URL}/api/driver/shipments/scan/${encodeURIComponent(manualAwb.trim())}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                setScannedShipment(data.shipment);
+                setShowManualEntry(false);
+                setScannerOpen(true);
+                toast.success(`Shipment found: ${data.shipment.awb}`);
+            } else {
+                toast.error(data.message || "Shipment not found or not assigned to you");
+            }
+        } catch (err) {
+            toast.error("Network error during fetch");
+        } finally {
+            setScanLoading(false);
+        }
     };
 
     const closeScanner = async () => {
@@ -384,7 +508,7 @@ const DriverDashboard = () => {
                     <Card className="border-0 shadow-sm bg-white">
                         <CardContent className="p-4 text-center">
                             <p className="text-2xl font-bold text-orange-600">
-                                {shipments.filter(s => ['pending_acceptance', 'pickup_scheduled'].includes(s.status)).length}
+                                {shipments.filter(s => ['pending_acceptance', 'pickup_scheduled', 'driver_assigned'].includes(s.status)).length}
                             </p>
                             <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Pending Pickup</p>
                         </CardContent>
@@ -457,7 +581,7 @@ const DriverDashboard = () => {
                                     </div>
 
                                     {/* Action Buttons */}
-                                    {['pending_acceptance', 'pickup_scheduled'].includes(shipment.status) && (
+                                    {['pending_acceptance', 'pickup_scheduled', 'driver_assigned'].includes(shipment.status) && (
                                         <Button
                                             className="w-full bg-blue-600 hover:bg-blue-700 font-medium h-12"
                                             onClick={() => handleUpdateStatus(shipment._id, "picked_up")}
@@ -535,7 +659,7 @@ const DriverDashboard = () => {
                                 </div>
                             </div>
                             <div className="space-y-3">
-                                {['pending_acceptance', 'pickup_scheduled'].includes(scannedShipment.status) && (
+                                {['pending_acceptance', 'pickup_scheduled', 'driver_assigned', 'partner_assigned', 'payment_received'].includes(scannedShipment.status) && (
                                     <Button
                                         className="w-full bg-blue-600 hover:bg-blue-700 h-12"
                                         onClick={() => { handleUpdateStatus(scannedShipment._id, 'picked_up'); closeScanner(); }}
@@ -560,6 +684,34 @@ const DriverDashboard = () => {
                             <div id="qr-reader" className="w-72 h-72 overflow-hidden rounded-2xl" />
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Manual Entry Fallback Modal */}
+            {showManualEntry && (
+                <div className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4">
+                    <div className="bg-white rounded-xl w-full max-w-sm p-6 space-y-4">
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-lg">Enter AWB Number</h3>
+                            <button onClick={() => setShowManualEntry(false)} className="text-gray-500 hover:text-gray-700">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <p className="text-sm text-gray-500">Scan the barcode OR type the AWB number from the shipment label manually.</p>
+                        <Input
+                            type="text"
+                            placeholder="e.g. FFML2LUBW9AE7"
+                            value={manualAwb}
+                            onChange={(e) => setManualAwb(e.target.value)}
+                            className="w-full text-center tracking-widest font-mono uppercase"
+                        />
+                        <div className="flex gap-3 pt-2">
+                            <Button variant="outline" className="flex-1" onClick={() => setShowManualEntry(false)}>Cancel</Button>
+                            <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleManualSubmit} disabled={scanLoading}>
+                                {scanLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Verify"}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

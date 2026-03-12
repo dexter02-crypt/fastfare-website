@@ -430,4 +430,63 @@ router.put('/admin/withdrawals/:id/reject', protect, admin, async (req, res) => 
     }
 });
 
+// ══════════════════════════════════════════════════
+// POST /api/partner/shipments/:id/assign-driver
+// Link Driver to Shipment
+// ══════════════════════════════════════════════════
+router.post('/shipments/:id/assign-driver', protect, async (req, res) => {
+    try {
+        if (req.user.role !== 'shipment_partner' && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Partner access only' });
+        }
+
+        const { driverId } = req.body;
+
+        // Find driver
+        const { default: WmsDriver } = await import('../models/WmsDriver.js');
+        const driver = await WmsDriver.findOne({ _id: driverId });
+
+        if (!driver) {
+            return res.status(404).json({ error: 'Driver not found' });
+        }
+
+        const shipment = await Shipment.findOne({
+            _id: req.params.id,
+            carrierId: req.user._id // Ensure partner owns this shipment
+        });
+
+        if (!shipment) return res.status(404).json({ error: 'Shipment not found or unauthorized' });
+
+        // Update shipment
+        shipment.assignedPartner = req.user._id;
+        shipment.assignedDriver = driver._id;
+        shipment.assignedDriverId = driver.driverId;
+        shipment.assignedDriverName = driver.name;
+        shipment.assignedVehicle = driver.vehicleNumber || 'N/A';
+        shipment.assigned_driver_id = driver.driverId;
+        shipment.assigned_driver_name = driver.name;
+        shipment.assigned_driver_phone = driver.phone;
+        shipment.driver_assigned_at = new Date();
+        shipment.status = 'driver_assigned';
+
+        shipment.trackingHistory.push({
+            status: 'driver_assigned',
+            location: shipment.pickup?.city || 'Partner Facility',
+            description: `Driver ${driver.name} assigned for pickup`,
+            timestamp: new Date()
+        });
+
+        await shipment.save();
+
+        res.json({
+            success: true,
+            message: 'Driver assigned successfully',
+            shipment
+        });
+    } catch (error) {
+        console.error('Assign driver error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

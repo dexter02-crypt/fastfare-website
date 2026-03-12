@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "@/config";
+import { BackButton } from "@/components/BackButton";
 import {
     ArrowLeft, RotateCcw, Package, MapPin, Phone, User,
     AlertTriangle, Loader2, CheckCircle, Truck
@@ -127,9 +128,7 @@ const CreateReturn = () => {
             <div className="max-w-3xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
+                    <BackButton fallback="/dashboard" />
                     <div>
                         <h1 className="text-2xl font-bold flex items-center gap-2">
                             <RotateCcw className="h-6 w-6 text-primary" />
@@ -227,8 +226,8 @@ const CreateReturn = () => {
                                     <div
                                         key={reason.code}
                                         className={`rounded-lg border-2 p-3 cursor-pointer transition-all ${selectedReason === reason.code
-                                                ? "border-primary bg-primary/5 shadow-sm"
-                                                : "border-transparent bg-gray-50 hover:border-gray-200 hover:bg-gray-100"
+                                            ? "border-primary bg-primary/5 shadow-sm"
+                                            : "border-transparent bg-gray-50 hover:border-gray-200 hover:bg-gray-100"
                                             }`}
                                         onClick={() => setSelectedReason(reason.code)}
                                     >

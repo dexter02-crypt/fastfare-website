@@ -31,12 +31,12 @@ const ReportsPage = () => {
     return (
         <DashboardLayout>
             <div className="space-y-6 flex-1 h-full p-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold">WMS Reports</h1>
-                        <p className="text-muted-foreground">Analytics and operational insights</p>
+                        <h1 className="text-xl sm:text-2xl font-bold">WMS Reports</h1>
+                        <p className="text-sm sm:text-base text-muted-foreground">Analytics and operational insights</p>
                     </div>
-                    <button onClick={handleExport} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border font-medium hover:bg-muted transition-colors text-sm">
+                    <button onClick={handleExport} className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2.5 rounded-lg border font-medium hover:bg-muted transition-colors text-sm">
                         <Download className="h-4 w-4" /> Export CSV
                     </button>
                 </div>
@@ -49,12 +49,12 @@ const ReportsPage = () => {
                         <p>No report data available</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                         {/* Inventory by Category */}
-                        <div className="rounded-xl border bg-card p-5">
+                        <div className="rounded-xl border bg-card p-4 sm:p-5">
                             <div className="flex items-center gap-2 mb-4">
                                 <Package className="h-5 w-5 text-blue-600" />
-                                <h3 className="font-semibold">Inventory by Category</h3>
+                                <h3 className="font-semibold text-sm sm:text-base">Inventory by Category</h3>
                             </div>
                             {data.inventoryByCategory?.length > 0 ? (
                                 <div className="space-y-3">
@@ -78,10 +78,10 @@ const ReportsPage = () => {
                         </div>
 
                         {/* Trips by Status */}
-                        <div className="rounded-xl border bg-card p-5">
+                        <div className="rounded-xl border bg-card p-4 sm:p-5">
                             <div className="flex items-center gap-2 mb-4">
                                 <TrendingUp className="h-5 w-5 text-emerald-600" />
-                                <h3 className="font-semibold">Trips by Status</h3>
+                                <h3 className="font-semibold text-sm sm:text-base">Trips by Status</h3>
                             </div>
                             {data.tripsByStatus?.length > 0 ? (
                                 <div className="space-y-3">
@@ -102,10 +102,10 @@ const ReportsPage = () => {
                         </div>
 
                         {/* Vehicles by Type */}
-                        <div className="rounded-xl border bg-card p-5">
+                        <div className="rounded-xl border bg-card p-4 sm:p-5">
                             <div className="flex items-center gap-2 mb-4">
                                 <Truck className="h-5 w-5 text-purple-600" />
-                                <h3 className="font-semibold">Vehicles by Type</h3>
+                                <h3 className="font-semibold text-sm sm:text-base">Vehicles by Type</h3>
                             </div>
                             {data.vehiclesByType?.length > 0 ? (
                                 <div className="grid grid-cols-2 gap-3">

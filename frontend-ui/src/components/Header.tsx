@@ -57,6 +57,10 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
   // Unified mobile menu state: use prop if provided (authenticated layout), else local
   const mobileMenuOpen = onMobileMenuToggle ? (propMobileMenuOpen ?? false) : localMobileMenuOpen;
   const toggleMobileMenu = onMobileMenuToggle || (() => setLocalMobileMenuOpen(prev => !prev));
+
+  // Mobile search state for authenticated users
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
   const closeMobileMenu = () => {
     if (onMobileMenuToggle && propMobileMenuOpen) onMobileMenuToggle();
     setLocalMobileMenuOpen(false);
@@ -113,8 +117,8 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between gap-4">
         <div className="flex items-center gap-2 shrink-0">
-          {/* Mobile Menu Button - for authenticated dashboard sidebar */}
-          {isAuthenticated && onMobileMenuToggle && (
+          {/* Mobile Menu Button - for public pages only */}
+          {!isAuthenticated && onMobileMenuToggle && (
             <Button
               variant="ghost"
               size="icon"
@@ -132,20 +136,21 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               size="icon"
               onClick={() => navigate(-1)}
               title="Go Back"
+              className="md:hidden -ml-2 h-8 w-8"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
           <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-2">
-            <img src={logo} alt="FastFare" className="h-8 w-auto" />
+            <img src={logo} alt="FastFare" className="h-6 md:h-8 w-auto max-h-[32px]" />
           </Link>
         </div>
 
         {isAuthenticated && !isHomepage ? (
           /* Authenticated Header */
           <>
-            {/* Search Bar - Center Left */}
-            <div className="flex-1 max-w-md hidden md:flex">
+            {/* Search Bar - Center Left (Desktop) */}
+            <div className="flex-1 max-w-md hidden lg:flex">
               <form onSubmit={handleSearch} className="relative w-full">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -159,10 +164,18 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-3 md:gap-4 shrink-0">
+            <div className="flex items-center gap-2 lg:gap-4 shrink-0">
+
+              {/* Mobile Search Toggle */}
+              <button
+                className="flex lg:hidden items-center justify-center w-[44px] h-[44px] text-gray-600"
+                onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+              >
+                <Search size={24} />
+              </button>
               {/* Wallet Balance */}
               <div
-                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/20 cursor-pointer hover:bg-primary/10 transition-colors"
+                className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/20 cursor-pointer hover:bg-primary/10 transition-colors"
                 onClick={() => navigate('/billing/recharge')}
                 title="Wallet Balance"
               >
@@ -170,13 +183,13 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                 <span className="text-sm font-semibold text-primary">₹{balance?.toLocaleString('en-IN') || '0'}</span>
               </div>
               {/* Track Order Link */}
-              <div className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onClick={() => navigate('/track')}>
+              <div className="hidden lg:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onClick={() => navigate('/track')}>
                 <MapPin className="h-4 w-4" />
                 <span className="hidden lg:inline">Track Order</span>
               </div>
 
               {/* Help */}
-              <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer" onClick={() => navigate('/support')}>
+              <div className="hidden lg:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer" onClick={() => navigate('/support')}>
                 <HelpCircle className="h-5 w-5" />
                 <span className="hidden lg:inline">Need Help</span>
               </div>
@@ -184,7 +197,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               {/* All Products */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="hidden md:flex">
+                  <Button variant="ghost" size="icon" className="hidden lg:flex">
                     <Grid className="h-5 w-5 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -200,12 +213,12 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               </DropdownMenu>
 
               {/* Notifications */}
-              <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
-                <Bell className="h-5 w-5 text-muted-foreground" />
+              <button className="relative flex items-center justify-center w-[44px] h-[44px] text-gray-600" onClick={() => navigate('/notifications')}>
+                <Bell size={24} className="text-muted-foreground" />
                 {hasUnreadNotifications && (
                   <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full" />
                 )}
-              </Button>
+              </button>
 
               {/* User Profile */}
               <DropdownMenu>
@@ -219,14 +232,14 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                           : 'bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 shadow-[0_0_8px_rgba(180,83,9,0.3)]'
                       : ''
                       }`}>
-                      <Avatar className={`h-9 w-9 border-2 border-background`}>
+                      <Avatar className={`h-8 w-8 lg:h-9 lg:w-9 border-2 border-background`}>
                         <AvatarImage src="" />
                         <AvatarFallback className="bg-primary/10 text-primary">
                           {getInitials(user?.businessName || "U")}
                         </AvatarFallback>
                       </Avatar>
                     </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground hidden md:block" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground hidden lg:block" />
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -346,36 +359,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-background p-4">
           <nav className="flex flex-col gap-4">
-            {isAuthenticated ? (
-              <>
-                <form onSubmit={handleSearch} className="relative w-full mb-4">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Order ID"
-                    className="w-full bg-muted/50 pl-9 h-9"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </form>
-                <Link to="/dashboard" onClick={closeMobileMenu}>
-                  <Button variant="ghost" className="w-full justify-start">
-                    <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
-                  </Button>
-                </Link>
-                <Link to="/shipments" onClick={closeMobileMenu}>
-                  <Button variant="ghost" className="w-full justify-start">
-                    <Grid className="mr-2 h-4 w-4" /> Shipments
-                  </Button>
-                </Link>
-                <Button variant="ghost" className="w-full justify-start" onClick={() => navigate('/billing/recharge')}>
-                  <Wallet className="mr-2 h-4 w-4" /> Wallet: ₹{balance.toLocaleString()}
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" /> Logout
-                </Button>
-              </>
-            ) : (
+            {isAuthenticated ? null : (
               <>
                 {navLinks.map((link) => (
                   <Link
@@ -399,6 +383,38 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               </>
             )}
           </nav>
+        </div>
+      )}
+
+      {/* Mobile Search Overlay */}
+      {mobileSearchOpen && isAuthenticated && (
+        <div className="lg:hidden fixed inset-0 bg-background z-[2000] flex flex-col p-0 animate-in fade-in duration-150">
+          <div className="flex items-center px-2 h-[52px] border-b border-gray-200 gap-2">
+            <button className="flex items-center justify-center w-[44px] h-[44px]" onClick={() => setMobileSearchOpen(false)}>
+              <ArrowLeft size={24} className="text-gray-600" />
+            </button>
+            <form onSubmit={(e) => { handleSearch(e); setMobileSearchOpen(false); }} className="relative flex-1">
+              <input
+                type="search"
+                placeholder="Search by Order ID..."
+                className="w-full h-[44px] text-[16px] border-none outline-none px-2 bg-transparent"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+            </form>
+            {searchQuery && (
+              <button
+                className="flex items-center justify-center w-[44px] h-[44px] text-gray-500"
+                onClick={() => setSearchQuery("")}
+              >
+                <X size={20} />
+              </button>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {/* Search results placeholder */}
+          </div>
         </div>
       )}
     </header>

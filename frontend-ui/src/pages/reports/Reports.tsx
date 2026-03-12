@@ -40,21 +40,21 @@ const Reports = () => {
     const [dateRange, setDateRange] = useState("30days");
     const [truckStatusFilter, setTruckStatusFilter] = useState("all");
     const [driverStatusFilter, setDriverStatusFilter] = useState("all");
-    
+
     // Loading states
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState<string | null>(null);
-    
+
     // Data states
     const [kpis, setKpis] = useState<KPIData | null>(null);
     const [trucksAnalytics, setTrucksAnalytics] = useState<AnalyticsData | null>(null);
     const [driversAnalytics, setDriversAnalytics] = useState<AnalyticsData | null>(null);
-    
+
     // Table states
     const [trucksData, setTrucksData] = useState<TruckTableData[]>([]);
     const [trucksPagination, setTrucksPagination] = useState<PaginationInfo>({ total: 0, page: 1, limit: 5, pages: 1 });
     const [trucksSearch, setTrucksSearch] = useState("");
-    
+
     const [driversData, setDriversData] = useState<DriverTableData[]>([]);
     const [driversPagination, setDriversPagination] = useState<PaginationInfo>({ total: 0, page: 1, limit: 5, pages: 1 });
     const [driversSearch, setDriversSearch] = useState("");
@@ -127,7 +127,7 @@ const Reports = () => {
             headers.join(","),
             ...data.map(row => headers.map(h => `"${row[h] || ''}"`).join(","))
         ].join("\n");
-        
+
         const blob = new Blob([csvContent], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -150,10 +150,10 @@ const Reports = () => {
         doc.text(title, 14, 22);
         doc.setFontSize(10);
         doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
-        
+
         const headers = Object.keys(data[0] || {});
         const rows = data.map(row => headers.map(h => row[h] || ''));
-        
+
         autoTable(doc, {
             head: [headers],
             body: rows,
@@ -161,20 +161,20 @@ const Reports = () => {
             styles: { fontSize: 8 },
             headStyles: { fillColor: [59, 130, 246] }
         });
-        
+
         doc.save(`${filename}.pdf`);
     };
 
     const handleExport = async (type: 'trucks' | 'drivers', format: 'csv' | 'excel' | 'pdf') => {
         setExporting(`${type}-${format}`);
         try {
-            const res = type === 'trucks' 
+            const res = type === 'trucks'
                 ? await reportsApi.exportTrucks(truckStatusFilter)
                 : await reportsApi.exportDrivers(driverStatusFilter);
-            
+
             const filename = `${type}_report_${new Date().toISOString().split('T')[0]}`;
             const title = type === 'trucks' ? 'Trucks Report' : 'Drivers Report';
-            
+
             switch (format) {
                 case 'csv':
                     exportToCSV(res.data, filename);
@@ -229,11 +229,11 @@ const Reports = () => {
                         <h1 className="text-2xl font-bold">Reports & Analytics</h1>
                         <p className="text-muted-foreground">Overview of fleet and driver performance</p>
                     </div>
-                    
+
                     {/* Global Filters */}
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mt-2 md:mt-0 w-full md:w-auto">
                         <Select value={dateRange} onValueChange={setDateRange}>
-                            <SelectTrigger className="w-[150px]">
+                            <SelectTrigger className="w-full sm:w-[150px]">
                                 <Calendar className="h-4 w-4 mr-2" />
                                 <SelectValue placeholder="Date Range" />
                             </SelectTrigger>
@@ -249,59 +249,59 @@ const Reports = () => {
                 </div>
 
                 {/* KPI Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
                     <Card>
-                        <CardContent className="pt-4">
-                            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                                <Truck className="h-4 w-4" />
+                        <CardContent className="p-3 sm:p-4 sm:pt-4">
+                            <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground text-[10px] sm:text-xs mb-1 line-clamp-1">
+                                <Truck className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                                 Total Trucks
                             </div>
-                            <p className="text-2xl font-bold">{kpis?.totalTrucks || 0}</p>
+                            <p className="text-xl sm:text-2xl font-bold">{kpis?.totalTrucks || 0}</p>
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardContent className="pt-4">
-                            <div className="flex items-center gap-2 text-green-600 text-xs mb-1">
-                                <CheckCircle className="h-4 w-4" />
+                        <CardContent className="p-3 sm:p-4 sm:pt-4">
+                            <div className="flex items-center gap-1.5 sm:gap-2 text-green-600 text-[10px] sm:text-xs mb-1 line-clamp-1">
+                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                                 Active Trucks
                             </div>
-                            <p className="text-2xl font-bold text-green-600">{kpis?.activeTrucks || 0}</p>
+                            <p className="text-xl sm:text-2xl font-bold text-green-600">{kpis?.activeTrucks || 0}</p>
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardContent className="pt-4">
-                            <div className="flex items-center gap-2 text-yellow-600 text-xs mb-1">
-                                <Clock className="h-4 w-4" />
+                        <CardContent className="p-3 sm:p-4 sm:pt-4">
+                            <div className="flex items-center gap-1.5 sm:gap-2 text-yellow-600 text-[10px] sm:text-xs mb-1 line-clamp-1">
+                                <Clock className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                                 Pending
                             </div>
-                            <p className="text-2xl font-bold text-yellow-600">{kpis?.pendingTrucks || 0}</p>
+                            <p className="text-xl sm:text-2xl font-bold text-yellow-600">{kpis?.pendingTrucks || 0}</p>
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardContent className="pt-4">
-                            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                                <Users className="h-4 w-4" />
+                        <CardContent className="p-3 sm:p-4 sm:pt-4">
+                            <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground text-[10px] sm:text-xs mb-1 line-clamp-1">
+                                <Users className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                                 Total Drivers
                             </div>
-                            <p className="text-2xl font-bold">{kpis?.totalDrivers || 0}</p>
+                            <p className="text-xl sm:text-2xl font-bold">{kpis?.totalDrivers || 0}</p>
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardContent className="pt-4">
-                            <div className="flex items-center gap-2 text-green-600 text-xs mb-1">
-                                <CheckCircle className="h-4 w-4" />
+                        <CardContent className="p-3 sm:p-4 sm:pt-4">
+                            <div className="flex items-center gap-1.5 sm:gap-2 text-green-600 text-[10px] sm:text-xs mb-1 line-clamp-1">
+                                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                                 Active Drivers
                             </div>
-                            <p className="text-2xl font-bold text-green-600">{kpis?.activeDrivers || 0}</p>
+                            <p className="text-xl sm:text-2xl font-bold text-green-600">{kpis?.activeDrivers || 0}</p>
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardContent className="pt-4">
-                            <div className="flex items-center gap-2 text-blue-600 text-xs mb-1">
-                                <TrendingUp className="h-4 w-4" />
+                        <CardContent className="p-3 sm:p-4 sm:pt-4">
+                            <div className="flex items-center gap-1.5 sm:gap-2 text-blue-600 text-[10px] sm:text-xs mb-1 line-clamp-1">
+                                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                                 Added (Period)
                             </div>
-                            <p className="text-2xl font-bold text-blue-600">{(kpis?.trucksInPeriod || 0) + (kpis?.driversInPeriod || 0)}</p>
+                            <p className="text-xl sm:text-2xl font-bold text-blue-600">{(kpis?.trucksInPeriod || 0) + (kpis?.driversInPeriod || 0)}</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -314,33 +314,36 @@ const Reports = () => {
                         <h2 className="text-xl font-semibold flex items-center gap-2">
                             <Truck className="h-5 w-5" /> Trucks Analytics
                         </h2>
-                        <div className="flex gap-2">
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
+                        <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 sm:flex-none"
                                 onClick={() => handleExport('trucks', 'csv')}
                                 disabled={!!exporting}
                             >
-                                {exporting === 'trucks-csv' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
-                                CSV
+                                {exporting === 'trucks-csv' ? <Loader2 className="h-4 w-4 animate-spin sm:mr-1" /> : <FileText className="h-4 w-4 sm:mr-1" />}
+                                <span className="hidden sm:inline">CSV</span>
                             </Button>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 sm:flex-none"
                                 onClick={() => handleExport('trucks', 'excel')}
                                 disabled={!!exporting}
                             >
-                                {exporting === 'trucks-excel' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileSpreadsheet className="h-4 w-4 mr-1" />}
-                                Excel
+                                {exporting === 'trucks-excel' ? <Loader2 className="h-4 w-4 animate-spin sm:mr-1" /> : <FileSpreadsheet className="h-4 w-4 sm:mr-1" />}
+                                <span className="hidden sm:inline">Excel</span>
                             </Button>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 sm:flex-none"
                                 onClick={() => handleExport('trucks', 'pdf')}
                                 disabled={!!exporting}
                             >
-                                {exporting === 'trucks-pdf' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />}
-                                PDF
+                                {exporting === 'trucks-pdf' ? <Loader2 className="h-4 w-4 animate-spin sm:mr-1" /> : <Download className="h-4 w-4 sm:mr-1" />}
+                                <span className="hidden sm:inline">PDF</span>
                             </Button>
                         </div>
                     </div>
@@ -408,18 +411,18 @@ const Reports = () => {
                         <CardHeader className="pb-2">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                                 <CardTitle className="text-sm">Trucks Data</CardTitle>
-                                <div className="flex gap-2">
-                                    <div className="relative">
+                                <div className="flex flex-col sm:flex-row gap-2 mt-2 md:mt-0 w-full md:w-auto">
+                                    <div className="relative w-full sm:w-auto">
                                         <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             placeholder="Search..."
-                                            className="pl-8 h-8 w-[150px]"
+                                            className="pl-8 h-8 w-full sm:w-[150px]"
                                             value={trucksSearch}
                                             onChange={(e) => setTrucksSearch(e.target.value)}
                                         />
                                     </div>
                                     <Select value={truckStatusFilter} onValueChange={setTruckStatusFilter}>
-                                        <SelectTrigger className="h-8 w-[120px]">
+                                        <SelectTrigger className="h-8 w-full sm:w-[120px]">
                                             <Filter className="h-3 w-3 mr-1" />
                                             <SelectValue />
                                         </SelectTrigger>
@@ -433,24 +436,25 @@ const Reports = () => {
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
+                        <CardContent className="p-0 sm:p-6 table-responsive-wrapper">
+                            <span className="scroll-hint px-4 pt-4 pb-2 block sm:hidden">Scroll right to view all columns →</span>
+                            <div className="min-w-[600px]">
                                 <table className="w-full text-sm">
-                                    <thead className="text-xs text-muted-foreground border-b">
+                                    <thead className="text-xs text-muted-foreground border-b border-t sm:border-t-0">
                                         <tr>
-                                            <th className="text-left py-2 px-2">Name</th>
-                                            <th className="text-left py-2 px-2">Chassis No</th>
-                                            <th className="text-left py-2 px-2">Status</th>
-                                            <th className="text-left py-2 px-2">Created</th>
+                                            <th className="text-left py-2 px-4 sm:px-2">Name</th>
+                                            <th className="text-left py-2 px-4 sm:px-2">Chassis No</th>
+                                            <th className="text-left py-2 px-4 sm:px-2">Status</th>
+                                            <th className="text-left py-2 px-4 sm:px-2">Created</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {trucksData.length > 0 ? trucksData.map((truck) => (
                                             <tr key={truck._id} className="border-b hover:bg-muted/50">
-                                                <td className="py-2 px-2 font-medium">{truck.name}</td>
-                                                <td className="py-2 px-2 font-mono text-xs">{truck.chassisNo}</td>
-                                                <td className="py-2 px-2">{getStatusBadge(truck.status)}</td>
-                                                <td className="py-2 px-2 text-muted-foreground">{new Date(truck.createdAt).toLocaleDateString()}</td>
+                                                <td className="py-2 px-4 sm:px-2 font-medium">{truck.name}</td>
+                                                <td className="py-2 px-4 sm:px-2 font-mono text-xs">{truck.chassisNo}</td>
+                                                <td className="py-2 px-4 sm:px-2">{getStatusBadge(truck.status)}</td>
+                                                <td className="py-2 px-4 sm:px-2 text-muted-foreground">{new Date(truck.createdAt).toLocaleDateString()}</td>
                                             </tr>
                                         )) : (
                                             <tr>
@@ -466,18 +470,18 @@ const Reports = () => {
                                         Page {trucksPagination.page} of {trucksPagination.pages}
                                     </span>
                                     <div className="flex gap-1">
-                                        <Button 
-                                            variant="outline" 
-                                            size="icon" 
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
                                             className="h-7 w-7"
                                             disabled={trucksPagination.page <= 1}
                                             onClick={() => setTrucksPagination(prev => ({ ...prev, page: prev.page - 1 }))}
                                         >
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
-                                        <Button 
-                                            variant="outline" 
-                                            size="icon" 
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
                                             className="h-7 w-7"
                                             disabled={trucksPagination.page >= trucksPagination.pages}
                                             onClick={() => setTrucksPagination(prev => ({ ...prev, page: prev.page + 1 }))}
@@ -499,33 +503,36 @@ const Reports = () => {
                         <h2 className="text-xl font-semibold flex items-center gap-2">
                             <Users className="h-5 w-5" /> Drivers Analytics
                         </h2>
-                        <div className="flex gap-2">
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
+                        <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 sm:flex-none"
                                 onClick={() => handleExport('drivers', 'csv')}
                                 disabled={!!exporting}
                             >
-                                {exporting === 'drivers-csv' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
-                                CSV
+                                {exporting === 'drivers-csv' ? <Loader2 className="h-4 w-4 animate-spin sm:mr-1" /> : <FileText className="h-4 w-4 sm:mr-1" />}
+                                <span className="hidden sm:inline">CSV</span>
                             </Button>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 sm:flex-none"
                                 onClick={() => handleExport('drivers', 'excel')}
                                 disabled={!!exporting}
                             >
-                                {exporting === 'drivers-excel' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileSpreadsheet className="h-4 w-4 mr-1" />}
-                                Excel
+                                {exporting === 'drivers-excel' ? <Loader2 className="h-4 w-4 animate-spin sm:mr-1" /> : <FileSpreadsheet className="h-4 w-4 sm:mr-1" />}
+                                <span className="hidden sm:inline">Excel</span>
                             </Button>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 sm:flex-none"
                                 onClick={() => handleExport('drivers', 'pdf')}
                                 disabled={!!exporting}
                             >
-                                {exporting === 'drivers-pdf' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />}
-                                PDF
+                                {exporting === 'drivers-pdf' ? <Loader2 className="h-4 w-4 animate-spin sm:mr-1" /> : <Download className="h-4 w-4 sm:mr-1" />}
+                                <span className="hidden sm:inline">PDF</span>
                             </Button>
                         </div>
                     </div>
@@ -608,26 +615,27 @@ const Reports = () => {
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
+                        <CardContent className="p-0 sm:p-6 table-responsive-wrapper">
+                            <span className="scroll-hint px-4 pt-4 pb-2 block sm:hidden">Scroll right to view all columns →</span>
+                            <div className="min-w-[600px]">
                                 <table className="w-full text-sm">
-                                    <thead className="text-xs text-muted-foreground border-b">
+                                    <thead className="text-xs text-muted-foreground border-b border-t sm:border-t-0">
                                         <tr>
-                                            <th className="text-left py-2 px-2">Name</th>
-                                            <th className="text-left py-2 px-2">Mobile</th>
-                                            <th className="text-left py-2 px-2">DL No</th>
-                                            <th className="text-left py-2 px-2">Status</th>
-                                            <th className="text-left py-2 px-2">Created</th>
+                                            <th className="text-left py-2 px-4 sm:px-2">Name</th>
+                                            <th className="text-left py-2 px-4 sm:px-2">Mobile</th>
+                                            <th className="text-left py-2 px-4 sm:px-2">DL No</th>
+                                            <th className="text-left py-2 px-4 sm:px-2">Status</th>
+                                            <th className="text-left py-2 px-4 sm:px-2">Created</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {driversData.length > 0 ? driversData.map((driver) => (
                                             <tr key={driver._id} className="border-b hover:bg-muted/50">
-                                                <td className="py-2 px-2 font-medium">{driver.fullName}</td>
-                                                <td className="py-2 px-2">{driver.mobile}</td>
-                                                <td className="py-2 px-2 font-mono text-xs">{driver.dlNo}</td>
-                                                <td className="py-2 px-2">{getStatusBadge(driver.status)}</td>
-                                                <td className="py-2 px-2 text-muted-foreground">{new Date(driver.createdAt).toLocaleDateString()}</td>
+                                                <td className="py-2 px-4 sm:px-2 font-medium">{driver.fullName}</td>
+                                                <td className="py-2 px-4 sm:px-2">{driver.mobile}</td>
+                                                <td className="py-2 px-4 sm:px-2 font-mono text-xs">{driver.dlNo}</td>
+                                                <td className="py-2 px-4 sm:px-2">{getStatusBadge(driver.status)}</td>
+                                                <td className="py-2 px-4 sm:px-2 text-muted-foreground">{new Date(driver.createdAt).toLocaleDateString()}</td>
                                             </tr>
                                         )) : (
                                             <tr>
@@ -643,18 +651,18 @@ const Reports = () => {
                                         Page {driversPagination.page} of {driversPagination.pages}
                                     </span>
                                     <div className="flex gap-1">
-                                        <Button 
-                                            variant="outline" 
-                                            size="icon" 
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
                                             className="h-7 w-7"
                                             disabled={driversPagination.page <= 1}
                                             onClick={() => setDriversPagination(prev => ({ ...prev, page: prev.page - 1 }))}
                                         >
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
-                                        <Button 
-                                            variant="outline" 
-                                            size="icon" 
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
                                             className="h-7 w-7"
                                             disabled={driversPagination.page >= driversPagination.pages}
                                             onClick={() => setDriversPagination(prev => ({ ...prev, page: prev.page + 1 }))}

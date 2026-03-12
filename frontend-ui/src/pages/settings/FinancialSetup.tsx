@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { BackButton } from "@/components/BackButton";
 import {
   ArrowLeft, ArrowRight, Building2, Wallet, CheckCircle, Info, CreditCard, Smartphone, Landmark
 } from "lucide-react";
@@ -58,10 +59,10 @@ const FinancialSetup = () => {
               <div className="flex flex-col items-center">
                 <div
                   className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold ${step.completed
-                      ? "bg-green-500 text-white"
-                      : step.current
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground border-2"
+                    ? "bg-green-500 text-white"
+                    : step.current
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground border-2"
                     }`}
                 >
                   {step.completed ? <CheckCircle className="h-5 w-5" /> : step.id}
@@ -130,7 +131,7 @@ const FinancialSetup = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Account Number</Label>
                     <div className="relative">
@@ -241,10 +242,10 @@ const FinancialSetup = () => {
                       setCustomAmount("");
                     }}
                     className={`gap-1 ${selectedRecharge === option.amount
-                        ? option.popular
-                          ? "bg-amber-500 hover:bg-amber-600"
-                          : ""
+                      ? option.popular
+                        ? "bg-amber-500 hover:bg-amber-600"
                         : ""
+                      : ""
                       }`}
                   >
                     {option.popular && option.bonus > 0 && (
@@ -259,7 +260,7 @@ const FinancialSetup = () => {
 
               <div className="space-y-2">
                 <Label>Payment Method</Label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {paymentMethods.map((method) => (
                     <Button
                       key={method.id}
@@ -282,12 +283,9 @@ const FinancialSetup = () => {
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between mt-8 pt-6 border-t">
-          <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to KYC
-          </Button>
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t">
+          <BackButton label="Back to KYC" fallback="/settings/kyc" />
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
             {bankVerified && (
               <span className="text-sm text-green-600 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4" />

@@ -15,6 +15,8 @@ import ReviewConfirm from "@/components/shipment/ReviewConfirm";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { paymentApi } from "@/lib/api";
+import { BackButton } from "@/components/BackButton";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 declare global {
   interface Window {
@@ -336,19 +338,22 @@ const NewShipmentBooking = () => {
       <main className="flex-1 py-8">
         <div className="container max-w-4xl mx-auto px-4">
           {/* Page Header */}
-          <div className="flex items-center gap-4 mb-8">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/dashboard")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">New Shipment</h1>
-              <p className="text-muted-foreground">
-                Create a new shipment booking
-              </p>
+          <div className="mb-8">
+            <Breadcrumbs
+              items={[
+                { label: "Shipments", href: "/shipments" },
+                { label: "Book New Shipment" }
+              ]}
+              className="mb-4"
+            />
+            <div className="flex items-center gap-4">
+              <BackButton fallback="/shipments" />
+              <div>
+                <h1 className="text-2xl font-bold">New Shipment</h1>
+                <p className="text-muted-foreground">
+                  Create a new shipment booking
+                </p>
+              </div>
             </div>
           </div>
 
@@ -386,7 +391,7 @@ const NewShipmentBooking = () => {
                 if (currentStep > 1) {
                   handleBack();
                 } else {
-                  navigate("/dashboard");
+                  if (window.history.length > 2) navigate(-1); else navigate("/dashboard");
                 }
               }}
             >

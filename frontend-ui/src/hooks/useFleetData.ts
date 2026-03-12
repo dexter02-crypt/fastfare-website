@@ -28,13 +28,36 @@ export const useFleetData = () => {
 
   // ─── Socket.io integration for REAL driver locations ───
   useEffect(() => {
-    const socket = io(API_BASE_URL, {
+    const token = localStorage.getItem('token') || localStorage.getItem('partner_token') || localStorage.getItem('admin_token');
+
+    const BACKEND_URL = import.meta.env.VITE_SOCKET_URL
+      || import.meta.env.VITE_API_URL
+      || 'http://localhost:3000';
+
+    console.log('[Fleet] Connecting to:', BACKEND_URL);
+
+    const socket = io(BACKEND_URL, {
+      auth: { token },
       transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 10,
     });
     socketRef.current = socket;
 
     socket.on('connect', () => {
+      console.log('[Fleet] Connected, joining fleet-room');
       socket.emit('join_dashboard');
+      socket.emit('join:fleet-room');
+    });
+
+    socket.on('fleet:drivers-update', (data: any) => {
+      console.log('[Fleet] Received drivers update:', data);
+      if (data && data.drivers) {
+        // Clear previous state to fully sync with backend
+        liveDriversRef.current.clear();
+        data.drivers.forEach((pos: any) => addOrUpdateLiveDriver(pos));
+        mergeDrivers();
+      }
     });
 
     // Receive all current positions on join
@@ -59,10 +82,25 @@ export const useFleetData = () => {
       }
     });
 
+    socket.on('driver:location', (data: any) => {
+      if (data && data.driverId && data.lat != null && data.lng != null) {
+        addOrUpdateLiveDriver(data);
+        mergeDrivers();
+      }
+    });
+
     // Driver stopped tracking — remove from map
-    socket.on('driver_went_offline', (data: any) => {
+    socket.on('driver:went-offline', (data: any) => {
+      console.log('[Fleet] Driver went offline:', data);
       if (data && data.driverId) {
         liveDriversRef.current.delete(data.driverId);
+        mergeDrivers();
+      }
+    });
+
+    socket.on('driver_went_offline', (data: any) => {
+      if (data && (data.driverId || data.driver_id)) {
+        liveDriversRef.current.delete(data.driverId || data.driver_id);
         mergeDrivers();
       }
     });

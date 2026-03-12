@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "@/config";
 import DashboardLayout from "@/components/DashboardLayout";
+import { BackButton } from "@/components/BackButton";
 import {
     Users, Scan, Plus, Copy, Check, Eye, EyeOff,
     UserPlus, Trash2, RefreshCw, Shield, Truck, ArrowLeft
@@ -21,6 +22,10 @@ interface DriverItem {
     phone: string;
     status: string;
     createdAt: string;
+    socketStatus?: string;
+    lastSeen?: number | null;
+    lat?: number | null;
+    lng?: number | null;
 }
 
 interface ScanPartnerItem {
@@ -66,7 +71,7 @@ const CredentialCard = ({ credentials, type, onClose }: {
             animate={{ opacity: 1, scale: 1 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
         >
-            <Card className="w-full max-w-md border-2 border-green-500/50 shadow-2xl">
+            <Card className="w-[95vw] sm:w-full max-w-md border-2 border-green-500/50 shadow-2xl">
                 <CardHeader className="text-center pb-2">
                     <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-green-100 flex items-center justify-center">
                         <Check className="h-7 w-7 text-green-600" />
@@ -250,7 +255,22 @@ const PartnerTeamManagement = () => {
         }
     };
 
-    // ─── View Credentials ───
+    // ─── View Driver Credentials ───
+    const viewDriverCredentials = async (driverId: string) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/partner-team/drivers/${driverId}/credentials`, {
+                headers: headers()
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            setShowCredentials({ credentials: data.credentials, type: "Driver" });
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : "Failed to load credentials";
+            toast({ title: "Error", description: msg, variant: "destructive" });
+        }
+    };
+
+    // ─── View Scan Partner Credentials ───
     const viewCredentials = async (scanPartnerId: string) => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/partner-team/scan-partners/${scanPartnerId}/credentials`, {
@@ -276,19 +296,20 @@ const PartnerTeamManagement = () => {
         <DashboardLayout>
             <div className="space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link to="/dashboard" className="text-muted-foreground hover:text-foreground">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Link>
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <BackButton fallback="/dashboard" />
                         <div>
-                            <h1 className="text-2xl font-bold">Team Management</h1>
-                            <p className="text-muted-foreground">Create and manage drivers & scan partners</p>
+                            <h1 className="text-xl sm:text-2xl font-bold">Team Management</h1>
+                            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1">Create and manage drivers & scan partners</p>
                         </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
+                    <Button variant="outline" size="sm" className="hidden sm:flex" onClick={fetchAll} disabled={loading}>
                         <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                         Refresh
+                    </Button>
+                    <Button variant="outline" size="icon" className="sm:hidden shrink-0" onClick={fetchAll} disabled={loading}>
+                        <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                     </Button>
                 </div>
 
@@ -354,23 +375,37 @@ const PartnerTeamManagement = () => {
                         <div className="space-y-2">
                             {drivers.map((d) => (
                                 <Card key={d._id} className="border-0 shadow-sm">
-                                    <CardContent className="p-4 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                        <div className="flex items-start sm:items-center gap-3">
+                                            <div className="h-10 w-10 shrink-0 rounded-full bg-blue-100 flex items-center justify-center relative">
                                                 <Truck className="h-5 w-5 text-blue-600" />
+                                                {/* Live socket status dot */}
+                                                <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${d.socketStatus === 'active' ? 'bg-green-500' : 'bg-gray-400'
+                                                    }`} />
                                             </div>
-                                            <div>
-                                                <p className="font-medium">{d.name}</p>
-                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <div className="min-w-0">
+                                                <p className="font-medium truncate">{d.name}</p>
+                                                <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
                                                     <span className="font-mono font-semibold text-primary">{d.driverId}</span>
-                                                    {d.phone && <span>• {d.phone}</span>}
+                                                    {d.phone && <span className="line-clamp-1">• {d.phone}</span>}
                                                 </div>
+                                                <p className={`text-[10px] sm:text-xs mt-0.5 truncate ${d.socketStatus === 'active' ? 'text-green-600' : 'text-gray-400'}`}>
+                                                    {d.socketStatus === 'active' ? '● Online — tracking' : '○ Offline'}
+                                                </p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto mt-1 sm:mt-0 sm:justify-end">
                                             <Badge variant={d.status === "active" ? "default" : "secondary"}>
                                                 {d.status}
                                             </Badge>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="flex-1 sm:flex-none"
+                                                onClick={() => viewDriverCredentials(d._id)}
+                                            >
+                                                <Eye className="h-3 w-3 sm:mr-1" /> <span className="hidden sm:inline">Creds</span>
+                                            </Button>
                                             <Button
                                                 size="sm"
                                                 variant={d.status === "active" ? "destructive" : "outline"}
@@ -422,29 +457,30 @@ const PartnerTeamManagement = () => {
                         <div className="space-y-2">
                             {scanPartners.map((s) => (
                                 <Card key={s._id} className="border-0 shadow-sm">
-                                    <CardContent className="p-4 flex items-center justify-between">
+                                    <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                                            <div className="h-10 w-10 shrink-0 rounded-full bg-purple-100 flex items-center justify-center">
                                                 <Scan className="h-5 w-5 text-purple-600" />
                                             </div>
-                                            <div>
-                                                <p className="font-medium">{s.name}</p>
-                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <div className="min-w-0">
+                                                <p className="font-medium truncate">{s.name}</p>
+                                                <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
                                                     <span className="font-mono font-semibold text-primary">{s.scanPartnerId}</span>
-                                                    {s.phone && <span>• {s.phone}</span>}
+                                                    {s.phone && <span className="line-clamp-1">• {s.phone}</span>}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto mt-1 sm:mt-0 sm:justify-end">
                                             <Badge variant={s.status === "active" ? "default" : "secondary"}>
                                                 {s.status}
                                             </Badge>
                                             <Button
                                                 size="sm"
                                                 variant="outline"
+                                                className="flex-1 sm:flex-none"
                                                 onClick={() => viewCredentials(s._id)}
                                             >
-                                                <Eye className="h-3 w-3 mr-1" /> Credentials
+                                                <Eye className="h-3 w-3 sm:mr-1" /> <span className="hidden sm:inline">Creds</span>
                                             </Button>
                                             <Button
                                                 size="sm"

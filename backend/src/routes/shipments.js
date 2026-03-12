@@ -275,7 +275,7 @@ router.get('/my-orders', protect, async (req, res) => {
         }
 
         const shipments = await Shipment.find(query)
-            .populate('assignedPartner', 'name phone businessName')
+            .populate('carrierId', 'name phone businessName')
             .sort({ createdAt: -1 })
             .lean();
 
@@ -330,15 +330,54 @@ router.get('/my-orders', protect, async (req, res) => {
     }
 });
 
+// ─── CARRIER / PARTNER ACTIVITY ───
+
+// GET /api/shipments/carrier/incoming — shipments assigned to this partner
+router.get('/carrier/incoming', protect, async (req, res) => {
+    try {
+        const shipments = await Shipment.find({ carrierId: req.user._id })
+            .populate('assignedDriver', 'name driverId vehicleNumber phone')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // Also populate sender info
+        const User = (await import('../models/User.js')).default;
+        const enriched = await Promise.all(shipments.map(async (s) => {
+            let senderUser = null;
+            if (s.user) {
+                senderUser = await User.findById(s.user).select('name email phone').lean();
+            }
+            return {
+                ...s,
+                sender: { user_id: senderUser }
+            };
+        }));
+
+        res.json({ success: true, shipments: enriched });
+    } catch (error) {
+        console.error('Partner activity error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ─── PARAMETERIZED ROUTES (/:id) come LAST ───
 
 // Get single shipment
 router.get('/:id', protect, async (req, res) => {
     try {
-        const shipment = await Shipment.findOne({
-            _id: req.params.id,
-            user: req.user._id
-        });
+        const query = { user: req.user._id };
+
+        // Check if the id is a valid mongoose ObjectId, else treat it as an AWB
+        if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+            query.$or = [{ _id: req.params.id }, { awb: req.params.id }];
+        } else {
+            query.awb = req.params.id;
+        }
+
+        const shipment = await Shipment.findOne(query)
+            .populate('carrierId', 'name phone businessName')
+            .populate('assignedDriver', 'name driverId vehicleNumber phone status')
+            .populate('assignedPartner', 'companyName');
 
         if (!shipment) {
             return res.status(404).json({ error: 'Shipment not found' });

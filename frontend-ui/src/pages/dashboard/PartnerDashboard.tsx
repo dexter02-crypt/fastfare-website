@@ -106,7 +106,7 @@ const PartnerDashboard = () => {
                 )}
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
                     {statCards.map((stat, index) => (
                         <motion.div
                             key={stat.label}
@@ -130,7 +130,7 @@ const PartnerDashboard = () => {
                 </div>
 
                 {/* Carrier / Partner Orders Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
                     <Card
                         className="cursor-pointer border hover:shadow-md transition-all hover:border-primary/50"
                         onClick={() => navigate("/partner/orders?tab=new")}
@@ -208,12 +208,13 @@ const PartnerDashboard = () => {
                             </Button>
                         </Link>
                     </div>
+                    {/* WMS Actions Grid - 2 columns on mobile */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                         {wmsActions.map((action, i) => (
                             <motion.div key={action.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 + i * 0.05 }}>
                                 <Link to={action.href}>
-                                    <div className="group p-4 rounded-xl border bg-white hover:shadow-md transition-all hover:-translate-y-0.5 text-center">
-                                        <div className={`h-10 w-10 mx-auto rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-3`}>
+                                    <div className="group p-3 lg:p-4 rounded-xl border bg-white hover:shadow-md transition-all hover:-translate-y-0.5 text-center h-full flex flex-col items-center justify-center min-h-[100px]">
+                                        <div className={`h-8 w-8 lg:h-10 lg:w-10 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-2 lg:mb-3`}>
                                             <action.icon className="h-5 w-5 text-white" />
                                         </div>
                                         <p className="text-sm font-medium">{action.label}</p>
@@ -234,8 +235,8 @@ const PartnerDashboard = () => {
                         </Link>
                     </div>
 
-                    <div className="w-full overflow-auto">
-                        <table className="w-full text-sm text-left">
+                    <div className="w-full overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+                        <table className="w-full text-sm text-left min-w-[500px]">
                             <thead className="bg-gray-50/50 text-gray-500 font-medium border-b border-gray-100">
                                 <tr>
                                     <th className="px-6 py-4 uppercase text-xs tracking-wider">ID</th>

@@ -76,16 +76,16 @@ const FleetManagement = () => {
                         <p className="text-muted-foreground">Manage vehicles, drivers, and dispatch trips</p>
                     </div>
                     <button onClick={() => setShowModal(activeTab === 'trips' ? 'dispatch' : activeTab === 'drivers' ? 'driver' : 'vehicle')}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors">
+                        className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors">
                         <Plus className="h-4 w-4" /> Add {activeTab === 'trips' ? 'Trip' : activeTab === 'drivers' ? 'Driver' : 'Vehicle'}
                     </button>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+                <div className="flex gap-1 p-1 bg-muted rounded-lg w-full sm:w-fit overflow-x-auto">
                     {tabs.map((tab) => (
                         <button key={tab.id} onClick={() => setSearchParams({ tab: tab.id })}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === tab.id ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                            className={`flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                             <tab.icon className="h-4 w-4" /> {tab.label}
                             <span className="text-xs bg-muted-foreground/10 px-1.5 py-0.5 rounded-full">{tab.count}</span>
                         </button>
@@ -160,8 +160,8 @@ const FleetManagement = () => {
 
                 {/* Modals */}
                 {showModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowModal(null)}>
-                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 m-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={() => setShowModal(null)}>
+                        <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-md p-6 h-[85vh] sm:h-auto overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-lg font-semibold">
                                     {showModal === 'vehicle' ? 'Add Vehicle' : showModal === 'driver' ? 'Add Driver' : 'Dispatch Trip'}

@@ -65,14 +65,14 @@ const TransactionsPage = () => {
 
                 <Card>
                     <CardHeader>
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <CardTitle>All Transactions</CardTitle>
-                            <div className="flex items-center gap-2">
-                                <div className="relative w-64">
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <div className="relative flex-1 sm:w-64">
                                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         placeholder="Search transactions..."
-                                        className="pl-9"
+                                        className="pl-9 w-full"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                     />
@@ -83,37 +83,40 @@ const TransactionsPage = () => {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Transaction ID</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Method</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Amount</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredTransactions.map((txn) => (
-                                    <TableRow key={txn.id}>
-                                        <TableCell className="font-medium">{txn.id}</TableCell>
-                                        <TableCell>{txn.type}</TableCell>
-                                        <TableCell>{txn.date}</TableCell>
-                                        <TableCell>{txn.method}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={txn.status === "Completed" ? "default" : "secondary"}>
-                                                {txn.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className={`text-right font-semibold ${txn.amount.startsWith('+') ? "text-green-600" : ""}`}>
-                                            {txn.amount}
-                                        </TableCell>
+                    <CardContent className="p-0 sm:p-6 table-responsive-wrapper">
+                        <span className="scroll-hint px-4 pt-4 pb-2 block sm:hidden">Scroll right to view all columns →</span>
+                        <div className="min-w-[600px]">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Transaction ID</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Method</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Amount</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredTransactions.map((txn) => (
+                                        <TableRow key={txn.id}>
+                                            <TableCell className="font-medium">{txn.id}</TableCell>
+                                            <TableCell>{txn.type}</TableCell>
+                                            <TableCell>{txn.date}</TableCell>
+                                            <TableCell>{txn.method}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={txn.status === "Completed" ? "default" : "secondary"}>
+                                                    {txn.status}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className={`text-right font-semibold ${txn.amount.startsWith('+') ? "text-green-600" : ""}`}>
+                                                {txn.amount}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

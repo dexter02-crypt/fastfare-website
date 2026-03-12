@@ -21,6 +21,7 @@ interface ActionItem {
 
 interface GettingStartedProps {
   showWelcomeOffer?: boolean;
+  kycCompleted?: boolean;
   walletRecharged?: boolean;
   firstOrderPlaced?: boolean;
 }

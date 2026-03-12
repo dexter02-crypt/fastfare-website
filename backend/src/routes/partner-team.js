@@ -45,9 +45,25 @@ const generatePassword = () => {
 router.get('/drivers', protect, partnerOnly, async (req, res) => {
     try {
         const query = req.user.role === 'admin' ? {} : { createdBy: req.user._id };
-        const drivers = await WmsDriver.find(query)
+        const driversList = await WmsDriver.find(query)
             .select('-password')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // Merge with live socket status
+        const { getActiveDrivers } = await import('../socket/location.socket.js');
+        const activeDrivers = getActiveDrivers();
+
+        const drivers = driversList.map(driver => {
+            const liveInfo = activeDrivers.find(ad => ad.driverId === driver.driverId);
+            return {
+                ...driver,
+                socketStatus: liveInfo ? liveInfo.status : 'offline',
+                lastSeen: liveInfo ? liveInfo.lastSeen : null,
+                lat: liveInfo ? liveInfo.lat : null,
+                lng: liveInfo ? liveInfo.lng : null
+            };
+        });
 
         res.json({ success: true, drivers });
     } catch (error) {

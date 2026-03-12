@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import { API_BASE_URL } from "@/config";
+import { BackButton } from "@/components/BackButton";
 
 interface TrackingData {
     parcel: any;
@@ -195,9 +196,7 @@ const UserLiveTracking = () => {
             <div className="space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
+                    <BackButton fallback="/track" />
                     <div>
                         <h1 className="text-2xl font-bold flex items-center gap-2">
                             <Radio className="h-6 w-6 text-blue-500 animate-pulse" />

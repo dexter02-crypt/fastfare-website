@@ -132,69 +132,72 @@ const InvoicesPage = () => {
 
                 <Card>
                     <CardHeader>
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <CardTitle>Invoice History</CardTitle>
-                            <div className="relative w-64">
+                            <div className="relative w-full sm:w-64">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search invoices..."
-                                    className="pl-9"
+                                    className="pl-9 w-full"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Invoice ID</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Billing Period</TableHead>
-                                    <TableHead>Due Date</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Amount</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredInvoices.map((inv) => (
-                                    <TableRow key={inv.id}>
-                                        <TableCell className="font-medium flex items-center gap-2">
-                                            <FileText className="h-4 w-4 text-muted-foreground" />
-                                            {inv.id}
-                                        </TableCell>
-                                        <TableCell>{inv.date}</TableCell>
-                                        <TableCell>{inv.period}</TableCell>
-                                        <TableCell>{inv.dueDate}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={inv.status === "Paid" ? "default" : "secondary"} className={inv.status === "Paid" ? "bg-green-500 hover:bg-green-600" : ""}>
-                                                {inv.status === "Paid" ? <CheckCircle className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />}
-                                                {inv.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right font-semibold">{inv.amount}</TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <Button variant="ghost" size="sm" title="Download Invoice" onClick={() => handleDownloadInvoice(inv)}>
-                                                    <Download className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="sm" title="Print Invoice" onClick={() => handlePrintInvoice(inv)}>
-                                                    <Printer className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="sm" title="View Details" onClick={() => {
-                                                    setSelectedInvoice(inv);
-                                                    setShowInvoiceDialog(true);
-                                                }}>
-                                                    <FileText className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
+                    <CardContent className="p-0 sm:p-6 table-responsive-wrapper">
+                        <span className="scroll-hint px-4 pt-4 pb-2 block sm:hidden">Scroll right to view all columns →</span>
+                        <div className="min-w-[700px]">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Invoice ID</TableHead>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Billing Period</TableHead>
+                                        <TableHead>Due Date</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Amount</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredInvoices.map((inv) => (
+                                        <TableRow key={inv.id}>
+                                            <TableCell className="font-medium flex items-center gap-2">
+                                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                                {inv.id}
+                                            </TableCell>
+                                            <TableCell>{inv.date}</TableCell>
+                                            <TableCell>{inv.period}</TableCell>
+                                            <TableCell>{inv.dueDate}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={inv.status === "Paid" ? "default" : "secondary"} className={inv.status === "Paid" ? "bg-green-500 hover:bg-green-600" : ""}>
+                                                    {inv.status === "Paid" ? <CheckCircle className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />}
+                                                    {inv.status}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right font-semibold">{inv.amount}</TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Button variant="ghost" size="sm" title="Download Invoice" onClick={() => handleDownloadInvoice(inv)}>
+                                                        <Download className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="sm" title="Print Invoice" onClick={() => handlePrintInvoice(inv)}>
+                                                        <Printer className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="sm" title="View Details" onClick={() => {
+                                                        setSelectedInvoice(inv);
+                                                        setShowInvoiceDialog(true);
+                                                    }}>
+                                                        <FileText className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 </Card>
 

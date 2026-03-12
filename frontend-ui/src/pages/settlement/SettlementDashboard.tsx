@@ -186,7 +186,7 @@ const SettlementDashboard = () => {
                 </Card>
 
                 {/* ═══ FINANCIAL OVERVIEW CARDS ═══ */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                     <StatCard
                         title="Available Balance"
                         value={dashboard?.financials?.availableForWithdrawal || 0}
@@ -222,8 +222,8 @@ const SettlementDashboard = () => {
                 </div>
 
                 {/* ═══ ORDER STATS ═══ */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <MiniStat label="Total Orders" value={dashboard?.overview?.totalOrders || 0} icon={Package} />
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-5">
+                    <MiniStat label="Total Orders" value={dashboard?.overview?.totalOrders || 0} icon={Package} className="col-span-2 md:col-span-1" />
                     <MiniStat label="Delivered" value={dashboard?.overview?.deliveredOrders || 0} icon={CheckCircle2} color="text-green-600" />
                     <MiniStat label="In Transit" value={dashboard?.overview?.inTransitOrders || 0} icon={TrendingUp} color="text-blue-600" />
                     <MiniStat label="RTO / Returns" value={dashboard?.overview?.rtoOrders || 0} icon={RotateCcw} color="text-orange-600" />
@@ -232,12 +232,14 @@ const SettlementDashboard = () => {
 
                 {/* ═══ TABS: Schedule / Ledger / Withdrawals / Performance ═══ */}
                 <Tabs defaultValue="withdrawals" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
-                        <TabsTrigger value="schedule">Schedule</TabsTrigger>
-                        <TabsTrigger value="ledger">Ledger</TabsTrigger>
-                        <TabsTrigger value="performance">Performance</TabsTrigger>
-                    </TabsList>
+                    <div className="overflow-x-auto pb-4 -mb-4 border-b md:border-b-0 hide-scrollbar">
+                        <TabsList className="inline-flex w-max min-w-full justify-start h-auto p-1 bg-muted rounded-lg">
+                            <TabsTrigger className="shrink-0 px-4 py-2" value="withdrawals">Withdrawals</TabsTrigger>
+                            <TabsTrigger className="shrink-0 px-4 py-2" value="schedule">Schedule</TabsTrigger>
+                            <TabsTrigger className="shrink-0 px-4 py-2" value="ledger">Ledger</TabsTrigger>
+                            <TabsTrigger className="shrink-0 px-4 py-2" value="performance">Performance</TabsTrigger>
+                        </TabsList>
+                    </div>
 
                     {/* Schedule Tab */}
                     <TabsContent value="schedule">
@@ -320,8 +322,8 @@ const SettlementDashboard = () => {
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-medium capitalize">{entry.type.replace('_', ' ')}</p>
-                                                        <p className="text-xs text-muted-foreground truncate max-w-[300px]">
+                                                        <p className="text-sm font-medium capitalize line-clamp-1">{entry.type.replace('_', ' ')}</p>
+                                                        <p className="text-[10px] sm:text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[300px]">
                                                             {entry.description}
                                                         </p>
                                                     </div>
@@ -526,9 +528,9 @@ const SettlementDashboard = () => {
                                                 <div key={w._id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent/30 transition-colors">
                                                     <div className="flex items-center gap-3">
                                                         <div className={`p-2 rounded-lg ${w.status === 'completed' ? 'bg-green-100 dark:bg-green-900/30' :
-                                                                w.status === 'pending' ? 'bg-orange-100 dark:bg-orange-900/30' :
-                                                                    w.status === 'rejected' ? 'bg-red-100 dark:bg-red-900/30' :
-                                                                        'bg-blue-100 dark:bg-blue-900/30'
+                                                            w.status === 'pending' ? 'bg-orange-100 dark:bg-orange-900/30' :
+                                                                w.status === 'rejected' ? 'bg-red-100 dark:bg-red-900/30' :
+                                                                    'bg-blue-100 dark:bg-blue-900/30'
                                                             }`}>
                                                             {w.status === 'completed' ? <CheckCircle2 className="h-5 w-5 text-green-600" /> :
                                                                 w.status === 'pending' ? <Clock3 className="h-5 w-5 text-orange-600" /> :
@@ -544,9 +546,9 @@ const SettlementDashboard = () => {
                                                     </div>
                                                     <div className="text-right">
                                                         <Badge className={`${w.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
-                                                                w.status === 'pending' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300' :
-                                                                    w.status === 'rejected' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' :
-                                                                        'bg-blue-100 text-blue-800'
+                                                            w.status === 'pending' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300' :
+                                                                w.status === 'rejected' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' :
+                                                                    'bg-blue-100 text-blue-800'
                                                             }`}>
                                                             {w.status.charAt(0).toUpperCase() + w.status.slice(1)}
                                                         </Badge>
@@ -576,16 +578,16 @@ const StatCard = ({ title, value, icon: Icon, format, accent, bg }: {
     title: string; value: number; icon: any; format?: string; accent?: string; bg?: string;
 }) => (
     <Card className="hover:shadow-md transition-shadow">
-        <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-muted-foreground">{title}</p>
-                    <p className={`text-2xl font-bold mt-1 ${accent || ''}`}>
+        <CardContent className="p-3 sm:p-4 flex flex-col justify-between h-full">
+            <div className="flex items-start justify-between gap-2 overflow-hidden">
+                <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1">{title}</p>
+                    <p className={`text-lg sm:text-2xl font-bold mt-1 truncate ${accent || ''}`}>
                         {format === 'currency' ? `₹${value.toLocaleString('en-IN')}` : value.toLocaleString()}
                     </p>
                 </div>
-                <div className={`p-3 rounded-xl ${bg || 'bg-muted'}`}>
-                    <Icon className={`h-5 w-5 ${accent || 'text-muted-foreground'}`} />
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl ${bg || 'bg-muted'} shrink-0`}>
+                    <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${accent || 'text-muted-foreground'}`} />
                 </div>
             </div>
         </CardContent>
@@ -593,15 +595,15 @@ const StatCard = ({ title, value, icon: Icon, format, accent, bg }: {
 );
 
 // ── Mini Stat ──
-const MiniStat = ({ label, value, icon: Icon, color }: {
-    label: string; value: number; icon: any; color?: string;
+const MiniStat = ({ label, value, icon: Icon, color, className }: {
+    label: string; value: number; icon: any; color?: string; className?: string;
 }) => (
-    <Card>
-        <CardContent className="p-3 flex items-center gap-3">
-            <Icon className={`h-4 w-4 ${color || 'text-muted-foreground'}`} />
-            <div>
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-lg font-bold">{value}</p>
+    <Card className={className || ""}>
+        <CardContent className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3">
+            <Icon className={`h-4 w-4 shrink-0 ${color || 'text-muted-foreground'}`} />
+            <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1">{label}</p>
+                <p className="text-sm sm:text-lg font-bold truncate">{value}</p>
             </div>
         </CardContent>
     </Card>

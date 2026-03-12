@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/config";
+import { BackButton } from "@/components/BackButton";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 // Active sessions - only show current local session to avoid fake sessions until backend supports real sessions
 const mockSessions = [
@@ -207,6 +209,7 @@ const SettingsPage = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <Breadcrumbs items={[{ label: "Settings" }]} className="mb-2" />
         <div>
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground">Manage your account and organization preferences</p>

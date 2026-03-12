@@ -29,8 +29,8 @@ const containerStyle = {
 };
 
 const center = {
-    lat: 40.7128,
-    lng: -74.0060
+    lat: 28.4595,
+    lng: 77.0266
 };
 
 const FleetTracking = () => {
@@ -89,9 +89,9 @@ const FleetTracking = () => {
 
     return (
         <DashboardLayout>
-            <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)] -m-4 lg:-m-6">
+            <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)] lg:h-[calc(100vh-64px)] -m-4 lg:-m-6">
                 {/* Sidebar Driver List */}
-                <div className="w-full lg:w-80 h-1/3 lg:h-full border-b lg:border-b-0 lg:border-r bg-white flex flex-col z-10 order-2 lg:order-1">
+                <div className="w-full flex-1 lg:w-80 lg:flex-none lg:h-full shrink-0 border-b lg:border-b-0 lg:border-r bg-white flex flex-col z-10 order-2 lg:order-1 overflow-hidden">
                     <div className="p-4 border-b">
                         <h2 className="font-bold text-lg mb-4">Drivers</h2>
                         <div className="relative">
@@ -157,7 +157,7 @@ const FleetTracking = () => {
                 </div>
 
                 {/* Map Area */}
-                <div className="flex-1 h-2/3 lg:h-full relative bg-gray-100 order-1 lg:order-2">
+                <div className="h-[40vh] min-h-[300px] shrink-0 w-full relative bg-gray-100 order-1 lg:order-2 lg:h-auto lg:flex-1">
                     {/* Map Stats Overlay */}
                     <div className="absolute top-4 left-4 z-10 bg-white/95 backdrop-blur rounded-xl shadow-sm border p-3 lg:p-4 flex gap-3 lg:gap-6 overflow-x-auto max-w-[calc(100%-32px)]">
                         <div>
@@ -180,7 +180,7 @@ const FleetTracking = () => {
                             <GoogleMap
                                 mapContainerStyle={containerStyle}
                                 center={center}
-                                zoom={10}
+                                zoom={6}
                                 onLoad={onLoad}
                                 onUnmount={onUnmount}
                                 options={{

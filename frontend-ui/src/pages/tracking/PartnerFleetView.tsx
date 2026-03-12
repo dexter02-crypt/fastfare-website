@@ -70,18 +70,67 @@ const PartnerFleetView = () => {
 
     // Socket.io for real-time updates
     useEffect(() => {
-        const socket = io(API_BASE_URL, { transports: ["websocket", "polling"] });
+        const token = localStorage.getItem("token");
+        const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+        const socket = io(socketUrl, {
+            auth: { token },
+            transports: ["websocket", "polling"],
+            reconnection: true,
+        });
         socketRef.current = socket;
 
         socket.on("connect", () => {
+            console.log("[PartnerFleet] Connected, joining fleet-room");
             socket.emit("join_dashboard");
+            socket.emit("join:fleet-room");
+
+            // Re-fetch standard snapshot on connect in case of missed events
+            socket.emit("get:partner-fleet");
         });
 
-        socket.on("locationUpdate", (data: any) => {
+        socket.on("connect_error", (err) => {
+            console.error("[PartnerFleet] Socket error:", err.message);
+        });
+
+        // Full driver list update
+        socket.on("fleet:drivers-update", (data: any) => {
+            console.log("[PartnerFleet] Drivers update received:", data);
+
+            // Map the backend structure to the frontend structure
+            const driverList = data.drivers || [];
+
+            setFleet((prevList) => {
+                // Merge new online data but keep existing parcel data if it exists
+                return driverList.map((d: any) => {
+                    const existing = prevList.find(prev => prev.driverId === d.driverId);
+                    return {
+                        driverId: d.driverId,
+                        driverName: d.driverName || d.name || "Driver",
+                        lat: d.lat,
+                        lng: d.lng,
+                        online: d.status === 'active' || true,
+                        speed: d.speed || 0,
+                        timestamp: d.timestamp || Date.now(),
+                        parcels: existing?.parcels || d.parcels || [], // Preserve parcels
+                    };
+                });
+            });
+
+            setStats(prev => ({
+                ...prev,
+                totalDrivers: data.total || driverList.length,
+            }));
+
+            // Unassigned stats depend on backend sending full details, or we retain existing
+        });
+
+        // Individual location update
+        socket.on("driver:location", (data: any) => {
             setFleet((prev) =>
                 prev.map((d) =>
                     d.driverId === data.driverId
-                        ? { ...d, lat: data.lat, lng: data.lng, online: true, timestamp: Date.now() }
+                        ? { ...d, lat: data.lat, lng: data.lng, speed: data.speed, online: true, timestamp: Date.now() }
                         : d
                 )
             );
@@ -193,8 +242,8 @@ const PartnerFleetView = () => {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <Card className="col-span-1 md:col-span-1">
                         <CardContent className="pt-6 flex items-center gap-3">
                             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                                 <Truck className="h-5 w-5 text-blue-600" />
@@ -216,7 +265,7 @@ const PartnerFleetView = () => {
                             </div>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="col-span-2 md:col-span-1">
                         <CardContent className="pt-6 flex items-center gap-3">
                             <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
                                 <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -242,8 +291,7 @@ const PartnerFleetView = () => {
                             <Card className="overflow-hidden">
                                 <div
                                     ref={mapRef}
-                                    className="w-full bg-muted"
-                                    style={{ height: "500px" }}
+                                    className="w-full bg-muted h-[40vh] min-h-[300px] lg:h-[500px]"
                                 >
                                     {fleet.length === 0 && (
                                         <div className="flex items-center justify-center h-full">
@@ -354,31 +402,34 @@ const PartnerFleetView = () => {
                                 </Badge>
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Parcel ID</TableHead>
-                                        <TableHead>Barcode</TableHead>
-                                        <TableHead>Package</TableHead>
-                                        <TableHead>Receiver</TableHead>
-                                        <TableHead>Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {selectedDriver.parcels.map((p) => (
-                                        <TableRow key={p.parcelId}>
-                                            <TableCell className="font-mono text-sm">{p.parcelId}</TableCell>
-                                            <TableCell className="font-mono text-sm">{p.barcode}</TableCell>
-                                            <TableCell>{p.packageName || "—"}</TableCell>
-                                            <TableCell>{p.receiver?.name || "—"}</TableCell>
-                                            <TableCell>
-                                                <Badge className={getStatusColor(p.status)}>{p.status}</Badge>
-                                            </TableCell>
+                        <CardContent className="p-0 table-responsive-wrapper text-sm">
+                            <span className="scroll-hint px-2 pt-2 pb-1 block lg:hidden">Scroll right to view all columns →</span>
+                            <div className="min-w-[600px]">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Parcel ID</TableHead>
+                                            <TableHead>Barcode</TableHead>
+                                            <TableHead>Package</TableHead>
+                                            <TableHead>Receiver</TableHead>
+                                            <TableHead>Status</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {selectedDriver.parcels.map((p) => (
+                                            <TableRow key={p.parcelId}>
+                                                <TableCell className="font-mono">{p.parcelId}</TableCell>
+                                                <TableCell className="font-mono">{p.barcode}</TableCell>
+                                                <TableCell>{p.packageName || "—"}</TableCell>
+                                                <TableCell>{p.receiver?.name || "—"}</TableCell>
+                                                <TableCell>
+                                                    <Badge className={getStatusColor(p.status)}>{p.status}</Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </CardContent>
                     </Card>
                 )}

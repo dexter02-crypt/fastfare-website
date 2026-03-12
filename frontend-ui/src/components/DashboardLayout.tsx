@@ -15,6 +15,7 @@ import {
 import { Bell, Search, Menu, X, User, Settings, LogOut, AlertTriangle } from "lucide-react";
 import DashboardSidebar from "./DashboardSidebar";
 import Header from "./Header";
+import MobileBottomNav from "./MobileBottomNav";
 import { authApi } from "@/lib/api";
 
 interface DashboardLayoutProps {
@@ -35,15 +36,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     // Sidebar expands on hover, collapses when mouse leaves
     const effectiveCollapsed = sidebarCollapsed && !sidebarHovered;
 
-    // Lock body scroll when mobile sidebar is open
-    useEffect(() => {
-        if (mobileMenuOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-        return () => { document.body.style.overflow = ''; };
-    }, [mobileMenuOpen]);
+    // No body scroll lock needed for mobileMenuOpen here anymore
 
     const handleLogout = () => {
         authApi.logout();
@@ -69,11 +62,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     return (
         <div className="min-h-screen bg-background">
             {/* Global Header */}
-            <Header mobileMenuOpen={mobileMenuOpen} onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
+            <Header onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
 
             {/* Desktop Sidebar — hover to expand */}
             <div
-                className="hidden lg:block"
+                className="hidden lg:block z-40 relative"
                 onMouseEnter={() => setSidebarHovered(true)}
                 onMouseLeave={() => setSidebarHovered(false)}
             >
@@ -83,20 +76,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 />
             </div>
 
-            {/* Mobile Sidebar Overlay */}
-            <div
-                className={`lg:hidden fixed inset-0 z-40 transition-opacity duration-300 ${mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-            >
-                <div
-                    className="absolute inset-0 bg-black/50 transition-opacity duration-300"
-                    onClick={() => setMobileMenuOpen(false)}
-                />
-                <div
-                    className={`absolute left-0 top-16 h-[calc(100vh-4rem)] w-[260px] bg-background transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
-                >
-                    <DashboardSidebar onMobileItemClick={() => setMobileMenuOpen(false)} />
-                </div>
-            </div>
+            {/* Mobile Sidebar Overlay (Removed in favor of BottomNav) */}
 
             <div
                 className={cn(
@@ -126,8 +106,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 )}
 
                 {/* Page Content */}
-                <main className="p-4 lg:p-6 pt-2">{children}</main>
+                <main className="p-0 lg:p-6 pt-2 pb-[70px] lg:pb-0 w-full max-w-full overflow-x-hidden">
+                    {children}
+                </main>
             </div>
+
+            {/* Bottom Navigation for Mobile */}
+            <MobileBottomNav />
         </div>
     );
 };

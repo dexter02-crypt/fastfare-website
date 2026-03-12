@@ -149,58 +149,58 @@ const BillingDashboard = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Wallet className="h-7 w-7 text-primary" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2 sm:mb-4">
+                <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Wallet className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />
                 </div>
               </div>
-              <p className="text-4xl font-bold tracking-tight">₹{balance.toLocaleString('en-IN')}</p>
-              <p className="text-sm text-muted-foreground mt-1">Wallet Balance</p>
+              <p className="text-2xl sm:text-4xl font-bold tracking-tight">₹{balance.toLocaleString('en-IN')}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">Wallet Balance</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-14 w-14 rounded-xl bg-orange-100 flex items-center justify-center">
-                  <TrendingUp className="h-7 w-7 text-orange-600" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2 sm:mb-4">
+                <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-xl bg-orange-100 flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 sm:h-7 sm:w-7 text-orange-600" />
                 </div>
               </div>
-              <p className="text-4xl font-bold tracking-tight">₹{monthlyAmount.toLocaleString('en-IN')}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {userRole === 'shipment_partner' ? "This Month's Earnings" : "This Month's Spend"}
+              <p className="text-2xl sm:text-4xl font-bold tracking-tight">₹{monthlyAmount.toLocaleString('en-IN')}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-1">
+                {userRole === 'shipment_partner' ? "Earnings" : "Spend"}
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-14 w-14 rounded-xl bg-blue-100 flex items-center justify-center">
-                  <Clock className="h-7 w-7 text-blue-600" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2 sm:mb-4">
+                <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Clock className="h-5 w-5 sm:h-7 sm:w-7 text-blue-600" />
                 </div>
               </div>
-              <p className="text-4xl font-bold tracking-tight">₹{(billingData?.pendingPayments ?? 0).toLocaleString('en-IN')}</p>
-              <p className="text-sm text-muted-foreground mt-1">Pending Payments</p>
+              <p className="text-2xl sm:text-4xl font-bold tracking-tight">₹{(billingData?.pendingPayments ?? 0).toLocaleString('en-IN')}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-1">Pending Payments</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-14 w-14 rounded-xl bg-purple-100 flex items-center justify-center">
-                  <CreditCard className="h-7 w-7 text-purple-600" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2 sm:mb-4">
+                <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-xl bg-purple-100 flex items-center justify-center">
+                  <CreditCard className="h-5 w-5 sm:h-7 sm:w-7 text-purple-600" />
                 </div>
               </div>
-              <p className="text-4xl font-bold tracking-tight">
+              <p className="text-2xl sm:text-4xl font-bold tracking-tight">
                 {billingData?.creditLimit !== null && billingData?.creditLimit !== undefined
                   ? '₹' + Number(billingData.creditLimit).toLocaleString('en-IN')
-                  : <span className="text-muted-foreground text-lg">Not Applicable</span>
+                  : <span className="text-muted-foreground text-[1rem] sm:text-lg">N/A</span>
                 }
               </p>
-              <p className="text-sm text-muted-foreground mt-1">Credit Limit</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-1">Credit Limit</p>
             </CardContent>
           </Card>
         </div>

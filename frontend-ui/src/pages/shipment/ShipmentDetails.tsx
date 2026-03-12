@@ -30,6 +30,9 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { toast, useToast } from "@/hooks/use-toast";
 import { io, Socket } from "socket.io-client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BackButton } from "@/components/BackButton";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
+import LiveLocationModal from "./LiveLocationModal";
 
 interface ShipmentAddress {
   name: string;
@@ -90,6 +93,13 @@ interface Shipment {
   } | string | null;
   assignedDriverName?: string | null;
   assigned_driver_id?: string | null;
+  assignedDriver?: {
+    name: string;
+    driverId: string;
+    vehicleNumber: string;
+    phone: string;
+    status: string;
+  } | null;
   driver_location_lat?: number | null;
   driver_location_lng?: number | null;
 }
@@ -397,32 +407,35 @@ const ShipmentDetails = () => {
         </div>
 
         {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8 print:hidden">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/dashboard")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold">Shipment Details</h1>
-                <Badge className={statusColors[shipment.status] || "bg-gray-100 text-gray-700"}>
-                  {formatStatus(shipment.status)}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <span className="font-mono">AWB: {shipment.awb}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={handleCopyAwb}
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
+        <div className="mb-8 print:hidden">
+          <Breadcrumbs
+            items={[
+              { label: "Shipments", href: "/shipments" },
+              { label: "Details" }
+            ]}
+            className="mb-4"
+          />
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <BackButton fallback="/shipments" />
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold">Shipment Details</h1>
+                  <Badge className={statusColors[shipment.status] || "bg-gray-100 text-gray-700"}>
+                    {formatStatus(shipment.status)}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="font-mono">AWB: {shipment.awb}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={handleCopyAwb}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -448,7 +461,7 @@ const ShipmentDetails = () => {
               </Button>
             )}
             {/* Bug 5: View Live Location button */}
-            {shipment.assignedDriverName && ['in_transit', 'out_for_delivery', 'picked_up', 'dispatched'].includes(shipment.status) && (
+            {shipment.assignedDriver && ['partner_assigned', 'driver_assigned', 'in_transit', 'out_for_delivery', 'picked_up', 'dispatched'].includes(shipment.status) && (
               <Button
                 variant="default"
                 size="sm"
@@ -765,6 +778,53 @@ const ShipmentDetails = () => {
                 <Button variant="outline" className="w-full justify-start" onClick={handleShare}>
                   <Share2 className="h-4 w-4 mr-2" /> Share Tracking
                 </Button>
+                {shipment?.assignedDriver && ['partner_assigned', 'driver_assigned', 'in_transit', 'out_for_delivery', 'picked_up', 'dispatched'].includes(shipment?.status) && (
+                  <>
+                    <button
+                      onClick={() => setShowLiveMap(true)}
+                      className="action-btn live-location-btn"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                        color: 'white',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>📍</span>
+                      <span>View Live Location</span>
+                      <span style={{ marginLeft: 'auto', fontSize: '11px', opacity: 0.8 }}>
+                        {shipment.assignedDriver.name}
+                      </span>
+                    </button>
+
+                    <div className="driver-info-card" style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#f0f9ff',
+                      borderRadius: '8px',
+                      border: '1px solid #bae6fd',
+                    }}>
+                      <p style={{ fontWeight: '600', marginBottom: '6px', color: '#1e40af' }}>🚗 Assigned Driver</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: '13px', color: '#374151' }}>
+                        <span style={{ color: '#6b7280' }}>Name:</span>
+                        <span style={{ fontWeight: '500' }}>{shipment.assignedDriver.name}</span>
+                        <span style={{ color: '#6b7280' }}>ID:</span>
+                        <span style={{ fontWeight: '500' }}>{shipment.assignedDriver.driverId}</span>
+                        <span style={{ color: '#6b7280' }}>Vehicle:</span>
+                        <span style={{ fontWeight: '500' }}>{shipment.assignedDriver.vehicleNumber || 'N/A'}</span>
+                        <span style={{ color: '#6b7280' }}>Phone:</span>
+                        <span style={{ fontWeight: '500' }}>{shipment.assignedDriver.phone || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
                 <Separator />
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground mb-3">
@@ -781,27 +841,14 @@ const ShipmentDetails = () => {
       </div>
 
       {/* Live Map Modal */}
-      <Dialog open={showLiveMap} onOpenChange={setShowLiveMap}>
-        <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
-          <DialogHeader className="p-4 border-b bg-muted/50">
-            <DialogTitle className="flex items-center gap-2">
-              <Map className="h-5 w-5 text-primary" />
-              Live Driver Location
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 w-full bg-gray-100 relative">
-            <div ref={mapRef} className="absolute inset-0 w-full h-full" />
-            {!driverLocation && !shipment?.driver_location_lat && !shipment?.scan_pickup?.location_lat && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
-                <div className="text-center">
-                  <MapPin className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-50" />
-                  <p className="font-medium text-gray-700">Waiting for driver location...</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {showLiveMap && (
+        <LiveLocationModal
+          shipmentId={shipment._id || shipment.id}
+          driverId={shipment.assignedDriver?.driverId || shipment.assigned_driver_id}
+          driverName={shipment.assignedDriver?.name || shipment.assignedDriverName}
+          onClose={() => setShowLiveMap(false)}
+        />
+      )}
     </DashboardLayout>
   );
 };

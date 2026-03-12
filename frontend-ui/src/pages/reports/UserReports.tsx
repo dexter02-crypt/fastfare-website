@@ -224,9 +224,9 @@ const UserReportsInner = () => {
                         </h1>
                         <p className="text-muted-foreground text-sm mt-1">Analytics and insights for your shipments</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap w-full md:w-auto gap-2">
                         <Select value={dateRange} onValueChange={(v) => { setDateRange(v); setHistoryPage(1); }}>
-                            <SelectTrigger className="w-[170px]">
+                            <SelectTrigger className="w-full sm:w-[170px]">
                                 <Calendar className="h-4 w-4 mr-2" />
                                 <SelectValue placeholder="Date Range" />
                             </SelectTrigger>
@@ -237,7 +237,7 @@ const UserReportsInner = () => {
                                 <SelectItem value="180days">Last 6 Months</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button onClick={handleExport} variant="outline">
+                        <Button onClick={handleExport} variant="outline" className="w-full sm:w-auto">
                             <Download className="h-4 w-4 mr-2" /> Export Report
                         </Button>
                     </div>
@@ -245,49 +245,49 @@ const UserReportsInner = () => {
 
                 {/* ─── A. Summary Stats ─────────────────────────────── */}
                 {isLoading ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                         {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                         <Card className="border-l-4 border-l-blue-500">
-                            <CardContent className="p-5">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Package className="h-5 w-5 text-blue-500" />
-                                    <span className="text-sm font-medium text-muted-foreground">Total Shipments</span>
+                            <CardContent className="p-3 sm:p-5">
+                                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                                    <Package className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 shrink-0" />
+                                    <span className="text-[11px] sm:text-sm font-medium text-muted-foreground line-clamp-1">Total Shipments</span>
                                 </div>
-                                <p className="text-3xl font-bold">{summary.totalShipments ?? 0}</p>
-                                <p className="text-xs text-muted-foreground mt-1">In selected period</p>
+                                <p className="text-xl sm:text-3xl font-bold">{summary.totalShipments ?? 0}</p>
+                                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">In selected period</p>
                             </CardContent>
                         </Card>
                         <Card className="border-l-4 border-l-green-500">
-                            <CardContent className="p-5">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <CheckCircle className="h-5 w-5 text-green-500" />
-                                    <span className="text-sm font-medium text-muted-foreground">Delivered</span>
+                            <CardContent className="p-3 sm:p-5">
+                                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                                    <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 shrink-0" />
+                                    <span className="text-[11px] sm:text-sm font-medium text-muted-foreground line-clamp-1">Delivered</span>
                                 </div>
-                                <p className="text-3xl font-bold">{summary.delivered ?? 0}</p>
-                                <p className="text-xs text-muted-foreground mt-1">{summary.successRate ?? 0}% success rate</p>
+                                <p className="text-xl sm:text-3xl font-bold">{summary.delivered ?? 0}</p>
+                                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">{summary.successRate ?? 0}% success rate</p>
                             </CardContent>
                         </Card>
                         <Card className="border-l-4 border-l-blue-400">
-                            <CardContent className="p-5">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Truck className="h-5 w-5 text-blue-400" />
-                                    <span className="text-sm font-medium text-muted-foreground">In Transit</span>
+                            <CardContent className="p-3 sm:p-5">
+                                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                                    <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400 shrink-0" />
+                                    <span className="text-[11px] sm:text-sm font-medium text-muted-foreground line-clamp-1">In Transit</span>
                                 </div>
-                                <p className="text-3xl font-bold">{summary.inTransit ?? 0}</p>
-                                <p className="text-xs text-muted-foreground mt-1">Currently active</p>
+                                <p className="text-xl sm:text-3xl font-bold">{summary.inTransit ?? 0}</p>
+                                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">Currently active</p>
                             </CardContent>
                         </Card>
                         <Card className="border-l-4 border-l-purple-500">
-                            <CardContent className="p-5">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <IndianRupee className="h-5 w-5 text-purple-500" />
-                                    <span className="text-sm font-medium text-muted-foreground">Total Spend</span>
+                            <CardContent className="p-3 sm:p-5">
+                                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                                    <IndianRupee className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500 shrink-0" />
+                                    <span className="text-[11px] sm:text-sm font-medium text-muted-foreground line-clamp-1">Total Spend</span>
                                 </div>
-                                <p className="text-3xl font-bold">₹{(summary.totalSpend ?? 0).toLocaleString()}</p>
-                                <p className="text-xs text-muted-foreground mt-1">Avg ₹{(summary.avgCostPerShipment ?? 0).toLocaleString()} per shipment</p>
+                                <p className="text-xl sm:text-3xl font-bold">₹{(summary.totalSpend ?? 0).toLocaleString()}</p>
+                                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 line-clamp-1">Avg ₹{(summary.avgCostPerShipment ?? 0).toLocaleString()} / shipment</p>
                             </CardContent>
                         </Card>
                     </div>
@@ -386,43 +386,46 @@ const UserReportsInner = () => {
                                 {[1, 2].map(i => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b">
-                                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Carrier Name</th>
-                                            <th className="text-center py-3 px-4 font-medium text-muted-foreground">Total</th>
-                                            <th className="text-center py-3 px-4 font-medium text-muted-foreground">Delivered</th>
-                                            <th className="text-center py-3 px-4 font-medium text-muted-foreground">Avg Days</th>
-                                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Success Rate</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(Array.isArray(carrierPerf) && carrierPerf.length > 0) ? carrierPerf.map((row, i) => (
-                                            <tr key={i} className="border-b hover:bg-muted/40">
-                                                <td className="py-3 px-4 font-medium">{row.carrier}</td>
-                                                <td className="py-3 px-4 text-center">{row.totalShipments ?? 0}</td>
-                                                <td className="py-3 px-4 text-center">{row.delivered ?? 0}</td>
-                                                <td className="py-3 px-4 text-center">{row.avgDeliveryDays ?? 0}</td>
-                                                <td className="py-3 px-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden">
-                                                            <div
-                                                                className={`h-2 rounded-full ${(row.successRate ?? 0) >= 80 ? 'bg-green-500' : (row.successRate ?? 0) >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                                                                style={{ width: `${Math.min(100, row.successRate ?? 0)}%` }}
-                                                            />
+                            <div className="table-responsive-wrapper p-0">
+                                <span className="scroll-hint px-4 pt-4 pb-2 block sm:hidden">Scroll right to view all columns →</span>
+                                <div className="min-w-[600px]">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b">
+                                                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Carrier Name</th>
+                                                <th className="text-center py-3 px-4 font-medium text-muted-foreground">Total</th>
+                                                <th className="text-center py-3 px-4 font-medium text-muted-foreground">Delivered</th>
+                                                <th className="text-center py-3 px-4 font-medium text-muted-foreground">Avg Days</th>
+                                                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Success Rate</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(Array.isArray(carrierPerf) && carrierPerf.length > 0) ? carrierPerf.map((row, i) => (
+                                                <tr key={i} className="border-b hover:bg-muted/40">
+                                                    <td className="py-3 px-4 font-medium">{row.carrier}</td>
+                                                    <td className="py-3 px-4 text-center">{row.totalShipments ?? 0}</td>
+                                                    <td className="py-3 px-4 text-center">{row.delivered ?? 0}</td>
+                                                    <td className="py-3 px-4 text-center">{row.avgDeliveryDays ?? 0}</td>
+                                                    <td className="py-3 px-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden">
+                                                                <div
+                                                                    className={`h-2 rounded-full ${(row.successRate ?? 0) >= 80 ? 'bg-green-500' : (row.successRate ?? 0) >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                                                    style={{ width: `${Math.min(100, row.successRate ?? 0)}%` }}
+                                                                />
+                                                            </div>
+                                                            <span className="text-xs font-medium w-10 text-right">{row.successRate ?? 0}%</span>
                                                         </div>
-                                                        <span className="text-xs font-medium w-10 text-right">{row.successRate ?? 0}%</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )) : (
-                                            <tr>
-                                                <td colSpan={5} className="py-8 text-center text-muted-foreground text-sm">No carrier data available</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                                                    </td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan={5} className="py-8 text-center text-muted-foreground text-sm">No carrier data available</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
                     </CardContent>
@@ -442,35 +445,38 @@ const UserReportsInner = () => {
                                 {[1, 2, 3].map(i => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b">
-                                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Rank</th>
-                                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">City</th>
-                                            <th className="text-center py-3 px-4 font-medium text-muted-foreground">Shipments</th>
-                                            <th className="text-center py-3 px-4 font-medium text-muted-foreground">Share %</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(Array.isArray(topZones) && topZones.length > 0) ? topZones.map((z, i) => (
-                                            <tr key={i} className="border-b hover:bg-muted/40">
-                                                <td className="py-3 px-4">
-                                                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-700' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-muted text-muted-foreground'}`}>
-                                                        {i + 1}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3 px-4 font-medium">{z.city}</td>
-                                                <td className="py-3 px-4 text-center">{z.shipments ?? 0}</td>
-                                                <td className="py-3 px-4 text-center">{z.percentage ?? 0}%</td>
+                            <div className="table-responsive-wrapper p-0">
+                                <span className="scroll-hint px-4 pt-4 pb-2 block sm:hidden">Scroll right to view all columns →</span>
+                                <div className="min-w-[500px]">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b">
+                                                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Rank</th>
+                                                <th className="text-left py-3 px-4 font-medium text-muted-foreground">City</th>
+                                                <th className="text-center py-3 px-4 font-medium text-muted-foreground">Shipments</th>
+                                                <th className="text-center py-3 px-4 font-medium text-muted-foreground">Share %</th>
                                             </tr>
-                                        )) : (
-                                            <tr>
-                                                <td colSpan={4} className="py-8 text-center text-muted-foreground text-sm">No zone data available</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {(Array.isArray(topZones) && topZones.length > 0) ? topZones.map((z, i) => (
+                                                <tr key={i} className="border-b hover:bg-muted/40">
+                                                    <td className="py-3 px-4">
+                                                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-700' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-muted text-muted-foreground'}`}>
+                                                            {i + 1}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 px-4 font-medium">{z.city}</td>
+                                                    <td className="py-3 px-4 text-center">{z.shipments ?? 0}</td>
+                                                    <td className="py-3 px-4 text-center">{z.percentage ?? 0}%</td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan={4} className="py-8 text-center text-muted-foreground text-sm">No zone data available</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
                     </CardContent>
@@ -492,52 +498,55 @@ const UserReportsInner = () => {
                             </div>
                         ) : (
                             <>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="border-b">
-                                                <th className="text-left py-3 px-4 font-medium text-muted-foreground">AWB</th>
-                                                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date</th>
-                                                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Route</th>
-                                                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Carrier</th>
-                                                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
-                                                <th className="text-center py-3 px-4 font-medium text-muted-foreground">Weight</th>
-                                                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Cost</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(Array.isArray(history) && history.length > 0) ? history.map((row, i) => (
-                                                <tr key={i} className="border-b hover:bg-muted/40">
-                                                    <td className="py-3 px-4 font-mono text-xs">{row.awb}</td>
-                                                    <td className="py-3 px-4 text-muted-foreground">{row.date}</td>
-                                                    <td className="py-3 px-4">
-                                                        <span className="flex items-center gap-1 text-xs">
-                                                            <span className="font-medium">{row.origin}</span>
-                                                            <span className="text-muted-foreground">→</span>
-                                                            <span className="font-medium">{row.destination}</span>
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 px-4 text-xs">{row.carrier}</td>
-                                                    <td className="py-3 px-4">{getStatusBadge(row.status)}</td>
-                                                    <td className="py-3 px-4 text-center text-xs">{row.weight}</td>
-                                                    <td className="py-3 px-4 text-right font-medium">₹{(row.cost ?? 0).toLocaleString()}</td>
+                                <div className="table-responsive-wrapper p-0">
+                                    <span className="scroll-hint px-4 pt-4 pb-2 block sm:hidden">Scroll right to view all columns →</span>
+                                    <div className="min-w-[800px]">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b">
+                                                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">AWB</th>
+                                                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date</th>
+                                                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Route</th>
+                                                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Carrier</th>
+                                                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
+                                                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Weight</th>
+                                                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">Cost</th>
                                                 </tr>
-                                            )) : (
-                                                <tr>
-                                                    <td colSpan={7} className="py-10 text-center text-muted-foreground text-sm">No shipments found for selected period</td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                {(Array.isArray(history) && history.length > 0) ? history.map((row, i) => (
+                                                    <tr key={i} className="border-b hover:bg-muted/40">
+                                                        <td className="py-3 px-4 font-mono text-xs">{row.awb}</td>
+                                                        <td className="py-3 px-4 text-muted-foreground">{row.date}</td>
+                                                        <td className="py-3 px-4">
+                                                            <span className="flex items-center gap-1 text-xs">
+                                                                <span className="font-medium">{row.origin}</span>
+                                                                <span className="text-muted-foreground">→</span>
+                                                                <span className="font-medium">{row.destination}</span>
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4 text-xs">{row.carrier}</td>
+                                                        <td className="py-3 px-4">{getStatusBadge(row.status)}</td>
+                                                        <td className="py-3 px-4 text-center text-xs">{row.weight}</td>
+                                                        <td className="py-3 px-4 text-right font-medium">₹{(row.cost ?? 0).toLocaleString()}</td>
+                                                    </tr>
+                                                )) : (
+                                                    <tr>
+                                                        <td colSpan={7} className="py-10 text-center text-muted-foreground text-sm">No shipments found for selected period</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
 
                                 {/* Pagination */}
                                 {historyTotalPages > 1 && (
-                                    <div className="flex items-center justify-between pt-4 mt-2 border-t">
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-2 border-t">
                                         <p className="text-sm text-muted-foreground">
                                             Page {historyPage} of {historyTotalPages}
                                         </p>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-wrap items-center justify-center gap-2">
                                             <Button
                                                 variant="outline" size="sm"
                                                 disabled={historyPage <= 1}
@@ -547,7 +556,7 @@ const UserReportsInner = () => {
                                                     fetchAll(newPage);
                                                 }}
                                             >
-                                                <ChevronLeft className="h-4 w-4" /> Prev
+                                                <ChevronLeft className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Prev</span>
                                             </Button>
                                             {Array.from({ length: Math.min(5, historyTotalPages) }, (_, i) => {
                                                 const page = i + 1;
@@ -572,7 +581,7 @@ const UserReportsInner = () => {
                                                     fetchAll(newPage);
                                                 }}
                                             >
-                                                Next <ChevronRight className="h-4 w-4" />
+                                                <span className="hidden sm:inline">Next</span> <ChevronRight className="h-4 w-4 sm:ml-1" />
                                             </Button>
                                         </div>
                                     </div>

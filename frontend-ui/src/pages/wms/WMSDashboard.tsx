@@ -53,9 +53,9 @@ const WMSDashboard = () => {
                 ) : (
                     <>
                         {/* Stats Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="flex overflow-x-auto gap-4 pb-4 hide-scrollbar snap-x">
                             {statCards.map((card) => (
-                                <Link key={card.label} to={card.href} className="group">
+                                <Link key={card.label} to={card.href} className="group min-w-[240px] snap-center shrink-0">
                                     <div className="relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
                                         <div className="flex items-center justify-between">
                                             <div>
@@ -77,17 +77,17 @@ const WMSDashboard = () => {
 
                         {/* Quick Actions */}
                         <div>
-                            <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <h2 className="text-lg font-semibold mb-3 lg:mb-4">Quick Actions</h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
                                 {quickActions.map((action) => (
                                     <Link key={action.label} to={action.href}>
-                                        <div className={`flex items-center gap-4 p-4 rounded-xl border transition-all hover:shadow-md hover:-translate-y-0.5 ${action.color}`}>
-                                            <div className="h-10 w-10 rounded-lg bg-white/80 flex items-center justify-center shadow-sm">
-                                                <action.icon className="h-5 w-5" />
+                                        <div className={`flex flex-col lg:flex-row items-center lg:items-start gap-2 lg:gap-4 p-3 lg:p-4 rounded-xl border transition-all hover:shadow-md hover:-translate-y-0.5 text-center lg:text-left h-full ${action.color}`}>
+                                            <div className="h-8 w-8 lg:h-10 lg:w-10 shrink-0 rounded-lg bg-white/80 flex items-center justify-center shadow-sm">
+                                                <action.icon className="h-4 w-4 lg:h-5 lg:w-5" />
                                             </div>
-                                            <div>
-                                                <p className="font-medium">{action.label}</p>
-                                                <p className="text-sm opacity-75">{action.desc}</p>
+                                            <div className="mt-1 lg:mt-0">
+                                                <p className="font-medium text-sm lg:text-base">{action.label}</p>
+                                                <p className="text-xs sm:text-sm opacity-75 hidden sm:block">{action.desc}</p>
                                             </div>
                                         </div>
                                     </Link>

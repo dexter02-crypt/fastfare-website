@@ -26,6 +26,7 @@ import { formatDate, formatDateTime } from "@/utils/dateFormat";
 import { formatStatus, getStatusStyle } from "@/utils/formatStatus";
 import Header from "@/components/Header";
 import { authApi } from "@/lib/api";
+import { BackButton } from "@/components/BackButton";
 
 interface TrackingData {
   awb: string;
@@ -236,9 +237,7 @@ const TrackingResults = () => {
         <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/track")}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
+              <BackButton fallback="/track" />
               <a href="/" className="flex items-center gap-2">
                 <img src={logo} alt="FastFare" className="h-8 w-auto" />
               </a>
@@ -267,13 +266,7 @@ const TrackingResults = () => {
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate("/track")}
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
+                <BackButton fallback="/track" />
                 <a href="/" className="flex items-center gap-2">
                   <img src={logo} alt="FastFare" className="h-8 w-auto" />
                 </a>

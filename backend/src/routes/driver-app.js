@@ -106,17 +106,74 @@ router.get('/shipments/scan/:awbNumber', protectDriver, async (req, res) => {
             return res.status(404).json({ success: false, message: `No shipment found with AWB: ${awbNumber}` });
         }
 
-        // Verify this shipment is assigned to the requesting driver
-        if (shipment.assigned_driver_id !== driverId) {
-            return res.status(403).json({
-                success: false,
-                message: 'This shipment is not assigned to you'
-            });
+        // If not assigned, auto-assign to this driver  
+        if (!shipment.assigned_driver_id) {
+            shipment.assigned_driver_id = driverId;
+            shipment.assigned_driver_name = req.driver.name;
+            shipment.assigned_driver_phone = req.driver.phone;
+            shipment.assignedDriverId = driverId;
+            shipment.assignedDriverName = req.driver.name;
+            shipment.assignedDriver = req.driver._id;
+            shipment.driver_assigned_at = new Date();
+            await shipment.save();
         }
 
         res.json({ success: true, shipment });
     } catch (error) {
         console.error('Driver scan error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ─── POST /api/driver/shipments/:id/pickup ─── (Fix 10)
+router.post('/shipments/:id/pickup', protectDriver, async (req, res) => {
+    try {
+        const shipment = await Shipment.findById(req.params.id);
+        if (!shipment) return res.status(404).json({ success: false, message: 'Shipment not found' });
+
+        shipment.status = 'picked_up';
+        shipment.scan_pickup = {
+            driver_id: req.driver._id,
+            driver_name: req.driver.name,
+            driver_phone: req.driver.phone,
+            scanned_at: new Date(),
+            location_lat: req.body.lat || null,
+            location_lng: req.body.lng || null,
+        };
+        shipment.trackingHistory.push({
+            status: 'picked_up',
+            location: req.body.city || shipment.pickup?.city || 'Pickup Point',
+            description: `Picked up by ${req.driver.name}`,
+            timestamp: new Date()
+        });
+        await shipment.save();
+
+        res.json({ success: true, message: 'Shipment picked up', shipment });
+    } catch (error) {
+        console.error('Pickup error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ─── POST /api/driver/shipments/:id/delivered ─── (Fix 10)
+router.post('/shipments/:id/delivered', protectDriver, async (req, res) => {
+    try {
+        const shipment = await Shipment.findById(req.params.id);
+        if (!shipment) return res.status(404).json({ success: false, message: 'Shipment not found' });
+
+        shipment.status = 'delivered';
+        shipment.actualDelivery = new Date();
+        shipment.trackingHistory.push({
+            status: 'delivered',
+            location: req.body.city || shipment.delivery?.city || 'Delivery Point',
+            description: `Delivered by ${req.driver.name}`,
+            timestamp: new Date()
+        });
+        await shipment.save();
+
+        res.json({ success: true, message: 'Shipment delivered', shipment });
+    } catch (error) {
+        console.error('Delivered error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

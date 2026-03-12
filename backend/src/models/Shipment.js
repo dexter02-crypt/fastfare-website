@@ -70,7 +70,9 @@ const shipmentSchema = new mongoose.Schema({
     scheduledPickup: { type: Boolean, default: false },
     pickupDate: Date,
     pickupSlot: String,
-    assignedDriver: { type: String, default: null },   // Driver ID from mobile app
+    assignedPartner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    assignedDriver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    assignedDriverId: { type: String, default: null },
     assignedDriverName: { type: String, default: null },
     assignedVehicle: { type: String, default: null },
     assigned_driver_id: { type: String, default: null },
@@ -99,7 +101,9 @@ const shipmentSchema = new mongoose.Schema({
             // Legacy statuses (kept for backward compatibility with existing records)
             'pending', 'pending_acceptance', 'accepted', 'rejected_by_carrier', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled', 'returned',
             // New unified 6-step flow
-            'payment_received', 'partner_assigned', 'pickup', 'settled'
+            'payment_received', 'partner_assigned', 'pickup', 'settled',
+            // Fix 3: Added explicitly
+            'booked', 'pending_pickup', 'driver_assigned', 'rto'
         ],
         default: 'payment_received'
     },

@@ -600,7 +600,7 @@ const PartnerOrders = () => {
             </div>
 
             <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full justify-start overflow-x-auto h-auto p-1 bg-transparent border-b rounded-none mb-6">
+              <TabsList className="w-full justify-start flex overflow-x-auto whitespace-nowrap hide-scrollbar h-auto p-1 bg-transparent border-b rounded-none mb-6">
                 <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">All</TabsTrigger>
                 <TabsTrigger value="scanned" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Scanned</TabsTrigger>
                 <TabsTrigger value="transit" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">In Transit</TabsTrigger>
@@ -643,76 +643,79 @@ const PartnerOrders = () => {
 
               {!loading && (
                 <Card>
-                  <CardContent className="p-0 overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Parcel ID</TableHead>
-                          <TableHead className="hidden sm:table-cell">Barcode</TableHead>
-                          <TableHead>Package</TableHead>
-                          <TableHead>Receiver</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="hidden md:table-cell">Scanned</TableHead>
-                          <TableHead className="text-center">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredParcels.length === 0 ? (
+                  <CardContent className="p-0 table-responsive-wrapper">
+                    <span className="scroll-hint px-2 pt-2 pb-1 block lg:hidden">Scroll right to view all columns →</span>
+                    <div className="min-w-[800px]">
+                      <Table>
+                        <TableHeader>
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                              {parcels.length === 0 ? "No parcels scanned yet. Use the Partner app to scan barcodes." : "No parcels match your search."}
-                            </TableCell>
+                            <TableHead>Parcel ID</TableHead>
+                            <TableHead className="hidden sm:table-cell">Barcode</TableHead>
+                            <TableHead>Package</TableHead>
+                            <TableHead>Receiver</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="hidden md:table-cell">Scanned</TableHead>
+                            <TableHead className="text-center">Actions</TableHead>
                           </TableRow>
-                        ) : (
-                          filteredParcels.map((p) => (
-                            <TableRow key={p._id}>
-                              <TableCell className="font-mono text-sm font-medium">{p.parcelId}</TableCell>
-                              <TableCell className="font-mono text-sm hidden sm:table-cell">{p.barcode}</TableCell>
-                              <TableCell>{p.packageName || "—"}</TableCell>
-                              <TableCell>
-                                {p.receiver?.name ? (
-                                  <div className="text-sm">
-                                    <span className="font-medium">{p.receiver.name}</span>
-                                    {p.receiver.city && (
-                                      <span className="text-muted-foreground block text-xs">{p.receiver.city}</span>
-                                    )}
-                                  </div>
-                                ) : "—"}
-                              </TableCell>
-                              <TableCell>{getStatusBadge(p.status)}</TableCell>
-                              <TableCell className="text-sm hidden md:table-cell">{formatDate(p.scannedAt)}</TableCell>
-                              <TableCell className="text-center">
-                                <div className="flex items-center justify-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => { setSelectedParcel(p); setDetailsOpen(true); }}
-                                  >
-                                    <Eye className="h-4 w-4 mr-1" /> View
-                                  </Button>
-                                  {p.status === "scanned" && (
-                                    <Button
-                                      variant="default"
-                                      size="sm"
-                                      className="bg-blue-600 hover:bg-blue-700"
-                                      disabled={assigning === p._id}
-                                      onClick={() => openAssignModal(p._id)}
-                                    >
-                                      {assigning === p._id ? (
-                                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                                      ) : (
-                                        <Truck className="h-4 w-4 mr-1" />
-                                      )}
-                                      Assign Driver
-                                    </Button>
-                                  )}
-                                </div>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredParcels.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                {parcels.length === 0 ? "No parcels scanned yet. Use the Partner app to scan barcodes." : "No parcels match your search."}
                               </TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
+                          ) : (
+                            filteredParcels.map((p) => (
+                              <TableRow key={p._id}>
+                                <TableCell className="font-mono text-sm font-medium">{p.parcelId}</TableCell>
+                                <TableCell className="font-mono text-sm hidden sm:table-cell">{p.barcode}</TableCell>
+                                <TableCell>{p.packageName || "—"}</TableCell>
+                                <TableCell>
+                                  {p.receiver?.name ? (
+                                    <div className="text-sm">
+                                      <span className="font-medium">{p.receiver.name}</span>
+                                      {p.receiver.city && (
+                                        <span className="text-muted-foreground block text-xs">{p.receiver.city}</span>
+                                      )}
+                                    </div>
+                                  ) : "—"}
+                                </TableCell>
+                                <TableCell>{getStatusBadge(p.status)}</TableCell>
+                                <TableCell className="text-sm hidden md:table-cell">{formatDate(p.scannedAt)}</TableCell>
+                                <TableCell className="text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => { setSelectedParcel(p); setDetailsOpen(true); }}
+                                    >
+                                      <Eye className="h-4 w-4 mr-1" /> View
+                                    </Button>
+                                    {p.status === "scanned" && (
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="bg-blue-600 hover:bg-blue-700"
+                                        disabled={assigning === p._id}
+                                        onClick={() => openAssignModal(p._id)}
+                                      >
+                                        {assigning === p._id ? (
+                                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                                        ) : (
+                                          <Truck className="h-4 w-4 mr-1" />
+                                        )}
+                                        Assign Driver
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -722,7 +725,7 @@ const PartnerOrders = () => {
           <>
             {/* --- Shipments View --- */}
             <Tabs value={shipmentsTab} onValueChange={setShipmentsTab}>
-              <TabsList className="w-full grid grid-cols-4 mb-4">
+              <TabsList className="w-full flex md:grid md:grid-cols-4 overflow-x-auto whitespace-nowrap hide-scrollbar mb-4">
                 <TabsTrigger value="new">🔔 New</TabsTrigger>
                 <TabsTrigger value="active">🚚 Active</TabsTrigger>
                 <TabsTrigger value="transit">📦 In Transit</TabsTrigger>
@@ -849,7 +852,7 @@ const PartnerOrders = () => {
 
                         {/* Actions */}
                         {shipment.status === "pending_acceptance" && (
-                          <div className="flex items-center gap-3 pt-3 border-t">
+                          <div className="flex flex-col sm:flex-row gap-3 pt-3 border-t">
                             <Button
                               className="flex-1 bg-green-600 hover:bg-green-700"
                               onClick={() => handleAccept(shipment._id)}
@@ -877,7 +880,7 @@ const PartnerOrders = () => {
                         {getNextStatusAction(shipment.status) && (() => {
                           const action = getNextStatusAction(shipment.status)!;
                           return (
-                            <div className="flex items-center gap-3 pt-3 border-t">
+                            <div className="flex flex-col sm:flex-row gap-3 pt-3 border-t">
                               <Button
                                 className="flex-1 bg-blue-600 hover:bg-blue-700"
                                 onClick={() => {

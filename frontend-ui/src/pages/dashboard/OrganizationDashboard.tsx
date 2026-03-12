@@ -186,7 +186,7 @@ const OrganizationDashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           {stats.map((stat, index) => (
             <motion.div
               key={stat.label}
@@ -346,29 +346,29 @@ const OrganizationDashboard = () => {
             <CardDescription>Your shipping metrics for January 2024</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div>
+            <div className="flex overflow-x-auto gap-4 pb-4 snap-x hide-scrollbar">
+              <div className="min-w-[200px] snap-center shrink-0">
                 <p className="text-sm text-muted-foreground mb-2">Delivery Success Rate</p>
                 <div className="flex items-center gap-2">
                   <Progress value={96} className="flex-1" />
                   <span className="text-sm font-medium">96%</span>
                 </div>
               </div>
-              <div>
+              <div className="min-w-[200px] snap-center shrink-0">
                 <p className="text-sm text-muted-foreground mb-2">On-Time Delivery</p>
                 <div className="flex items-center gap-2">
                   <Progress value={89} className="flex-1" />
                   <span className="text-sm font-medium">89%</span>
                 </div>
               </div>
-              <div>
+              <div className="min-w-[200px] snap-center shrink-0">
                 <p className="text-sm text-muted-foreground mb-2">RTO Rate</p>
                 <div className="flex items-center gap-2">
                   <Progress value={4} className="flex-1" />
                   <span className="text-sm font-medium">4%</span>
                 </div>
               </div>
-              <div>
+              <div className="min-w-[200px] snap-center shrink-0">
                 <p className="text-sm text-muted-foreground mb-2">Customer Rating</p>
                 <div className="flex items-center gap-2">
                   <Progress value={92} className="flex-1" />

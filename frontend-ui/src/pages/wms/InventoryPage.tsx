@@ -24,9 +24,13 @@ const InventoryPage = () => {
 
     const handleAdd = async () => {
         try {
-            await wmsApi.addInventoryItem(form);
+            const addedItem = await wmsApi.addInventoryItem(form);
+            setItems(prev => {
+                const newItems = [...prev, addedItem];
+                return newItems.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            });
             setSuccess('Item added'); setTimeout(() => setSuccess(''), 3000);
-            setShowModal(false); setForm({}); fetchInventory();
+            setShowModal(false); setForm({});
         } catch (err: any) { alert(err.message); }
     };
 
@@ -55,25 +59,25 @@ const InventoryPage = () => {
                         <h1 className="text-2xl font-bold">Inventory</h1>
                         <p className="text-muted-foreground">{items.length} items • {items.filter(i => (i.stock?.available || 0) < (i.reorderLevel || 10)).length} low stock</p>
                     </div>
-                    <div className="flex gap-2">
-                        <button onClick={handleExport} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border font-medium hover:bg-muted transition-colors text-sm">
-                            <Download className="h-4 w-4" /> Export CSV
+                    <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2">
+                        <button onClick={handleExport} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border font-medium hover:bg-muted transition-colors text-sm">
+                            <Download className="h-4 w-4" /> Export
                         </button>
-                        <button onClick={() => setShowModal(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors text-sm">
+                        <button onClick={() => setShowModal(true)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors text-sm">
                             <Plus className="h-4 w-4" /> Add Item
                         </button>
                     </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1 max-w-sm">
+                    <div className="relative flex-1 sm:max-w-sm">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <input type="text" placeholder="Search by name or SKU..." value={search} onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                            className="w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
                     </div>
-                    <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-                        <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'all' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>All</button>
-                        <button onClick={() => setFilter('low')} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${filter === 'low' ? 'bg-background shadow-sm text-amber-600' : 'text-muted-foreground'}`}>
+                    <div className="flex gap-1 p-1 bg-muted rounded-lg w-full sm:w-fit">
+                        <button onClick={() => setFilter('all')} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'all' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>All</button>
+                        <button onClick={() => setFilter('low')} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${filter === 'low' ? 'bg-background shadow-sm text-amber-600' : 'text-muted-foreground'}`}>
                             <AlertTriangle className="h-3.5 w-3.5" /> Low Stock
                         </button>
                     </div>
@@ -88,43 +92,77 @@ const InventoryPage = () => {
                         <p className="text-sm mt-1">Add inventory items to get started</p>
                     </div>
                 ) : (
-                    <div className="border rounded-xl overflow-hidden">
-                        <table className="w-full">
-                            <thead className="bg-muted/50">
-                                <tr>
-                                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">SKU</th>
-                                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">Name</th>
-                                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">Category</th>
-                                    <th className="text-right p-3 text-sm font-medium text-muted-foreground">Stock</th>
-                                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">Location</th>
-                                    <th className="text-right p-3 text-sm font-medium text-muted-foreground">Price</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {filtered.map((item) => (
-                                    <tr key={item._id} className="hover:bg-muted/30 transition-colors">
-                                        <td className="p-3 text-sm font-mono">{item.sku}</td>
-                                        <td className="p-3 text-sm font-medium">{item.name}</td>
-                                        <td className="p-3 text-sm text-muted-foreground">{item.category || '—'}</td>
-                                        <td className="p-3 text-right">
-                                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${(item.stock?.available || 0) < (item.reorderLevel || 10) ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                                {(item.stock?.available || 0) < (item.reorderLevel || 10) && <AlertTriangle className="h-3 w-3" />}
-                                                {item.stock?.available || 0}
-                                            </span>
-                                        </td>
-                                        <td className="p-3 text-sm text-muted-foreground">{item.location?.zone || '—'}</td>
-                                        <td className="p-3 text-sm text-right font-medium">₹{item.price?.toLocaleString() || '0'}</td>
+                    <>
+                        <div className="hidden md:block border rounded-xl overflow-hidden">
+                            <table className="w-full">
+                                <thead className="bg-muted/50">
+                                    <tr>
+                                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">SKU</th>
+                                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Name</th>
+                                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Category</th>
+                                        <th className="text-right p-3 text-sm font-medium text-muted-foreground">Stock</th>
+                                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Location</th>
+                                        <th className="text-right p-3 text-sm font-medium text-muted-foreground">Price</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {filtered.map((item) => (
+                                        <tr key={item._id} className="hover:bg-muted/30 transition-colors">
+                                            <td className="p-3 text-sm font-mono">{item.sku}</td>
+                                            <td className="p-3 text-sm font-medium">{item.name}</td>
+                                            <td className="p-3 text-sm text-muted-foreground">{item.category || '—'}</td>
+                                            <td className="p-3 text-right">
+                                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${(item.stock?.available || 0) < (item.reorderLevel || 10) ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                                    {(item.stock?.available || 0) < (item.reorderLevel || 10) && <AlertTriangle className="h-3 w-3" />}
+                                                    {item.stock?.available || 0}
+                                                </span>
+                                            </td>
+                                            <td className="p-3 text-sm text-muted-foreground">{item.location?.zone || '—'}</td>
+                                            <td className="p-3 text-sm text-right font-medium">₹{item.price?.toLocaleString() || '0'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 md:hidden">
+                            {filtered.map((item) => (
+                                <div key={item._id} className="border rounded-xl p-4 bg-card shadow-sm">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <p className="font-medium">{item.name}</p>
+                                            <p className="text-xs font-mono text-muted-foreground mt-0.5">{item.sku}</p>
+                                        </div>
+                                        <div className="text-right shrink-0 ml-2">
+                                            <p className="font-bold">₹{item.price?.toLocaleString() || '0'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm mt-3 pt-3 border-t text-left">
+                                        <div>
+                                            <p className="text-muted-foreground text-[10px] uppercase font-semibold tracking-wider mb-0.5">Category</p>
+                                            <p className="text-sm">{item.category || '—'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground text-[10px] uppercase font-semibold tracking-wider mb-0.5">Location</p>
+                                            <p className="text-sm">{item.location?.zone || '—'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3">
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${(item.stock?.available || 0) < (item.reorderLevel || 10) ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                            {(item.stock?.available || 0) < (item.reorderLevel || 10) && <AlertTriangle className="h-3.5 w-3.5" />}
+                                            {item.stock?.available || 0} in stock
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 )}
 
                 {/* Add Modal */}
                 {showModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowModal(false)}>
-                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 m-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-overlay fixed inset-0 z-50 bg-black/50 p-0 sm:p-4" onClick={() => setShowModal(false)}>
+                        <div className="modal-container bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-md p-6 h-[85vh] sm:h-auto overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-drag-handle" />
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-lg font-semibold">Add Inventory Item</h2>
                                 <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="h-5 w-5" /></button>
@@ -138,7 +176,7 @@ const InventoryPage = () => {
                                 </select>
                                 <input placeholder="Price (₹)" type="number" className="w-full px-4 py-2.5 border rounded-lg text-sm" onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} />
                                 <input placeholder="Stock Quantity" type="number" className="w-full px-4 py-2.5 border rounded-lg text-sm" onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })} />
-                                <button onClick={handleAdd} className="w-full py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90">Add Item</button>
+                                <button onClick={handleAdd} className="modal-submit-btn w-full py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90">Add Item</button>
                             </div>
                         </div>
                     </div>

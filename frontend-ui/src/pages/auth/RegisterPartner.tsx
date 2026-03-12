@@ -383,7 +383,7 @@ const RegisterPartner = () => {
                         </div>
 
                         {/* Email & Phone */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="email">Email</Label>
                                 <div className="relative">
@@ -489,7 +489,7 @@ const RegisterPartner = () => {
                                 <Truck className="h-4 w-4 text-primary" /> Flight/Fleet Details
                             </h3>
                             <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="totalVehicles">Total Vehicles / Coverage</Label>
                                         <Input
@@ -524,7 +524,7 @@ const RegisterPartner = () => {
 
                         {/* Service Capabilities */}
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="serviceStates">Service States</Label>
                                     <Input
@@ -561,7 +561,7 @@ const RegisterPartner = () => {
                             <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                                 <Zap className="h-4 w-4 text-primary" /> Pricing & Features
                             </h3>
-                            <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="baseFare">Base Fare (₹)</Label>
                                     <Input
@@ -671,7 +671,7 @@ const RegisterPartner = () => {
                                             {getStrengthText()}
                                         </span>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         {passwordRequirements.map((req, idx) => (
                                             <div key={idx} className="flex items-center gap-1.5 text-xs">
                                                 {req.met ? <Check className="h-3 w-3 text-green-500" /> : <X className="h-3 w-3 text-gray-400" />}

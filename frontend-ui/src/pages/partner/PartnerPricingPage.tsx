@@ -368,13 +368,15 @@ const PartnerPricingPage = () => {
                                 <p className="text-xs text-muted-foreground">No PIN ranges defined. You can use states/cities instead.</p>
                             )}
                             {coverage.pinRanges.map((range, i) => (
-                                <div key={i} className="flex items-center gap-3">
-                                    <Input className="w-32" placeholder="From (e.g. 110001)" value={range.from}
-                                        onChange={e => updatePinRange(i, "from", e.target.value)} maxLength={6} />
-                                    <span className="text-muted-foreground text-sm">to</span>
-                                    <Input className="w-32" placeholder="To (e.g. 110099)" value={range.to}
-                                        onChange={e => updatePinRange(i, "to", e.target.value)} maxLength={6} />
-                                    <Button variant="ghost" size="icon" className="text-red-500 h-8 w-8" onClick={() => removePinRange(i)}>
+                                <div key={i} className="flex items-center gap-2 sm:gap-3">
+                                    <div className="flex-1 flex items-center gap-2">
+                                        <Input className="w-full sm:w-32" placeholder="From (e.g. 110001)" value={range.from}
+                                            onChange={e => updatePinRange(i, "from", e.target.value)} maxLength={6} />
+                                        <span className="text-muted-foreground text-sm">to</span>
+                                        <Input className="w-full sm:w-32" placeholder="To (e.g. 110099)" value={range.to}
+                                            onChange={e => updatePinRange(i, "to", e.target.value)} maxLength={6} />
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="shrink-0 text-red-500 h-8 w-8" onClick={() => removePinRange(i)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>

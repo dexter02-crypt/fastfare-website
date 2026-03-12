@@ -175,6 +175,7 @@ const queryClient = new QueryClient();
 import { WalletProvider } from "./contexts/WalletContext";
 import { SocketProvider } from "./providers/SocketProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -184,6 +185,7 @@ const App = () => (
         <Sonner />
         <WalletProvider>
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <ScrollToTop />
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Index />} />
