@@ -21,6 +21,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useWallet } from "@/contexts/WalletContext";
 import logo from "@/assets/logo.png";
 import { authApi } from "@/lib/api";
@@ -342,149 +343,162 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
         )}
       </div>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div
-          className="md:hidden"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-            backgroundColor: '#ffffff',
-            overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          {/* Header row — logo + close */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 20px',
-            height: '56px',
-            borderBottom: '1px solid #e5e7eb',
-            flexShrink: 0,
-          }}>
-            <Link to="/" onClick={closeMobileMenu} style={{ display: 'flex', alignItems: 'center' }}>
-              <img src={logo} alt="FastFare" style={{ height: '28px', width: 'auto' }} />
-            </Link>
-            <button
-              onClick={closeMobileMenu}
-              aria-label="Close menu"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '44px',
-                height: '44px',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <X size={22} color="#374151" />
-            </button>
-          </div>
+      {/* Mobile Menu — rendered via Portal to escape stacking context */}
+      {mobileMenuOpen && createPortal(
+        <>
+          {/* Backdrop overlay */}
+          <div
+            onClick={closeMobileMenu}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 99998,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+            }}
+          />
+          {/* Menu panel */}
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 99999,
+              backgroundColor: '#ffffff',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            {/* Header row — logo + close */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 20px',
+              height: '56px',
+              borderBottom: '1px solid #e5e7eb',
+              flexShrink: 0,
+            }}>
+              <Link to="/" onClick={closeMobileMenu} style={{ display: 'flex', alignItems: 'center' }}>
+                <img src={logo} alt="FastFare" style={{ height: '28px', width: 'auto' }} />
+              </Link>
+              <button
+                onClick={closeMobileMenu}
+                aria-label="Close menu"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '44px',
+                  height: '44px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <X size={22} color="#374151" />
+              </button>
+            </div>
 
-          {/* Flat navigation links */}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {[
-              { label: 'Home', href: '/' },
-              { label: 'Pricing', href: '/pricing' },
-              { label: 'Track Shipment', href: '/track' },
-              { label: 'Integrations', href: '#integrations' },
-              // Solutions sub-items
-              { label: 'Courier Services', href: '/solutions/courier' },
-              { label: 'Warehousing', href: '/solutions/warehousing' },
-              { label: 'Returns Management', href: '/solutions/returns' },
-              // Products sub-items
-              { label: 'Bulk Shipping', href: '/products/bulk' },
-              { label: 'Express Delivery', href: '/products/express' },
-              { label: 'International Shipping', href: '/products/international' },
-              // Resources sub-items
-              { label: 'Documentation', href: '/resources/docs' },
-              { label: 'API', href: '/resources/api' },
-              { label: 'Support', href: '/support' },
-            ].map((item) => (
+            {/* Flat navigation links */}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {[
+                { label: 'Home', href: '/' },
+                { label: 'Pricing', href: '/pricing' },
+                { label: 'Track Shipment', href: '/track' },
+                { label: 'Integrations', href: '#integrations' },
+                { label: 'Courier Services', href: '/solutions/courier' },
+                { label: 'Warehousing', href: '/solutions/warehousing' },
+                { label: 'Returns Management', href: '/solutions/returns' },
+                { label: 'Bulk Shipping', href: '/products/bulk' },
+                { label: 'Express Delivery', href: '/products/express' },
+                { label: 'International Shipping', href: '/products/international' },
+                { label: 'Documentation', href: '/resources/docs' },
+                { label: 'API', href: '/resources/api' },
+                { label: 'Support', href: '/support' },
+              ].map((item) => (
+                <Link
+                  key={item.href + item.label}
+                  to={item.href}
+                  onClick={closeMobileMenu}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '0 24px',
+                    minHeight: '52px',
+                    fontSize: '16px',
+                    fontWeight: 500,
+                    color: '#111827',
+                    textDecoration: 'none',
+                    borderBottom: '1px solid #f3f4f6',
+                    backgroundColor: '#ffffff',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    boxSizing: 'border-box' as const,
+                    width: '100%',
+                  }}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+
+            {/* CTA Buttons */}
+            <div style={{
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              borderTop: '1px solid #e5e7eb',
+            }}>
               <Link
-                key={item.href + item.label}
-                to={item.href}
+                to="/login"
                 onClick={closeMobileMenu}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  padding: '0 24px',
-                  minHeight: '52px',
-                  fontSize: '16px',
-                  fontWeight: 500,
-                  color: '#111827',
+                  justifyContent: 'center',
+                  height: '52px',
+                  border: '2px solid #2563eb',
+                  borderRadius: '10px',
+                  color: '#2563eb',
+                  fontWeight: 600,
+                  fontSize: '15px',
                   textDecoration: 'none',
-                  borderBottom: '1px solid #f3f4f6',
                   backgroundColor: '#ffffff',
-                  WebkitTapHighlightColor: 'transparent',
-                  touchAction: 'manipulation',
-                  boxSizing: 'border-box',
-                  width: '100%',
+                  boxSizing: 'border-box' as const,
                 }}
               >
-                {item.label}
+                Sign In
               </Link>
-            ))}
+              <Link
+                to="/register"
+                onClick={closeMobileMenu}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '52px',
+                  backgroundColor: '#2563eb',
+                  borderRadius: '10px',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  textDecoration: 'none',
+                  border: 'none',
+                  boxSizing: 'border-box' as const,
+                }}
+              >
+                Get Started Free
+              </Link>
+            </div>
           </div>
-
-          {/* CTA Buttons */}
-          <div style={{
-            padding: '20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            borderTop: '1px solid #e5e7eb',
-          }}>
-            <Link
-              to="/login"
-              onClick={closeMobileMenu}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '52px',
-                border: '2px solid #2563eb',
-                borderRadius: '10px',
-                color: '#2563eb',
-                fontWeight: 600,
-                fontSize: '15px',
-                textDecoration: 'none',
-                backgroundColor: '#ffffff',
-                boxSizing: 'border-box',
-              }}
-            >
-              Sign In
-            </Link>
-            <Link
-              to="/register"
-              onClick={closeMobileMenu}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '52px',
-                backgroundColor: '#2563eb',
-                borderRadius: '10px',
-                color: '#ffffff',
-                fontWeight: 700,
-                fontSize: '15px',
-                textDecoration: 'none',
-                border: 'none',
-                boxSizing: 'border-box',
-              }}
-            >
-              Get Started Free
-            </Link>
-          </div>
-        </div>
+        </>,
+        document.body
       )}
     </header>
   );
