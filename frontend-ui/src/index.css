@@ -118,14 +118,18 @@
 
   html {
     overflow-x: hidden;
+    overflow-y: auto;
     scroll-behavior: smooth;
+    height: 100%;
   }
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, sans-serif;
     overflow-x: hidden;
-    overscroll-behavior-y: none;
+    overflow-y: auto;
+    min-height: 100%;
+    position: relative;
     -webkit-text-size-adjust: 100%;
   }
 
@@ -157,11 +161,32 @@
       /* Critical to prevent iOS Safari auto-zoom on focus */
       height: 48px;
       border-radius: 8px;
-      padding: 12px 14px;
+      padding-top: 12px;
+      padding-bottom: 12px;
+      /* Horizontal padding fallback — Tailwind pl-X / pr-X classes will override */
+      padding-left: 14px;
+      padding-right: 14px;
       width: 100%;
       box-sizing: border-box;
       -webkit-appearance: none;
       appearance: none;
+    }
+
+    /* Preserve Tailwind icon-offset padding on inputs with icons */
+    input.pl-10 {
+      padding-left: 2.5rem !important;
+    }
+
+    input.pr-10 {
+      padding-right: 2.5rem !important;
+    }
+
+    input.pl-9 {
+      padding-left: 2.25rem !important;
+    }
+
+    input.pr-9 {
+      padding-right: 2.25rem !important;
     }
 
     textarea {
@@ -544,8 +569,11 @@
   }
 }
 
-body {
-  overscroll-behavior: none;
+/* Scoped overscroll-behavior — only on modals/sheets, NOT body */
+.bottom-sheet,
+.modal-container,
+.more-drawer {
+  overscroll-behavior: contain;
 }
 
 button,
@@ -561,12 +589,15 @@ html {
 
 @media (max-width: 768px) {
   .full-screen-container {
-    height: 100dvh;
+    min-height: 100dvh;
   }
 }
 
-* {
-  overscroll-behavior: contain;
+/* Allow vertical touch scrolling on all scrollable containers */
+main,
+.page-content,
+.overflow-y-auto {
+  touch-action: pan-y;
 }
 
 .scrollable,
