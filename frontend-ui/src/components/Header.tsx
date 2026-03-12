@@ -357,58 +357,184 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
         )}
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu — Backdrop */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[9999] bg-background overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-          {/* Close header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <Link to="/" onClick={closeMobileMenu}>
-              <img src={logo} alt="FastFare" className="h-8 w-auto" />
-            </Link>
-            <button
-              onClick={closeMobileMenu}
-              className="flex items-center justify-center w-[44px] h-[44px]"
-              style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-            >
-              <X size={22} className="text-gray-700" />
-            </button>
-          </div>
-          <nav className="flex flex-col px-6 py-4 gap-1">
-            {isAuthenticated ? null : (
-              <>
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.label}
-                    to={link.href}
-                    className="flex items-center py-3.5 text-[16px] font-medium text-foreground border-b border-border/30"
-                    onClick={closeMobileMenu}
-                    style={{ minHeight: '52px', WebkitTapHighlightColor: 'transparent' }}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-                <Link
-                  to="/track"
-                  className="flex items-center gap-2 py-3.5 text-[16px] font-medium text-foreground border-b border-border/30"
-                  onClick={closeMobileMenu}
-                  style={{ minHeight: '52px' }}
-                >
-                  <Package className="h-4 w-4" />
-                  Track Order
-                </Link>
-                <div className="flex flex-col gap-3 pt-6">
-                  <Link to="/login" onClick={closeMobileMenu}>
-                    <Button variant="outline" className="w-full h-[52px] text-[15px] font-semibold rounded-xl">Log in</Button>
-                  </Link>
-                  <Link to="/register" onClick={closeMobileMenu}>
-                    <Button className="w-full h-[52px] text-[15px] font-semibold rounded-xl gradient-primary">Get Started Free</Button>
-                  </Link>
-                </div>
-              </>
-            )}
-          </nav>
-        </div>
+        <div
+          onClick={closeMobileMenu}
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 9998,
+          }}
+        />
       )}
+
+      {/* Mobile Menu — Slide-in Panel (always mounted, slides via transform) */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: '280px',
+          maxWidth: '85vw',
+          backgroundColor: 'white',
+          zIndex: 9999,
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
+        }}
+      >
+        {/* Menu Header — logo + close button */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 20px',
+          height: '56px',
+          borderBottom: '1px solid #f3f4f6',
+          flexShrink: 0,
+        }}>
+          <Link to="/" onClick={closeMobileMenu} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <img src={logo} alt="FastFare" style={{ height: '28px', width: 'auto' }} />
+          </Link>
+          <button
+            onClick={closeMobileMenu}
+            aria-label="Close menu"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '44px',
+              height: '44px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+              touchAction: 'manipulation',
+            }}
+          >
+            <X size={22} color="#374151" />
+          </button>
+        </div>
+
+        {/* Navigation Links */}
+        {(!isAuthenticated || isHomepage) && (
+          <nav style={{
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '8px 0',
+            flex: 1,
+          }}>
+            {navLinks.map((link) => (
+              <Link
+                key={link.label}
+                to={link.href}
+                onClick={closeMobileMenu}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '14px 24px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  color: '#111827',
+                  textDecoration: 'none',
+                  borderBottom: '1px solid #f9fafb',
+                  minHeight: '52px',
+                  WebkitTapHighlightColor: 'transparent',
+                  touchAction: 'manipulation',
+                  boxSizing: 'border-box',
+                }}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link
+              to="/track"
+              onClick={closeMobileMenu}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '14px 24px',
+                fontSize: '16px',
+                fontWeight: '500',
+                color: '#111827',
+                textDecoration: 'none',
+                borderBottom: '1px solid #f9fafb',
+                minHeight: '52px',
+                WebkitTapHighlightColor: 'transparent',
+                touchAction: 'manipulation',
+                boxSizing: 'border-box',
+              }}
+            >
+              <Package size={16} color="#111827" />
+              Track Order
+            </Link>
+          </nav>
+        )}
+
+        {/* CTA Buttons at bottom */}
+        {(!isAuthenticated || isHomepage) && (
+          <div style={{
+            padding: '20px',
+            borderTop: '1px solid #f3f4f6',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            flexShrink: 0,
+            paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+          }}>
+            <Link
+              to="/login"
+              onClick={closeMobileMenu}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '52px',
+                border: '2px solid #2563eb',
+                borderRadius: '10px',
+                color: '#2563eb',
+                fontWeight: '600',
+                fontSize: '15px',
+                textDecoration: 'none',
+                WebkitTapHighlightColor: 'transparent',
+                touchAction: 'manipulation',
+                boxSizing: 'border-box',
+              }}
+            >
+              Sign In
+            </Link>
+            <Link
+              to="/register"
+              onClick={closeMobileMenu}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '52px',
+                backgroundColor: '#2563eb',
+                borderRadius: '10px',
+                color: 'white',
+                fontWeight: '700',
+                fontSize: '15px',
+                textDecoration: 'none',
+                WebkitTapHighlightColor: 'transparent',
+                touchAction: 'manipulation',
+                boxSizing: 'border-box',
+              }}
+            >
+              Get Started Free
+            </Link>
+          </div>
+        )}
+      </div>
 
       {/* Mobile Search Overlay */}
       {mobileSearchOpen && isAuthenticated && (

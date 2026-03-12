@@ -102,6 +102,8 @@ const HeroSection = () => {
                           value={pickupPincode}
                           onChange={(e) => setPickupPincode(e.target.value)}
                           className="pl-9 h-10"
+                          inputMode="numeric"
+                          style={{ paddingLeft: '40px', fontSize: '16px' }}
                         />
                       </div>
                     </div>
@@ -114,6 +116,8 @@ const HeroSection = () => {
                           value={deliveryPincode}
                           onChange={(e) => setDeliveryPincode(e.target.value)}
                           className="pl-9 h-10"
+                          inputMode="numeric"
+                          style={{ paddingLeft: '40px', fontSize: '16px' }}
                         />
                       </div>
                     </div>
@@ -129,6 +133,7 @@ const HeroSection = () => {
                           value={weight}
                           onChange={(e) => setWeight(e.target.value)}
                           className="pl-9 h-10"
+                          style={{ paddingLeft: '40px', fontSize: '16px' }}
                         />
                       </div>
                     </div>
