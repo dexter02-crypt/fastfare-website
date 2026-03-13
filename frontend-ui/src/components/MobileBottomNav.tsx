@@ -60,22 +60,35 @@ const MobileBottomNav = () => {
         } else {
             // User role
             groups.push({
-                title: 'Operations',
+                title: 'Shipments',
                 items: [
+                    { icon: Package, label: 'My Shipments', path: '/shipments' },
                     { icon: MapPin, label: 'Track Shipment', path: '/track' },
+                    { icon: Package, label: 'Create Shipment', path: '/shipment/new' },
                 ]
             });
         }
 
-        // Finance group — same for all
-        groups.push({
-            title: 'Finance',
-            items: [
-                { icon: Wallet, label: 'Billing', path: '/billing' },
-                { icon: TrendingUp, label: 'Settlement', path: '/settlement' },
-                { icon: BarChart2, label: 'My Reports', path: '/my-reports' },
-            ]
-        });
+        // Finance group — Partner/Admin get Settlement, Users don't
+        if (isPartnerOrAdmin) {
+            groups.push({
+                title: 'Finance',
+                items: [
+                    { icon: Wallet, label: 'Billing', path: '/billing' },
+                    { icon: TrendingUp, label: 'Settlement', path: '/settlement' },
+                    { icon: BarChart2, label: 'My Reports', path: '/my-reports' },
+                ]
+            });
+        } else {
+            groups.push({
+                title: 'Finance',
+                items: [
+                    { icon: Wallet, label: 'Billing', path: '/billing' },
+                    { icon: BarChart2, label: 'My Reports', path: '/my-reports' },
+                    { icon: Wallet, label: 'Wallet', path: '/billing/recharge' },
+                ]
+            });
+        }
 
         // Warehouse group — only for Partner and Admin
         if (isPartnerOrAdmin) {
