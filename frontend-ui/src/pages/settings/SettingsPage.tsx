@@ -619,7 +619,7 @@ const SettingsPage = () => {
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Drivers use this app to receive delivery assignments, navigate to destinations, update parcel status, and capture proof of delivery.
+                        Drivers use this app to receive delivery assignments, update delivery status, and share their live location with operations and customers.
                       </p>
                       <ul className="text-sm space-y-1">
                         <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Real-time delivery assignments</li>
@@ -627,16 +627,18 @@ const SettingsPage = () => {
                         <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Proof of delivery capture</li>
                         <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Status updates in real-time</li>
                       </ul>
-                      <Button
-                        className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+                      <a
+                        href="/downloads/FastFare-Driver-v1.0.apk"
+                        download="FastFare-Driver-App-v1.0.apk"
+                        type="application/vnd.android.package-archive"
+                        className="w-full inline-flex items-center justify-center h-10 px-4 py-2 rounded-md text-sm font-medium gap-2 bg-blue-600 hover:bg-blue-700 text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-colors"
                         onClick={() => {
-                          window.open('/downloads/FastFare-Driver-App.apk', '_blank');
                           toast.success("Download started \u2014 FastFare Driver App");
                         }}
                       >
                         <Download className="h-4 w-4" /> Download APK
-                      </Button>
-                      <p className="text-xs text-center text-muted-foreground">Android \u2022 v1.0</p>
+                      </a>
+                      <p className="text-xs text-center text-muted-foreground">Android • v1.0 • 11.4 MB • Updated Mar 13 2026</p>
                     </div>
 
                     {/* Partner Scanner App */}
@@ -651,24 +653,26 @@ const SettingsPage = () => {
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Scan partners use this app to scan parcel barcodes at pickup and warehouse points. Scanned data syncs live to the website dashboard.
+                        Scan partners use this app to scan parcel barcodes, log inbound packages, and update parcel status at various scanning points across the network.
                       </p>
                       <ul className="text-sm space-y-1">
                         <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Barcode scanning</li>
-                        <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Parcel details entry</li>
+                        <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Inbound package logging</li>
+                        <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Parcel status updates</li>
                         <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Live sync to dashboard</li>
-                        <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Scan history & stats</li>
                       </ul>
-                      <Button
-                        className="w-full gap-2 bg-purple-600 hover:bg-purple-700"
+                      <a
+                        href="/downloads/FastFare-Partners-Scan-v1.0.apk"
+                        download="FastFare-Scanner-App-v1.0.apk"
+                        type="application/vnd.android.package-archive"
+                        className="w-full inline-flex items-center justify-center h-10 px-4 py-2 rounded-md text-sm font-medium gap-2 bg-purple-600 hover:bg-purple-700 text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-colors"
                         onClick={() => {
-                          window.open('/downloads/FastFare-Partner-Scanner.apk', '_blank');
                           toast.success("Download started \u2014 FastFare Partner Scanner");
                         }}
                       >
                         <Download className="h-4 w-4" /> Download APK
-                      </Button>
-                      <p className="text-xs text-center text-muted-foreground">Android \u2022 v1.0</p>
+                      </a>
+                      <p className="text-xs text-center text-muted-foreground">Android • v1.0 • 33.4 MB • Updated Mar 13 2026</p>
                     </div>
                   </div>
 
