@@ -106,7 +106,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 )}
 
                 {/* Page Content */}
-                <main className="p-0 lg:p-6 pt-2 pb-[70px] lg:pb-0 w-full max-w-full overflow-x-hidden">
+                <main className="p-0 lg:p-6 pt-2 pb-[70px] md:pb-0 w-full max-w-full overflow-x-hidden">
                     {children}
                 </main>
             </div>

@@ -628,8 +628,8 @@ const SettingsPage = () => {
                         <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Status updates in real-time</li>
                       </ul>
                       <a
-                        href="/downloads/FastFare-Driver-v1.0.apk"
-                        download="FastFare-Driver-App-v1.0.apk"
+                        href="/downloads/FastFare-Driver-v1.1.apk"
+                        download="FastFare-Driver-App-v1.1.apk"
                         type="application/vnd.android.package-archive"
                         className="w-full inline-flex items-center justify-center h-10 px-4 py-2 rounded-md text-sm font-medium gap-2 bg-blue-600 hover:bg-blue-700 text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-colors"
                         onClick={() => {
@@ -638,7 +638,7 @@ const SettingsPage = () => {
                       >
                         <Download className="h-4 w-4" /> Download APK
                       </a>
-                      <p className="text-xs text-center text-muted-foreground">Android • v1.0 • 11.4 MB • Updated Mar 13 2026</p>
+                      <p className="text-xs text-center text-muted-foreground">Android • v1.1 • 11.4 MB • Updated Mar 13 2026</p>
                     </div>
 
                     {/* Partner Scanner App */}
@@ -662,8 +662,8 @@ const SettingsPage = () => {
                         <li className="flex items-center gap-2"><CheckCircle className="h-3 w-3 text-green-600" /> Live sync to dashboard</li>
                       </ul>
                       <a
-                        href="/downloads/FastFare-Partners-Scan-v1.0.apk"
-                        download="FastFare-Scanner-App-v1.0.apk"
+                        href="/downloads/FastFare-Partners-Scan-v1.1.apk"
+                        download="FastFare-Scanner-App-v1.1.apk"
                         type="application/vnd.android.package-archive"
                         className="w-full inline-flex items-center justify-center h-10 px-4 py-2 rounded-md text-sm font-medium gap-2 bg-purple-600 hover:bg-purple-700 text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-colors"
                         onClick={() => {
@@ -672,7 +672,7 @@ const SettingsPage = () => {
                       >
                         <Download className="h-4 w-4" /> Download APK
                       </a>
-                      <p className="text-xs text-center text-muted-foreground">Android • v1.0 • 33.4 MB • Updated Mar 13 2026</p>
+                      <p className="text-xs text-center text-muted-foreground">Android • v1.1 • 33.4 MB • Updated Mar 13 2026</p>
                     </div>
                   </div>
 

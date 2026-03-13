@@ -139,9 +139,18 @@ const MobileBottomNav = () => {
 
     return (
         <>
+            <style>
+                {`
+                @media (min-width: 769px) {
+                    .mobile-bottom-nav {
+                        display: none !important;
+                    }
+                }
+                `}
+            </style>
             {/* Bottom Navigation Bar */}
             <nav
-                className="lg:hidden fixed bottom-0 left-0 right-0 z-[1000] bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]"
+                className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-[1000] bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]"
                 style={{
                     height: 60,
                     display: 'flex',
@@ -198,13 +207,13 @@ const MobileBottomNav = () => {
                         backgroundColor: 'rgba(0,0,0,0.5)',
                         zIndex: 1001,
                     }}
-                    className="lg:hidden"
+                    className="mobile-bottom-nav"
                 />
             )}
 
             {/* More Drawer Sheet — true full-width bottom sheet */}
             <div
-                className="lg:hidden"
+                className="mobile-bottom-nav"
                 style={{
                     position: 'fixed',
                     bottom: 0,
