@@ -308,9 +308,13 @@ const MobileBottomNav = () => {
                                         touchAction: 'manipulation',
                                     }}
                                 >
-                                    <Icon style={drawerIconStyle} className="text-gray-600" />
-                                    <span style={{ flex: 1, color: '#111827', fontSize: 15, fontWeight: 500 }}>{item.label}</span>
-                                    <ChevronRight style={{ width: 16, height: 16, color: '#9ca3af', flexShrink: 0 }} />
+                                    <div style={{ width: 20, height: 20, minWidth: 20, maxWidth: 20, minHeight: 20, maxHeight: 20, flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Icon size={20} width={20} height={20} style={{ width: 20, height: 20, maxWidth: 20, maxHeight: 20 }} className="text-gray-600" />
+                                    </div>
+                                    <span style={{ flex: 1, color: '#111827', fontSize: 15, fontWeight: 500, minWidth: 0 }}>{item.label}</span>
+                                    <div style={{ width: 16, height: 16, minWidth: 16, flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <ChevronRight size={16} width={16} height={16} style={{ width: 16, height: 16 }} className="text-gray-400" />
+                                    </div>
                                 </button>
                             );
                         })}
