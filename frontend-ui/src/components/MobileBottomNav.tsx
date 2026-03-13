@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { authApi } from '@/lib/api';
 import {
     LayoutDashboard, Package, Warehouse, Truck, Menu,
     Activity, MapPin, Navigation, Wallet, TrendingUp,
@@ -12,15 +13,24 @@ const MobileBottomNav = () => {
     const navigate = useNavigate();
     const [moreOpen, setMoreOpen] = useState(false);
 
-    const mainNavItems = [
+    const user = authApi.getCurrentUser();
+    const isPartnerOrAdmin = user?.role === 'admin' || user?.role === 'shipment_partner';
+
+    const mainNavItems = isPartnerOrAdmin ? [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
         { icon: Package, label: 'Orders', path: '/partner/orders' },
         { icon: Warehouse, label: 'WMS', path: '/wms' },
         { icon: Truck, label: 'Fleet', path: '/fleet' },
         { icon: Menu, label: 'More', path: null, action: () => setMoreOpen(true) },
+    ] : [
+        { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+        { icon: Package, label: 'Shipments', path: '/shipments' },
+        { icon: MapPin, label: 'Track', path: '/track' },
+        { icon: Wallet, label: 'Billing', path: '/billing' },
+        { icon: Menu, label: 'More', path: null, action: () => setMoreOpen(true) },
     ];
 
-    const moreNavGroups = [
+    const moreNavGroups = isPartnerOrAdmin ? [
         {
             title: 'Operations',
             items: [
@@ -52,6 +62,28 @@ const MobileBottomNav = () => {
             title: 'Account',
             items: [
                 { icon: Users, label: 'Team', path: '/partner/team' },
+                { icon: Settings, label: 'Settings', path: '/settings' },
+                { icon: HelpCircle, label: 'Help Center', path: '/support' },
+            ]
+        },
+    ] : [
+        {
+            title: 'Operations',
+            items: [
+                { icon: MapPin, label: 'Track Shipment', path: '/track' },
+            ]
+        },
+        {
+            title: 'Finance',
+            items: [
+                { icon: Wallet, label: 'Billing', path: '/billing' },
+                { icon: TrendingUp, label: 'Settlement', path: '/settlement' },
+                { icon: BarChart2, label: 'My Reports', path: '/my-reports' },
+            ]
+        },
+        {
+            title: 'Account',
+            items: [
                 { icon: Settings, label: 'Settings', path: '/settings' },
                 { icon: HelpCircle, label: 'Help Center', path: '/support' },
             ]

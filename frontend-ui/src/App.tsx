@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -176,6 +176,19 @@ import { WalletProvider } from "./contexts/WalletContext";
 import { SocketProvider } from "./providers/SocketProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { authApi } from "@/lib/api";
+
+const PartnerRoute = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  if (!authApi.isAuthenticated()) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+  const user = authApi.getCurrentUser();
+  if (user?.role !== 'admin' && user?.role !== 'shipment_partner') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -278,28 +291,28 @@ const App = () => (
               <Route path="/bulk/success" element={<ProtectedRoute><BulkSuccess /></ProtectedRoute>} />
 
               {/* Tracking (authenticated) */}
-              <Route path="/fleet-tracking" element={<ProtectedRoute><FleetTracking /></ProtectedRoute>} />
+              <Route path="/fleet-tracking" element={<PartnerRoute><FleetTracking /></PartnerRoute>} />
               <Route path="/tracking/:awb/live" element={<ProtectedRoute><LiveMapTracking /></ProtectedRoute>} />
               <Route path="/tracking/:awb/pod" element={<ProtectedRoute><ProofOfDelivery /></ProtectedRoute>} />
               <Route path="/track-live/:awb" element={<ProtectedRoute><UserLiveTracking /></ProtectedRoute>} />
-              <Route path="/partner/fleet-view" element={<ProtectedRoute><PartnerFleetView /></ProtectedRoute>} />
+              <Route path="/partner/fleet-view" element={<PartnerRoute><PartnerFleetView /></PartnerRoute>} />
 
               {/* Reports */}
               <Route path="/my-reports" element={<ProtectedRoute><UserReports /></ProtectedRoute>} />
 
               {/* Warehouse */}
-              <Route path="/warehouse" element={<ProtectedRoute><WarehouseDashboard /></ProtectedRoute>} />
-              <Route path="/warehouse/inventory" element={<ProtectedRoute><InventoryManagement /></ProtectedRoute>} />
+              <Route path="/warehouse" element={<PartnerRoute><WarehouseDashboard /></PartnerRoute>} />
+              <Route path="/warehouse/inventory" element={<PartnerRoute><InventoryManagement /></PartnerRoute>} />
 
               {/* Drivers */}
-              <Route path="/drivers" element={<ProtectedRoute><DriverManagement /></ProtectedRoute>} />
+              <Route path="/drivers" element={<PartnerRoute><DriverManagement /></PartnerRoute>} />
 
               {/* Fleet & Partners */}
-              <Route path="/fleet" element={<ProtectedRoute><FleetManagement /></ProtectedRoute>} />
-              <Route path="/partner/orders" element={<ProtectedRoute><PartnerOrders /></ProtectedRoute>} />
-              <Route path="/partner/activity" element={<ProtectedRoute><PartnerActivity /></ProtectedRoute>} />
-              <Route path="/partner/team" element={<ProtectedRoute><PartnerTeamManagement /></ProtectedRoute>} />
-              <Route path="/partner/pricing" element={<ProtectedRoute><PartnerPricingPage /></ProtectedRoute>} />
+              <Route path="/fleet" element={<PartnerRoute><FleetManagement /></PartnerRoute>} />
+              <Route path="/partner/orders" element={<PartnerRoute><PartnerOrders /></PartnerRoute>} />
+              <Route path="/partner/activity" element={<PartnerRoute><PartnerActivity /></PartnerRoute>} />
+              <Route path="/partner/team" element={<PartnerRoute><PartnerTeamManagement /></PartnerRoute>} />
+              <Route path="/partner/pricing" element={<PartnerRoute><PartnerPricingPage /></PartnerRoute>} />
               <Route path="/my-orders" element={<ProtectedRoute><UserOrders /></ProtectedRoute>} />
 
               {/* Analytics */}
@@ -335,7 +348,7 @@ const App = () => (
 
               {/* Carrier */}
               {/* Settlement & Tier System */}
-              <Route path="/settlement" element={<ProtectedRoute><SettlementDashboard /></ProtectedRoute>} />
+              <Route path="/settlement" element={<PartnerRoute><SettlementDashboard /></PartnerRoute>} />
 
               {/* Onboarding */}
               <Route path="/onboarding/business-stage" element={<ProtectedRoute><BusinessStage /></ProtectedRoute>} />
@@ -343,13 +356,13 @@ const App = () => (
               <Route path="/onboarding/kyc" element={<ProtectedRoute><KYCVerification /></ProtectedRoute>} />
 
               {/* WMS (Warehouse Management System) */}
-              <Route path="/wms" element={<ProtectedRoute><WMSDashboard /></ProtectedRoute>} />
-              <Route path="/wms/fleet" element={<ProtectedRoute><WMSFleetManagement /></ProtectedRoute>} />
-              <Route path="/wms/inventory" element={<ProtectedRoute><WMSInventoryPage /></ProtectedRoute>} />
-              <Route path="/wms/rtd" element={<ProtectedRoute><WMSRTDDashboard /></ProtectedRoute>} />
-              <Route path="/wms/inbound" element={<ProtectedRoute><WMSInboundPage /></ProtectedRoute>} />
-              <Route path="/wms/reports" element={<ProtectedRoute><WMSReportsPage /></ProtectedRoute>} />
-              <Route path="/wms/tracking" element={<ProtectedRoute><WMSTrackingPage /></ProtectedRoute>} />
+              <Route path="/wms" element={<PartnerRoute><WMSDashboard /></PartnerRoute>} />
+              <Route path="/wms/fleet" element={<PartnerRoute><WMSFleetManagement /></PartnerRoute>} />
+              <Route path="/wms/inventory" element={<PartnerRoute><WMSInventoryPage /></PartnerRoute>} />
+              <Route path="/wms/rtd" element={<PartnerRoute><WMSRTDDashboard /></PartnerRoute>} />
+              <Route path="/wms/inbound" element={<PartnerRoute><WMSInboundPage /></PartnerRoute>} />
+              <Route path="/wms/reports" element={<PartnerRoute><WMSReportsPage /></PartnerRoute>} />
+              <Route path="/wms/tracking" element={<PartnerRoute><WMSTrackingPage /></PartnerRoute>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
