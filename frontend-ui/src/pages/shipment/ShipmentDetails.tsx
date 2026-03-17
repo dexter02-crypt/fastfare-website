@@ -25,6 +25,10 @@ import {
   RefreshCw,
   FileText,
   Map,
+  Scale,
+  Receipt,
+  FileSpreadsheet,
+  Info
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { toast, useToast } from "@/hooks/use-toast";
@@ -74,9 +78,18 @@ interface Shipment {
   trackingHistory: TrackingEvent[];
   contentType?: string;
   paymentMode?: string;
+  codAmount?: number;
   shippingCost?: number;
+  shippingFee?: number;
+  codFee?: number;
+  totalTax?: number;
+  rto_charge?: number;
+  totalAmount?: number;
+  invoiceNumber?: string;
+  ewayBillNumber?: string;
   createdAt?: string;
   estimatedDelivery?: string;
+  actualDelivery?: string;
   scan_pickup?: {
     driver_id: string;
     driver_name: string;
@@ -565,32 +578,141 @@ const ShipmentDetails = () => {
                   ) : (
                     <div className="text-center py-4 text-muted-foreground">No package details available</div>
                   )}
-                  <Separator />
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* NEW: Weight & Zone Details */}
+            <Card className="print:shadow-none print:border-2">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Scale className="h-5 w-5 text-primary" />
+                  Weight & Zone Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  {(() => {
+                    const pkg = shipment.packages?.[0] || { quantity: 1, weight: 0, length: 0, width: 0, height: 0 };
+                    const decWt = pkg.weight * pkg.quantity;
+                    const volWt = ((pkg.length * pkg.width * pkg.height) / 5000) * pkg.quantity;
+                    const appliedWt = Math.max(decWt, volWt);
+                    return (
+                      <>
+                        <div>
+                          <p className="text-muted-foreground">Declared Weight</p>
+                          <p className="font-medium">{decWt.toFixed(2)} kg</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Dimensions</p>
+                          <p className="font-medium">{pkg.length}x{pkg.width}x{pkg.height} cm</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Volumetric Wgt</p>
+                          <p className="font-medium">{volWt.toFixed(2)} kg</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Applied Weight</p>
+                          <p className="font-medium text-primary">{appliedWt.toFixed(2)} kg</p>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* NEW: Charges Breakup */}
+            <Card className="overflow-hidden print:shadow-none print:border-2">
+              <CardHeader className="bg-muted/30">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-primary" />
+                  Charges Breakup
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-3 text-sm">
+                  {(() => {
+                    // Use actual DB values if available, else derive for display fallback
+                    const fwCharge = shipment.shippingFee || shipment.shippingCost || 0;
+                    const rtoCharge = shipment.rto_charge || 0;
+                    const codFee = shipment.paymentMode === 'cod' ? (shipment.codFee || 50) : 0;
+                    const taxable = fwCharge + rtoCharge + codFee;
+                    const igst = shipment.totalTax || (taxable * 0.18);
+                    const finalAmount = shipment.totalAmount || (taxable + igst);
+
+                    return (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Forward Charge</span>
+                          <span className="font-medium">₹{fwCharge.toFixed(2)}</span>
+                        </div>
+                        {rtoCharge > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">RTO Charge</span>
+                            <span className="font-medium text-red-600">₹{rtoCharge.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {shipment.paymentMode === 'cod' && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">COD Fee</span>
+                            <span className="font-medium">₹{codFee.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <Separator className="my-2" />
+                        <div className="flex justify-between font-medium">
+                          <span>Total Taxable Amount</span>
+                          <span>₹{taxable.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">IGST (18%)</span>
+                          <span className="font-medium">₹{igst.toFixed(2)}</span>
+                        </div>
+                        <Separator className="my-2" />
+                        <div className="flex justify-between text-base font-bold text-primary">
+                          <span>Final Amount</span>
+                          <span>₹{finalAmount.toFixed(2)}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </CardContent>
+              <div className="bg-blue-50 border-t border-blue-100 p-3 text-xs text-blue-800 flex items-start gap-2">
+                <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                <p>Info: FastFare applies 18% IGST on all shipping charges inline with Indian logistics regulations.</p>
+              </div>
+            </Card>
+
+            {/* NEW: Invoice Details */}
+            <Card className="print:shadow-none print:border-2">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileSpreadsheet className="h-5 w-5 text-primary" />
+                  Invoice Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
                     <div>
-                      <p className="text-muted-foreground">Total Weight</p>
-                      <p className="font-medium">
-                        {shipment.packages && shipment.packages.length > 0
-                          ? shipment.packages.reduce((sum: number, p: ShipmentPackage) => sum + ((p.weight ?? 0) * (p.quantity ?? 1)), 0).toFixed(2)
-                          : "0"
-                        } kg
-                      </p>
+                      <p className="text-muted-foreground">Invoice Number</p>
+                      <p className="font-medium">{shipment.invoiceNumber || `INV-${shipment.awb}`}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Content Type</p>
-                      <p className="font-medium capitalize">{getSafeValue(shipment.contentType, "N/A")}</p>
+                      <p className="text-muted-foreground">Invoice Date</p>
+                      <p className="font-medium">{shipment.createdAt ? formatDate(shipment.createdAt) : "N/A"}</p>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Payment Mode</p>
-                      <p className="font-medium uppercase">{getSafeValue(shipment.paymentMode, "N/A")}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Shipping Cost</p>
-                      <p className="font-medium text-primary">
-                        ₹{getSafeValue(shipment.shippingCost, 0).toLocaleString()}
-                      </p>
-                    </div>
+                    {shipment.ewayBillNumber && (
+                      <div className="col-span-2 mt-2">
+                        <p className="text-muted-foreground">E-Way Bill Number</p>
+                        <p className="font-medium">{shipment.ewayBillNumber}</p>
+                      </div>
+                    )}
                   </div>
+                  <Button variant="outline" size="sm" onClick={handleDownloadInvoice} className="shrink-0 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary">
+                    <Download className="h-4 w-4 mr-2" /> Download PDF Invoice
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -668,22 +790,42 @@ const ShipmentDetails = () => {
                   </div>
                 </div>
                 <Separator />
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5 text-primary" />
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Created</p>
                     <p className="font-medium">{shipment.createdAt ? formatDate(shipment.createdAt) : "N/A"}</p>
                   </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Expected</p>
+                    <p className="font-medium">{shipment.estimatedDelivery ? formatDate(shipment.estimatedDelivery) : 'N/A'}</p>
+                  </div>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1"><Receipt className="h-3.5 w-3.5" /> Payment Mode</p>
+                    <p className="font-medium uppercase mt-1">
+                      <Badge variant="outline" className={shipment.paymentMode === 'cod' ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}>
+                        {getSafeValue(shipment.paymentMode, "prepaid")}
+                      </Badge>
+                    </p>
+                  </div>
+                  {shipment.paymentMode === 'cod' && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">COD Amount</p>
+                      <p className="font-medium text-amber-700 mt-1">₹{getSafeValue(shipment.codAmount, 0).toLocaleString()}</p>
+                    </div>
+                  )}
                 </div>
                 <Separator />
                 <div className="flex items-center gap-3">
-                  <Clock className="h-5 w-5 text-primary" />
+                  <CheckCircle className="h-5 w-5 text-green-600" />
                   <div>
-                    <p className="text-sm text-muted-foreground">
-                      Expected Delivery
-                    </p>
+                    <p className="text-sm text-muted-foreground">Delivery Date</p>
                     <p className="font-medium">
-                      {shipment.estimatedDelivery ? formatDate(shipment.estimatedDelivery) : 'N/A'}
+                      {(shipment.status === 'delivered' && shipment.actualDelivery)
+                        ? formatDate(shipment.actualDelivery)
+                        : (shipment.status === 'delivered' ? 'Delivered' : 'Pending')}
                     </p>
                   </div>
                 </div>
@@ -841,15 +983,17 @@ const ShipmentDetails = () => {
       </div>
 
       {/* Live Map Modal */}
-      {showLiveMap && (
-        <LiveLocationModal
-          shipmentId={shipment._id || shipment.id}
-          driverId={shipment.assignedDriver?.driverId || shipment.assigned_driver_id}
-          driverName={shipment.assignedDriver?.name || shipment.assignedDriverName}
-          onClose={() => setShowLiveMap(false)}
-        />
-      )}
-    </DashboardLayout>
+      {
+        showLiveMap && (
+          <LiveLocationModal
+            shipmentId={shipment._id || shipment.id}
+            driverId={shipment.assignedDriver?.driverId || shipment.assigned_driver_id}
+            driverName={shipment.assignedDriver?.name || shipment.assignedDriverName}
+            onClose={() => setShowLiveMap(false)}
+          />
+        )
+      }
+    </DashboardLayout >
   );
 };
 

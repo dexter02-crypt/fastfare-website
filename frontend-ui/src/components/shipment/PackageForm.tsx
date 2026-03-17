@@ -6,7 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Package, Plus, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Package, Plus, Trash2, ScanLine, Loader2, Search } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/config";
 
 interface PackageItem {
   id: string;
@@ -34,20 +37,62 @@ interface PackageFormProps {
 }
 
 const PackageForm = ({ data, onChange }: PackageFormProps) => {
+  const { toast } = useToast();
+  const [scanDialogOpen, setScanDialogOpen] = useState(false);
+  const [barcodeInput, setBarcodeInput] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+
   const handleChange = <K extends keyof PackageFormData>(field: K, value: PackageFormData[K]) => {
     onChange({ ...data, [field]: value });
   };
 
-  const addPackage = () => {
+  const handleScan = async () => {
+    if (!barcodeInput.trim()) return;
+    setIsSearching(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/wms/inventory`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const inventory = await res.json();
+      if (res.ok && Array.isArray(inventory)) {
+        const item = inventory.find((i: any) => i.sku.toLowerCase() === barcodeInput.trim().toLowerCase());
+        if (item) {
+          addPackage({
+            name: item.name,
+            weight: item.dimensions?.weight || 0.5,
+            length: item.dimensions?.length || 10,
+            width: item.dimensions?.width || 10,
+            height: item.dimensions?.height || 10,
+            value: item.price || 0,
+            quantity: 1
+          });
+          toast({ title: "Product added", description: `${item.name} added to shipment.` });
+          setBarcodeInput("");
+          setScanDialogOpen(false);
+        } else {
+          toast({ title: "Product not found", description: `No inventory item matches SKU: ${barcodeInput}`, variant: "destructive" });
+        }
+      } else {
+        throw new Error("Failed to fetch inventory");
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to scan product. Please try again.", variant: "destructive" });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const addPackage = (preset?: Partial<PackageItem>) => {
     const newPackage: PackageItem = {
-      id: Date.now().toString(),
-      name: "",
-      quantity: 1,
-      weight: 0.5,
-      length: 10,
-      width: 10,
-      height: 10,
-      value: 0,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+      name: preset?.name || "",
+      quantity: preset?.quantity || 1,
+      weight: preset?.weight || 0.5,
+      length: preset?.length || 10,
+      width: preset?.width || 10,
+      height: preset?.height || 10,
+      value: preset?.value || 0,
     };
     handleChange("packages", [...data.packages, newPackage]);
   };
@@ -84,9 +129,51 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Label className="text-base font-semibold">Package Items</Label>
-          <Button type="button" variant="outline" size="sm" onClick={addPackage}>
-            <Plus className="h-4 w-4 mr-1" /> Add Item
-          </Button>
+          <div className="flex gap-2">
+            <Dialog open={scanDialogOpen} onOpenChange={(open) => {
+              setScanDialogOpen(open);
+              if (open) setTimeout(() => document.getElementById("barcode-input")?.focus(), 100);
+            }}>
+              <DialogTrigger asChild>
+                <Button type="button" variant="secondary" size="sm">
+                  <ScanLine className="h-4 w-4 mr-1" /> Scan Product
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <ScanLine className="h-5 w-5 text-primary" />
+                    Scan Barcode / SKU
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Use your barcode scanner or type the SKU to auto-fill product details from your inventory.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      id="barcode-input"
+                      placeholder="Enter SKU or scan barcode..."
+                      value={barcodeInput}
+                      onChange={(e) => setBarcodeInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleScan();
+                        }
+                      }}
+                    />
+                    <Button onClick={handleScan} disabled={!barcodeInput || isSearching}>
+                      {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button type="button" variant="outline" size="sm" onClick={() => addPackage()}>
+              <Plus className="h-4 w-4 mr-1" /> Add Item
+            </Button>
+          </div>
         </div>
 
         {data.packages.map((pkg, index) => {
@@ -304,6 +391,11 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
               onChange={(e) => handleChange("codAmount", parseInt(e.target.value) || 0)}
               placeholder="e.g. 500"
             />
+            {data.codAmount > 100000 && (
+              <p className="text-sm text-red-600 font-medium mt-2">
+                COD amount cannot exceed ₹1,00,000.
+              </p>
+            )}
             <div className="flex items-center gap-2 mt-2">
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
                 ✅ No extra charges for COD

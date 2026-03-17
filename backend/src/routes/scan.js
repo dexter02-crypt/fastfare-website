@@ -2,6 +2,8 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import QRCode from 'qrcode';
 import Shipment from '../models/Shipment.js';
+import WeightAnomaly from '../models/WeightAnomaly.js';
+import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -128,7 +130,7 @@ router.post('/:qr_token/confirm-pickup', protect, async (req, res) => {
             });
         }
 
-        const { location_lat, location_lng } = req.body;
+        const { location_lat, location_lng, scanned_weight } = req.body;
         const partnerName = req.user.contactPerson || req.user.businessName || req.user.name || 'Partner';
         const partnerPhone = req.user.phone || '';
 
@@ -160,6 +162,54 @@ router.post('/:qr_token/confirm-pickup', protect, async (req, res) => {
         });
 
         await shipment.save();
+
+        if (scanned_weight && !isNaN(scanned_weight)) {
+            const declared_weight = shipment.totalWeight || 0;
+            const threshold = declared_weight * 1.05;
+
+            if (scanned_weight > threshold) {
+                const volumetric_weight = shipment.packages.reduce((sum, pkg) => {
+                    const l = pkg.length || 1;
+                    const b = pkg.width || 1;
+                    const h = pkg.height || 1;
+                    return sum + ((l * b * h) / 5000) * (pkg.quantity || 1);
+                }, 0);
+
+                const chargeable_weight = Math.max(scanned_weight, volumetric_weight);
+                const original_charge = shipment.shippingCost || 0;
+
+                const weightDiff = chargeable_weight - Math.max(declared_weight, volumetric_weight);
+                const weightRate = 20;
+                const expressMultiplier = shipment.serviceType === 'express' ? 1.5 : shipment.serviceType === 'overnight' ? 2 : 1;
+                const extra_billed = weightDiff > 0 ? (weightDiff * weightRate * expressMultiplier) : 0;
+                const revised_charge = original_charge + extra_billed;
+
+                if (extra_billed > 0) {
+                    const dispute_deadline = new Date(shipment.createdAt);
+                    dispute_deadline.setDate(dispute_deadline.getDate() + 7);
+
+                    await WeightAnomaly.create({
+                        shipment_id: shipment._id,
+                        user_id: shipment.user,
+                        declared_weight,
+                        scanned_weight,
+                        volumetric_weight,
+                        chargeable_weight,
+                        original_charge,
+                        revised_charge,
+                        extra_billed,
+                        dispute_deadline,
+                        status: 'Open'
+                    });
+
+                    const user = await User.findById(shipment.user);
+                    if (user) {
+                        user.walletBalance = (user.walletBalance || 0) - extra_billed;
+                        await user.save();
+                    }
+                }
+            }
+        }
 
         // Build delivery address for Google Maps link
         const del = shipment.delivery || {};

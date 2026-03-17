@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,70 +13,211 @@ import ActionsNeeded from "@/components/dashboard/ActionsNeeded";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Package, TrendingUp, Clock, CheckCircle, AlertTriangle, Truck,
-  Plus, Search, Bell, ArrowUpRight, ArrowDownRight, BarChart3,
+  Plus, Search, Bell, ArrowUpRight, ArrowDownRight, ArrowRight, BarChart3,
   Calendar, MapPin, Users, Wallet, Shield, Mail, Undo2, Loader2
 } from "lucide-react";
 
-import { authApi, alertsApi } from "@/lib/api";
-
-const recentShipments: { id: string; status: string; origin: string; destination: string; eta: string }[] = [];
+import { authApi, alertsApi, shipmentsApi } from "@/lib/api";
+import { format, isToday, isYesterday, isThisMonth, parseISO, isAfter } from "date-fns";
 
 const OrganizationDashboard = () => {
   const navigate = useNavigate();
-  // Onboarding progress — auto-hide when all steps completed
+  // Onboarding progress
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [kycCompleted] = useState(false);
   const [walletRecharged] = useState(false);
   const [firstOrderPlaced] = useState(false);
+
   const [dateRange, setDateRange] = useState("today");
+
   const [alerts, setAlerts] = useState<any[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(true);
 
-  // Fetch real alerts from API
+  // Shipments state
+  const [shipments, setShipments] = useState<any[]>([]);
+  const [shipmentsLoading, setShipmentsLoading] = useState(true);
+
+  const user = authApi.getCurrentUser();
+  const isAdmin = user?.role === 'admin';
+
+  // Fetch real shipments
+  useEffect(() => {
+    const fetchShipments = async () => {
+      try {
+        setShipmentsLoading(true);
+        const data = await shipmentsApi.getAll();
+        if (data.success && data.shipments) {
+          setShipments(data.shipments);
+        }
+      } catch (err) {
+        console.error('Failed to fetch shipments:', err);
+      } finally {
+        setShipmentsLoading(false);
+      }
+    };
+    fetchShipments();
+  }, []);
+
+  // Fetch dynamic alerts based on actual shipment data + system alerts
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
+        setAlertsLoading(true);
         const data = await alertsApi.getAlerts();
-        if (data.success) {
-          setAlerts(data.alerts);
+        let fetchedAlerts = data.success ? data.alerts || [] : [];
+
+        // Generate dynamic alerts from shipments
+        const rtoCount = shipments.filter(s => ['Returned', 'RTO'].includes(s.status)).length;
+        const pendingCount = shipments.filter(s => ['Pending', 'Pending Acceptance', 'Partner Assigned'].includes(s.status)).length;
+
+        let dynamicAlerts = [...fetchedAlerts];
+
+        if (rtoCount > 0) {
+          dynamicAlerts.push({
+            id: 'rto-alert',
+            title: `${rtoCount} returned shipment(s) need your attention`,
+            description: 'Action required on returned or RTO shipments.',
+            type: 'critical',
+            icon: 'undo',
+            action: { label: 'View Returns', href: '/shipments' }
+          });
         }
+
+        if (pendingCount > 0) {
+          dynamicAlerts.push({
+            id: 'pending-alert',
+            title: `${pendingCount} shipments awaiting pickup`,
+            description: 'These shipments are ready to be picked up by the partner.',
+            type: 'warning',
+            icon: 'clock',
+            action: { label: 'View Pending', href: '/shipments' }
+          });
+        }
+
+        setAlerts(dynamicAlerts);
       } catch (err) {
         console.error('Failed to fetch alerts:', err);
       } finally {
         setAlertsLoading(false);
       }
     };
-    fetchAlerts();
-  }, []);
 
-  // Auto-remove Getting Started when all steps are completed
+    if (!shipmentsLoading) {
+      fetchAlerts();
+    }
+  }, [shipments, shipmentsLoading]);
+
+  // Auto-remove Getting Started
   useEffect(() => {
     if (kycCompleted && walletRecharged && firstOrderPlaced) {
       setShowOnboarding(false);
     }
   }, [kycCompleted, walletRecharged, firstOrderPlaced]);
 
-  const [stats, setStats] = useState([
-    { label: "Total Shipments", value: "0", change: "0%", trend: "up", icon: Package },
-    { label: "In Transit", value: "0", change: "0%", trend: "up", icon: Truck },
-    { label: "Delivered Today", value: "0", change: "0%", trend: "up", icon: CheckCircle },
-    { label: "Pending Pickup", value: "0", change: "0%", trend: "up", icon: Clock },
-  ]);
+  // Derived calculations for Summary Cards (Orders + Revenue)
+  const summaryData = useMemo(() => {
+    const today = shipments.filter(s => isToday(parseISO(s.createdAt)));
+    const yesterday = shipments.filter(s => isYesterday(parseISO(s.createdAt)));
 
-  const user = authApi.getCurrentUser();
-  const isAdmin = user?.role === 'admin';
+    const ordersToday = today.length;
+    const ordersYesterday = yesterday.length;
 
-  // Data update on date change
-  useEffect(() => {
-    const labelSuffix = dateRange === "today" ? "Today" : "Total";
+    const getRevenue = (orders: any[]) => orders.reduce((sum, order) => {
+      // Default to declaredValue, fallback to codAmount if available
+      return sum + (Number(order.packageDetails?.declaredValue) || Number(order.paymentDetails?.codAmount) || 0);
+    }, 0);
 
-    setStats([
-      { label: "Total Shipments", value: "0", change: "0%", trend: "up", icon: Package },
-      { label: "In Transit", value: "0", change: "0%", trend: "up", icon: Truck },
-      { label: "Delivered " + labelSuffix, value: "0", change: "0%", trend: "up", icon: CheckCircle },
-      { label: "Pending Pickup", value: "0", change: "0%", trend: "up", icon: Clock },
-    ]);
-  }, [dateRange]);
+    const revenueToday = getRevenue(today);
+    const revenueYesterday = getRevenue(yesterday);
+
+    const calcChange = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return ((current - previous) / previous) * 100;
+    };
+
+    return {
+      ordersToday,
+      ordersYesterday,
+      ordersChange: calcChange(ordersToday, ordersYesterday),
+      revenueToday,
+      revenueYesterday,
+      revenueChange: calcChange(revenueToday, revenueYesterday),
+    };
+  }, [shipments]);
+
+  // Derived calculations for Metric Cards (Total, Transit, Delivered, Pending)
+  const displayStats = useMemo(() => {
+    const totalShipments = shipments.length;
+    let inTransit = 0, deliveredToday = 0, pendingPickup = 0;
+
+    shipments.forEach(s => {
+      const status = s.status;
+      if (status === "In Transit") inTransit++;
+      if (status === "Delivered" && isToday(parseISO(s.statusUpdates?.[s.statusUpdates.length - 1]?.date || s.createdAt))) deliveredToday++;
+      if (['Pending', 'Pending Acceptance', 'Partner Assigned'].includes(status)) pendingPickup++;
+    });
+
+    // Dummy trends for now, could be calculated similarly to ordersChange
+    return [
+      { label: "Total Shipments", value: shipmentsLoading ? "-" : totalShipments.toString(), change: "0%", trend: "neutral", icon: Package },
+      { label: "In Transit", value: shipmentsLoading ? "-" : inTransit.toString(), change: "0%", trend: "neutral", icon: Truck },
+      { label: "Delivered Today", value: shipmentsLoading ? "-" : deliveredToday.toString(), change: "0%", trend: "neutral", icon: CheckCircle },
+      { label: "Pending Pickup", value: shipmentsLoading ? "-" : pendingPickup.toString(), change: "0%", trend: "neutral", icon: Clock },
+    ];
+  }, [shipments, shipmentsLoading, dateRange]);
+
+  // Derived calculations for This Month's Performance
+  const performanceData = useMemo(() => {
+    const thisMonthShipments = shipments.filter(s => isThisMonth(parseISO(s.createdAt)));
+    const totalThisMonth = thisMonthShipments.length;
+
+    let deliveredCount = 0;
+    let onTimeCount = 0;
+    let rtoCount = 0;
+
+    thisMonthShipments.forEach(s => {
+      if (s.status === "Delivered") {
+        deliveredCount++;
+        // Rough estimate of on-time: delivered date <= estDelivery date
+        const deliveryDateUpdate = s.statusUpdates?.find((su: any) => su.status === "Delivered");
+        if (s.estDelivery && deliveryDateUpdate) {
+          if (!isAfter(parseISO(deliveryDateUpdate.date), parseISO(s.estDelivery))) {
+            onTimeCount++;
+          }
+        } else {
+          // Default to on-time if dates are muddy but it's delivered
+          onTimeCount++;
+        }
+      }
+      if (['Returned', 'RTO'].includes(s.status)) {
+        rtoCount++;
+      }
+    });
+
+    return {
+      successRate: totalThisMonth ? Math.round((deliveredCount / totalThisMonth) * 100) : 0,
+      onTimeRate: deliveredCount ? Math.round((onTimeCount / deliveredCount) * 100) : 0,
+      rtoRate: totalThisMonth ? Math.round((rtoCount / totalThisMonth) * 100) : 0,
+      monthName: format(new Date(), 'MMMM yyyy')
+    };
+  }, [shipments]);
+
+  // Recent Shipments (top 5)
+  const recentTopShipments = useMemo(() => {
+    return [...shipments]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5)
+      .map(s => ({
+        id: s.awbNumber || s._id.substring(0, 8).toUpperCase(),
+        actualId: s._id,
+        status: s.status,
+        date: format(parseISO(s.createdAt), 'dd MMM yyyy'),
+        origin: s.pickupDetails?.address?.city || 'Unknown',
+        destination: s.deliveryDetails?.address?.city || 'Unknown',
+        amount: s.paymentDetails?.codAmount || s.packageDetails?.declaredValue || 0,
+        paymentMode: s.paymentDetails?.mode || 'PREPAID',
+      }));
+  }, [shipments]);
 
   const filteredQuickActions = [
     { label: "New Shipment", icon: Plus, href: "/shipment/new", color: "bg-primary" },
@@ -94,7 +235,7 @@ const OrganizationDashboard = () => {
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Welcome back, FastFare</h1>
+            <h1 className="text-2xl font-bold">Welcome back, {user?.name || user?.businessName || "FastFare"}</h1>
             <p className="text-sm text-muted-foreground">Here's what's happening with your shipments today.</p>
           </div>
           <div className="flex gap-3">
@@ -103,9 +244,11 @@ const OrganizationDashboard = () => {
                 <SelectValue placeholder="Select period" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="today">Today: Jan 27</SelectItem>
+                <SelectItem value="today">Today: {format(new Date(), 'MMM d')}</SelectItem>
+                <SelectItem value="yesterday">Yesterday</SelectItem>
                 <SelectItem value="7d">Last 7 Days</SelectItem>
                 <SelectItem value="30d">Last 30 Days</SelectItem>
+                <SelectItem value="month">This Month</SelectItem>
               </SelectContent>
             </Select>
             <Link to="/shipment/new">
@@ -117,8 +260,8 @@ const OrganizationDashboard = () => {
           </div>
         </div>
 
-        {/* KYC Alert — show when GSTIN is missing or KYC is not verified */}
-        {user && (!user.gstin || user.kyc?.status !== 'verified') && (
+        {/* KYC Alert */}
+        {user && user?.kycStatus !== 'complete' && user?.kyc?.status !== 'verified' && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -145,7 +288,7 @@ const OrganizationDashboard = () => {
           </motion.div>
         )}
 
-        {/* Quick Actions — at top for easy access */}
+        {/* Quick Actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {filteredQuickActions.map((action) => (
             <Link key={action.label} to={action.href}>
@@ -162,8 +305,8 @@ const OrganizationDashboard = () => {
           ))}
         </div>
 
-        {/* Getting Started Section (for new users — auto-hidden when all steps complete) */}
-        {showOnboarding && (
+        {/* Getting Started Section */}
+        {showOnboarding && shipments.length === 0 && !shipmentsLoading && (
           <GettingStarted
             showWelcomeOffer={true}
             kycCompleted={kycCompleted}
@@ -175,19 +318,19 @@ const OrganizationDashboard = () => {
         {/* Summary Section */}
         <div>
           <h2 className="text-lg font-semibold mb-4">Summary</h2>
-          <DashboardSummary
-            data={{
-              ordersToday: 0,
-              ordersYesterday: 0,
-              revenueToday: 0,
-              revenueYesterday: 0,
-            }}
-          />
+          {shipmentsLoading ? (
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="h-[120px] bg-muted animate-pulse rounded-xl"></div>
+              <div className="h-[120px] bg-muted animate-pulse rounded-xl"></div>
+            </div>
+          ) : (
+            <DashboardSummary data={summaryData} />
+          )}
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-          {stats.map((stat, index) => (
+          {displayStats.map((stat, index) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}
@@ -200,17 +343,19 @@ const OrganizationDashboard = () => {
                     <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                       <stat.icon className="h-6 w-6 text-primary" />
                     </div>
-                    <Badge variant={stat.trend === "up" ? "default" : "secondary"} className="gap-1">
-                      {stat.trend === "up" ? (
-                        <ArrowUpRight className="h-3 w-3" />
-                      ) : (
-                        <ArrowDownRight className="h-3 w-3" />
-                      )}
+                    <Badge variant={stat.trend === "up" ? "default" : stat.trend === "down" ? "destructive" : "secondary"} className="gap-1">
+                      {stat.trend === "up" && <ArrowUpRight className="h-3 w-3" />}
+                      {stat.trend === "down" && <ArrowDownRight className="h-3 w-3" />}
+                      {stat.trend === "neutral" && <ArrowRight className="h-3 w-3" />}
                       {stat.change}
                     </Badge>
                   </div>
                   <div className="mt-3">
-                    <p className="text-2xl font-bold">{stat.value}</p>
+                    {shipmentsLoading ? (
+                      <div className="h-8 w-16 bg-muted animate-pulse rounded mt-1"></div>
+                    ) : (
+                      <p className="text-2xl font-bold">{stat.value}</p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
                   </div>
                 </CardContent>
@@ -222,7 +367,7 @@ const OrganizationDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Shipments */}
           <div className="lg:col-span-2">
-            <Card>
+            <Card className="h-full flex flex-col">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>Recent Shipments</CardTitle>
@@ -232,48 +377,73 @@ const OrganizationDashboard = () => {
                   <Button variant="ghost" size="sm">View all</Button>
                 </Link>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentShipments.map((shipment) => (
-                    <div
-                      key={shipment.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors gap-3 sm:gap-0"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Package className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{shipment.id}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {shipment.origin} → {shipment.destination}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-left sm:text-right pl-14 sm:pl-0">
-                        <Badge
-                          variant={
-                            shipment.status === "Delivered" ? "default" :
-                              shipment.status === "In Transit" ? "secondary" : "outline"
-                          }
-                        >
-                          {shipment.status}
-                        </Badge>
-                        <p className="text-xs text-muted-foreground mt-1">{shipment.eta}</p>
-                      </div>
+              <CardContent className="flex-1">
+                {shipmentsLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="h-16 bg-muted animate-pulse rounded-lg"></div>
+                    ))}
+                  </div>
+                ) : recentTopShipments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center space-y-3">
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                      <Package className="h-6 w-6 text-muted-foreground" />
                     </div>
-                  ))}
-                </div>
+                    <div>
+                      <p className="font-medium text-muted-foreground">No shipments yet.</p>
+                      <p className="text-sm text-muted-foreground">Book your first shipment to see it here.</p>
+                    </div>
+                    <Button className="mt-2" onClick={() => navigate('/shipment/new')}>+ New Shipment</Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recentTopShipments.map((shipment) => (
+                      <div
+                        key={shipment.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors gap-3 sm:gap-0"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <Package className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <Link to={`/shipments`} className="font-medium text-primary hover:underline">{shipment.id}</Link>
+                            <p className="text-sm text-muted-foreground break-all">
+                              {shipment.origin} → {shipment.destination}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0">
+                          <div className="text-left sm:text-right">
+                            <p className="text-sm font-semibold">₹{shipment.amount.toLocaleString('en-IN')}</p>
+                            <p className="text-xs text-muted-foreground">{shipment.paymentMode}</p>
+                          </div>
+                          <div className="text-right">
+                            <Badge
+                              variant={
+                                shipment.status === "Delivered" ? "default" :
+                                  shipment.status === "In Transit" ? "secondary" : "outline"
+                              }
+                            >
+                              {shipment.status}
+                            </Badge>
+                            <p className="text-xs text-muted-foreground mt-1">{shipment.date}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
           {/* Real-Time Alerts */}
           <div className="space-y-6">
-            <Card>
+            <Card className="h-full">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-base">Alerts</CardTitle>
-                {alerts.length > 0 && (
+                {alerts.length > 0 && !alertsLoading && (
                   <Badge variant="destructive">{alerts.length}</Badge>
                 )}
               </CardHeader>
@@ -284,11 +454,11 @@ const OrganizationDashboard = () => {
                     <span className="ml-2 text-sm text-muted-foreground">Loading alerts…</span>
                   </div>
                 ) : alerts.length === 0 ? (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                    <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
+                  <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <CheckCircle className="h-6 w-6 text-green-500 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-green-700 dark:text-green-300">All clear!</p>
-                      <p className="text-xs text-muted-foreground">No pending alerts at this time.</p>
+                      <p className="text-sm font-medium text-green-700 dark:text-green-300">All caught up!</p>
+                      <p className="text-xs text-muted-foreground">No actions needed right now.</p>
                     </div>
                   </div>
                 ) : (
@@ -313,22 +483,26 @@ const OrganizationDashboard = () => {
                     return (
                       <div
                         key={alert.id}
-                        className={`flex items-start gap-3 p-3 rounded-lg ${colors.bg} border ${colors.border}`}
+                        className={`flex flex-col gap-2 p-3 rounded-lg ${colors.bg} border ${colors.border}`}
                       >
-                        <IconComponent className={`h-5 w-5 ${colors.text} shrink-0 mt-0.5`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{alert.title}</p>
-                          <p className="text-xs text-muted-foreground">{alert.description}</p>
+                        <div className="flex items-start gap-3">
+                          <IconComponent className={`h-5 w-5 ${colors.text} shrink-0 mt-0.5`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium">{alert.title}</p>
+                            <p className="text-xs text-muted-foreground">{alert.description}</p>
+                          </div>
                         </div>
                         {alert.action && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs shrink-0"
-                            onClick={() => navigate(alert.action.href)}
-                          >
-                            {alert.action.label}
-                          </Button>
+                          <div className="flex justify-end mt-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-7 hover:bg-background"
+                              onClick={() => navigate(alert.action.href || '/shipments')}
+                            >
+                              {alert.action.label} →
+                            </Button>
+                          </div>
                         )}
                       </div>
                     );
@@ -343,39 +517,45 @@ const OrganizationDashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>This Month's Performance</CardTitle>
-            <CardDescription>Your shipping metrics for January 2024</CardDescription>
+            <CardDescription>Your shipping metrics for {performanceData.monthName}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex overflow-x-auto gap-4 pb-4 snap-x hide-scrollbar">
-              <div className="min-w-[200px] snap-center shrink-0">
-                <p className="text-sm text-muted-foreground mb-2">Delivery Success Rate</p>
-                <div className="flex items-center gap-2">
-                  <Progress value={96} className="flex-1" />
-                  <span className="text-sm font-medium">96%</span>
+            {shipmentsLoading ? (
+              <div className="flex gap-4 overflow-hidden">
+                {[1, 2, 3, 4].map(i => <div key={i} className="h-12 min-w-[200px] bg-muted animate-pulse rounded"></div>)}
+              </div>
+            ) : (
+              <div className="flex overflow-x-auto gap-4 pb-4 snap-x hide-scrollbar">
+                <div className="min-w-[200px] snap-center shrink-0">
+                  <p className="text-sm text-muted-foreground mb-2">Delivery Success Rate</p>
+                  <div className="flex items-center gap-2">
+                    <Progress value={performanceData.successRate} className="flex-1" />
+                    <span className="text-sm font-medium">{performanceData.successRate}%</span>
+                  </div>
+                </div>
+                <div className="min-w-[200px] snap-center shrink-0">
+                  <p className="text-sm text-muted-foreground mb-2">On-Time Delivery</p>
+                  <div className="flex items-center gap-2">
+                    <Progress value={performanceData.onTimeRate} className="flex-1" />
+                    <span className="text-sm font-medium">{performanceData.onTimeRate}%</span>
+                  </div>
+                </div>
+                <div className="min-w-[200px] snap-center shrink-0">
+                  <p className="text-sm text-muted-foreground mb-2">RTO Rate</p>
+                  <div className="flex items-center gap-2">
+                    <Progress value={performanceData.rtoRate} className="flex-1" />
+                    <span className="text-sm font-medium">{performanceData.rtoRate}%</span>
+                  </div>
+                </div>
+                <div className="min-w-[200px] snap-center shrink-0">
+                  <p className="text-sm text-muted-foreground mb-2">Customer Rating</p>
+                  <div className="flex items-center gap-2">
+                    <Progress value={0} className="flex-1 opacity-50" />
+                    <span className="text-sm font-medium text-muted-foreground">No ratings yet</span>
+                  </div>
                 </div>
               </div>
-              <div className="min-w-[200px] snap-center shrink-0">
-                <p className="text-sm text-muted-foreground mb-2">On-Time Delivery</p>
-                <div className="flex items-center gap-2">
-                  <Progress value={89} className="flex-1" />
-                  <span className="text-sm font-medium">89%</span>
-                </div>
-              </div>
-              <div className="min-w-[200px] snap-center shrink-0">
-                <p className="text-sm text-muted-foreground mb-2">RTO Rate</p>
-                <div className="flex items-center gap-2">
-                  <Progress value={4} className="flex-1" />
-                  <span className="text-sm font-medium">4%</span>
-                </div>
-              </div>
-              <div className="min-w-[200px] snap-center shrink-0">
-                <p className="text-sm text-muted-foreground mb-2">Customer Rating</p>
-                <div className="flex items-center gap-2">
-                  <Progress value={92} className="flex-1" />
-                  <span className="text-sm font-medium">4.6/5</span>
-                </div>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -389,3 +569,4 @@ const OrganizationDashboard = () => {
 };
 
 export default OrganizationDashboard;
+

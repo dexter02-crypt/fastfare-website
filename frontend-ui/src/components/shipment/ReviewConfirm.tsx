@@ -50,6 +50,7 @@ interface ServiceData {
   insurance: boolean;
   fragileHandling: boolean;
   signatureRequired: boolean;
+  shippingCost?: number;
 }
 
 interface ReviewConfirmProps {
@@ -87,32 +88,7 @@ const ReviewConfirm = ({
     "same-day": "Same Day Delivery",
   };
 
-  const getServiceMultiplier = (type: string) => {
-    const multipliers: Record<string, number> = {
-      standard: 1,
-      express: 1.5,
-      "same-day": 2.5,
-    };
-    return multipliers[type] || 1;
-  };
-
-  const getCarrierPrice = (carrier: string) => {
-    const prices: Record<string, number> = {
-      bluedart: 149,
-      delhivery: 129,
-      fedex: 199,
-      dtdc: 99,
-    };
-    return prices[carrier] || 99;
-  };
-
-  const basePrice = getCarrierPrice(service.carrier);
-  const serviceMultiplier = getServiceMultiplier(service.serviceType);
-  const shippingCost = Math.round(basePrice * serviceMultiplier);
-  const insuranceCost = service.insurance ? 29 : 0;
-  const fragileCost = service.fragileHandling ? 49 : 0;
-  const signatureCost = service.signatureRequired ? 19 : 0;
-  const totalCost = shippingCost + insuranceCost + fragileCost + signatureCost;
+  const shippingCost = service.shippingCost || 0;
 
   const totalWeight = packages.packages?.reduce(
     (sum: number, p: PackageItem) => sum + p.weight * p.quantity,
@@ -297,54 +273,57 @@ const ReviewConfirm = ({
       </Card>
 
       {/* Price Summary */}
-      {(() => {
-        const breakdown = calculateInvoiceBreakdown(shippingCost);
-        return (
-          <Card className="bg-primary/5 border-primary/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-primary" />
-                Payment Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2.5 text-sm">
-                {/* Payment Method */}
-                <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Payment Method</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">Cash on Delivery (COD)</span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-medium">✅ No extra charges</span>
-                  </div>
-                </div>
-                {packages.codAmount > 0 && (
-                  <div className="flex justify-between items-center text-muted-foreground">
-                    <span>COD Amount to Collect</span>
-                    <span className="font-medium text-foreground">₹{packages.codAmount}</span>
-                  </div>
+      <Card className="bg-primary/5 border-primary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-primary" />
+            Payment Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2.5 text-sm">
+            {/* Payment Method */}
+            <div className="flex justify-between items-center text-muted-foreground">
+              <span>Payment Method</span>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-foreground capitalize">
+                  {packages.paymentMode === "cod" ? "Cash on Delivery (COD)" : packages.paymentMode}
+                </span>
+                {packages.paymentMode === "cod" && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-medium">✅ No extra charges</span>
                 )}
-                <Separator />
-                {/* Delivery Fare */}
-                <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Delivery Fare</span>
-                  <span className="font-medium text-foreground">₹{breakdown.deliveryFare.toFixed(2)}</span>
-                </div>
-                {/* GST */}
-                <div className="flex justify-between items-center text-muted-foreground">
-                  <span>Taxes (GST @18%)</span>
-                  <span className="font-medium text-foreground">₹{breakdown.gstAmount.toFixed(2)}</span>
-                </div>
-                <Separator />
-                {/* Total Payable */}
-                <div className="flex justify-between items-center font-bold text-lg bg-primary/10 rounded-lg px-3 py-2 -mx-1">
-                  <span>TOTAL PAYABLE</span>
-                  <span className="text-primary text-xl">₹{breakdown.totalPayable.toFixed(2)}</span>
-                </div>
               </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
+            </div>
+            {packages.paymentMode === "cod" && packages.codAmount > 0 && (
+              <div className="flex justify-between items-center text-muted-foreground">
+                <span>COD Amount to Collect</span>
+                <span className="font-medium text-foreground">₹{packages.codAmount}</span>
+              </div>
+            )}
+            <Separator />
+            {(() => {
+              const breakdown = calculateInvoiceBreakdown(shippingCost);
+              return (
+                <>
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Total Chargeable Price</span>
+                    <span className="font-medium text-foreground">₹{breakdown.deliveryFare.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Taxes (GST @18%)</span>
+                    <span className="font-medium text-foreground">₹{breakdown.gstAmount.toFixed(2)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between items-center font-bold text-lg bg-primary/10 rounded-lg px-3 py-2 -mx-1">
+                    <span>TOTAL PAYABLE</span>
+                    <span className="text-primary text-xl">₹{breakdown.totalPayable.toFixed(2)}</span>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Terms and Conditions */}
       <div

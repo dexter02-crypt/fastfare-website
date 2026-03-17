@@ -55,6 +55,8 @@ const SettingsPage = () => {
     insurance: true
   });
 
+  const [carrierOptions, setCarrierOptions] = useState<{ _id: string; businessName: string }[]>([]);
+
   const [keys, setKeys] = useState({
     production: "",
     test: ""
@@ -98,6 +100,22 @@ const SettingsPage = () => {
       }
     };
     fetchApiKeys();
+  }, []);
+
+  // Fetch carriers for shipping settings dropdown
+  useEffect(() => {
+    const fetchCarriers = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/carriers/active`);
+        const data = await res.json();
+        if (data.success && data.carriers) {
+          setCarrierOptions(data.carriers);
+        }
+      } catch (err) {
+        console.error('Carriers fetch error:', err);
+      }
+    };
+    fetchCarriers();
   }, []);
 
   const regenerateKey = async (type: 'production' | 'test') => {
@@ -445,9 +463,9 @@ const SettingsPage = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="auto">Auto Select (Best Rate)</SelectItem>
-                        <SelectItem value="bluedart">BlueDart</SelectItem>
-                        <SelectItem value="delhivery">Delhivery</SelectItem>
-                        <SelectItem value="dtdc">DTDC</SelectItem>
+                        {carrierOptions.map((c) => (
+                          <SelectItem key={c._id} value={c._id}>{c.businessName}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

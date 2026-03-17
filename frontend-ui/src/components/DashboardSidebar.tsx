@@ -26,10 +26,13 @@ import {
     RotateCcw,
     Radio,
     Crown,
-    Tag
+    Tag,
+    Scale
 } from "lucide-react";
-import logo from "@/assets/logo.png";
-import { authApi } from "@/lib/api";
+import logo from "/logo.png";
+import logoIcon from "/logo-icon.png";
+import { authApi, returnsApi, weightDisputesApi } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
 
 interface NavItem {
     label: string;
@@ -41,6 +44,8 @@ const primaryNavItems: NavItem[] = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Users", href: "/users", icon: Users },
     { label: "Shipments", href: "/shipments", icon: Package },
+    { label: "Returns / RTO", href: "/returns-rto", icon: RotateCcw },
+    { label: "Weight Disputes", href: "/weight-disputes", icon: Scale },
     { label: "My Orders", href: "/my-orders", icon: ClipboardList },
     { label: "Fleet Tracking", href: "/fleet-tracking", icon: Navigation },
     { label: "Orders", href: "/partner/orders", icon: ClipboardList },
@@ -87,6 +92,24 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
     const location = useLocation();
     const navigate = useNavigate();
     const user = authApi.getCurrentUser();
+
+    // Fetch badges
+    const { data: returnsData } = useQuery({
+        queryKey: ["rtoStats"],
+        queryFn: returnsApi.getRTOStats,
+        enabled: user?.role === 'user',
+        refetchInterval: 30000
+    });
+
+    const { data: disputesData } = useQuery({
+        queryKey: ["weightDisputesStats"],
+        queryFn: weightDisputesApi.getDisputes,
+        enabled: user?.role === 'user',
+        refetchInterval: 30000
+    });
+
+    const activeRtoCount = (returnsData?.shipments || []).filter((s: any) => s.return_status !== 'Delivered Back').length;
+    const openAnomaliesCount = disputesData?.stats?.openCount || 0;
 
     const isActive = (href: string) => {
         const currentPath = location.pathname;
@@ -139,8 +162,17 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
             )}
         >
             <div className="flex flex-col h-full">
-                {/* Logo Section Removed as it is in Header */}
-                {/* Mobile collapse button if needed, but usually redundant with Header menu */}
+                {/* Logo Section */}
+                <div className={cn("flex items-center p-4 min-h-[64px]", collapsed ? "justify-center" : "justify-between border-b border-sidebar-border/50")}>
+                    <Link to="/dashboard" onClick={handleLinkClick} className="flex items-center">
+                        <img
+                            src={collapsed ? logoIcon : logo}
+                            alt="FastFare Logo"
+                            className={cn("w-auto object-contain transition-all duration-300", collapsed ? "h-8" : "h-9")}
+                        />
+                    </Link>
+                </div>
+
                 {onCollapse && (
                     <div className={cn("flex items-center justify-end p-2", collapsed ? "justify-center" : "")}>
                         <Button
@@ -185,7 +217,7 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                         // Regular user filtering - show full feature set (same as partner + user-specific)
                         if (user?.role === 'user') {
                             const userAllowed = [
-                                "Dashboard", "Shipments", "My Orders", "Tracking", "Rates", "Returns", "Wallet", "My Reports", "Settings", "Help Center",
+                                "Dashboard", "Shipments", "Returns / RTO", "Weight Disputes", "My Orders", "Tracking", "Rates", "Returns", "Wallet", "My Reports", "Settings", "Help Center",
                             ];
                             return userAllowed.includes(item.label);
                         }
@@ -205,7 +237,17 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                             )}
                         >
                             <item.icon className={cn("h-5 w-5 flex-shrink-0", collapsed && "mx-auto")} />
-                            {!collapsed && <span>{item.label}</span>}
+                            {!collapsed && <span className="flex-1">{item.label}</span>}
+                            {!collapsed && item.label === "Returns / RTO" && activeRtoCount > 0 && (
+                                <span className="bg-[#ea580c] text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                                    {activeRtoCount}
+                                </span>
+                            )}
+                            {!collapsed && item.label === "Weight Disputes" && openAnomaliesCount > 0 && (
+                                <span className="bg-[#f59e0b] text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                                    {openAnomaliesCount}
+                                </span>
+                            )}
                         </Link>
                     ))}
                 </nav>

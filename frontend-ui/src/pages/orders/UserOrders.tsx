@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/utils/dateFormat";
-import { formatStatus, getStatusStyle } from "@/utils/formatStatus";
+import { formatStatus } from "@/utils/formatStatus";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { OrderActions } from "@/components/orders/OrderActions";
 import {
   Table,
   TableBody,
@@ -16,578 +16,684 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
-  Search,
-  Truck,
-  MapPin,
-  Package,
-  CheckCircle,
-  Clock,
-  Eye,
-  Phone,
-  User,
-  Calendar,
-  Navigation,
-  Radio,
-  Loader2,
+  Search, Download, ShoppingBag, Loader2, Plus, Trash2, X
 } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { API_BASE_URL } from "@/config";
+import { useToast } from "@/hooks/use-toast";
 
-interface ParcelData {
-  _id: string;
-  parcelId: string;
-  barcode: string;
-  orderId: string;
-  awb: string;
-  packageName: string;
-  packageDescription: string;
-  status: string;
-  scannedAt: string;
-  deliveredAt: string;
-  receiver: { name?: string; phone?: string; address?: string; city?: string; pincode?: string };
-  sender: { name?: string; phone?: string; address?: string; city?: string; pincode?: string };
-  scannedBy: { partnerId: string; name: string };
-  assignedDriver: string | null;
-  driverLocation: {
-    lat: number;
-    lng: number;
-    driverName: string;
-    online: boolean;
-    timestamp: number;
-  } | null;
-}
-
-interface OrderData {
-  id: string;
-  awb: string;
-  status: string;
-  pickup: any;
-  delivery: any;
-  packages: any[];
-  contentType: string;
-  serviceType: string;
-  paymentMode: string;
-  codAmount: number;
-  totalWeight: number;
-  shippingCost: number;
-  estimatedDelivery: string;
-  actualDelivery: string;
-  trackingHistory: any[];
-  assignedDriver: string | null;
-  assignedDriverName: string | null;
-  assignedVehicle: string | null;
-  scan_pickup: {
-    driver_id: string;
-    driver_name: string;
-    driver_phone: string;
-    scanned_at: string;
-    location_lat: number;
-    location_lng: number;
-  } | null;
-  driverLocation: {
-    lat: number;
-    lng: number;
-    driverName: string;
-    online: boolean;
-    timestamp: number;
-  } | null;
-  createdAt: string;
-}
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const UserOrders = () => {
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
-  const [selectedOrder, setSelectedOrder] = useState<OrderData | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [orders, setOrders] = useState<OrderData[]>([]);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [channelFilter, setChannelFilter] = useState("all");
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [parcels, setParcels] = useState<ParcelData[]>([]);
-  const [parcelsLoading, setParcelsLoading] = useState(true);
+  const { toast } = useToast();
 
-  // Fetch real orders from backend
+  // Create Order Drawer State
+  const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const initialOrderState = {
+    customerName: "",
+    customerPhone: "",
+    customerEmail: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    pincode: "",
+    items: [{ name: "", qty: 1, unitPrice: 0, total: 0 }],
+    paymentStatus: "Unpaid",
+    status: "New",
+    channel: "Manual",
+    notes: ""
+  };
+
+  const [newOrderForm, setNewOrderForm] = useState(initialOrderState);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const indianStates = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
+    "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+    "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana",
+    "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh",
+    "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Lakshadweep", "Puducherry", "Ladakh", "Jammu and Kashmir"
+  ];
+
+  // Helper to recalculate order value when items change
+  const calculateOrderValue = (items: any[]) => {
+    return items.reduce((sum, item) => sum + (item.total || 0), 0);
+  };
+
+  // Fetch real orders from the newly created backend endpoint
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE_URL}/api/shipments/my-orders`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/api/orders/my-orders`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const data = await res.json();
-        if (data.success && data.orders) {
-          setOrders(data.orders);
-        }
+        setOrders(data.orders || []);
       } catch (err) {
         console.error("Failed to fetch orders:", err);
+        setOrders([]);
       } finally {
         setLoading(false);
       }
     };
     fetchOrders();
-
-    // Fetch user's parcels
-    const fetchParcels = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE_URL}/api/parcels/user/my-parcels`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        if (data.success && data.parcels) {
-          setParcels(data.parcels);
-        }
-      } catch (err) {
-        console.error("Failed to fetch parcels:", err);
-      } finally {
-        setParcelsLoading(false);
-      }
-    };
-    fetchParcels();
   }, []);
 
-  const getParcelStatusBadge = (status: string) => {
-    const map: Record<string, { label: string; color: string; icon: any }> = {
-      scanned: { label: "Scanned", color: "bg-blue-100 text-blue-800", icon: Package },
-      in_warehouse: { label: "In Warehouse", color: "bg-indigo-100 text-indigo-800", icon: Package },
-      dispatched: { label: "Dispatched", color: "bg-purple-100 text-purple-800", icon: Truck },
-      in_transit: { label: "In Transit", color: "bg-orange-100 text-orange-800", icon: Navigation },
-      out_for_delivery: { label: "Out for Delivery", color: "bg-yellow-100 text-yellow-800", icon: MapPin },
-      delivered: { label: "Delivered", color: "bg-green-100 text-green-800", icon: CheckCircle },
-      returned: { label: "Returned", color: "bg-red-100 text-red-800", icon: Package },
-      failed: { label: "Failed", color: "bg-red-100 text-red-800", icon: Package },
-    };
-    const s = map[status] || { label: status, color: "bg-gray-100 text-gray-800", icon: Package };
-    const Icon = s.icon;
-    return (
-      <Badge className={s.color}>
-        <Icon className="h-3 w-3 mr-1" /> {s.label}
-      </Badge>
-    );
-  };
-
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800"><Clock className="h-3 w-3 mr-1" /> Pending</Badge>;
-      case "pickup_scheduled":
-        return <Badge variant="default" className="bg-blue-600"><Clock className="h-3 w-3 mr-1" /> Pickup Scheduled</Badge>;
-      case "picked_up":
-        return <Badge variant="default" className="bg-indigo-600"><Package className="h-3 w-3 mr-1" /> Picked Up</Badge>;
-      case "in_transit":
-        return <Badge variant="default" className="bg-purple-600"><MapPin className="h-3 w-3 mr-1" /> In Transit</Badge>;
-      case "out_for_delivery":
-        return <Badge variant="default" className="bg-orange-600"><Truck className="h-3 w-3 mr-1" /> Out for Delivery</Badge>;
+    switch (status.toLowerCase()) {
+      case "new":
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-none">New</Badge>;
+      case "processing":
+        return <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100 border-none">Processing</Badge>;
+      case "confirmed":
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-none">Confirmed</Badge>;
+      case "shipped":
+        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 border-none">Shipped</Badge>;
       case "delivered":
-        return <Badge variant="outline" className="text-green-600 border-green-600"><CheckCircle className="h-3 w-3 mr-1" /> Delivered</Badge>;
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-none">Delivered</Badge>;
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive" className="border-none">Cancelled</Badge>;
       default:
-        return <Badge style={{ ...getStatusStyle(status), padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '500' }}>{formatStatus(status)}</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100 border-none">{formatStatus(status)}</Badge>;
     }
   };
 
-  const filterByTab = (order: OrderData) => {
-    switch (activeTab) {
-      case "pending": return order.status === "pending" || order.status === "pickup_scheduled";
-      case "transit": return ["picked_up", "in_transit", "out_for_delivery"].includes(order.status);
-      case "delivered": return order.status === "delivered";
-      case "all": return true;
-      default: return true;
+  const getPaymentStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'paid':
+        return <Badge className="bg-green-50 text-green-700 border-green-200" variant="outline">Paid</Badge>;
+      case 'pending':
+      case 'cod pending':
+      case 'unpaid':
+        return <Badge className="bg-amber-50 text-amber-700 border-amber-200" variant="outline">{status}</Badge>;
+      default:
+        return <Badge variant="outline">{status.toUpperCase()}</Badge>;
     }
   };
 
-  const canTrackLive = (status: string) => {
-    return ["picked_up", "in_transit", "out_for_delivery"].includes(status);
-  };
-
+  // Filter Logic
   const filteredOrders = orders.filter(order => {
     const matchesSearch =
-      order.awb?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.pickup?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.delivery?.city?.toLowerCase().includes(searchQuery.toLowerCase());
+      order.orderId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer?.phone?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesTab = filterByTab(order);
-    return matchesSearch && matchesTab;
+    const matchesStatus = statusFilter === "all" || (order.orderStatus || '').toLowerCase() === statusFilter.toLowerCase();
+    const matchesPayment = paymentFilter === "all" || order.paymentStatus.toLowerCase().includes(paymentFilter.toLowerCase());
+    const matchesChannel = channelFilter === "all" || (order.channel || '').toLowerCase() === channelFilter.toLowerCase();
+
+    return matchesSearch && matchesStatus && matchesPayment && matchesChannel;
   });
 
-  const viewOrderDetails = (order: OrderData) => {
-    setSelectedOrder(order);
-    setDetailsOpen(true);
+  const handleExportCSV = () => {
+    const headers = [
+      "Order ID", "Customer Name", "Customer Phone", "Date", "Items", "Order Value", "Payment Status", "Order Status", "Channel"
+    ];
+
+    const rows = filteredOrders.map(o => [
+      o.orderId,
+      o.customer?.name || "",
+      o.customer?.phone || "",
+      new Date(o.createdAt).toLocaleDateString(),
+      o.items?.length || 0,
+      o.orderValue,
+      o.paymentStatus,
+      o.orderStatus,
+      o.channel || 'Manual'
+    ].map(v => `"${v}"`).join(","));
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `FastFare_Orders_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  // Bug 19 — use shared formatDate utility
-  // const formatDate = (d: string) => d ? new Date(d).toLocaleDateString() : '—';
-  // Now imported from @/utils/dateFormat
+  // Callbacks passed to OrderActions
+  const handleOrderUpdateLocally = (updatedOrder: any) => {
+    setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
+  };
+  const handleOrderDuplicateLocally = (newOrder: any) => {
+    setOrders(prev => [newOrder, ...prev]);
+  };
+
+  // CREATE ORDER SUBMISSION
+  const handleCreateOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormErrors({});
+    let errors: Record<string, string> = {};
+
+    // 1. Validation Logic
+    if (!newOrderForm.customerName.trim()) errors.customerName = "Customer Name is required";
+    if (!/^\d{10}$/.test(newOrderForm.customerPhone)) errors.customerPhone = "Please enter a valid 10-digit mobile number";
+
+    if (!newOrderForm.addressLine1.trim()) errors.addressLine1 = "Address Line 1 is required";
+    if (!newOrderForm.city.trim()) errors.city = "City is required";
+    if (!newOrderForm.state) errors.state = "State is required";
+    if (!/^\d{6}$/.test(newOrderForm.pincode)) errors.pincode = "Please enter a valid 6-digit Pincode";
+
+    newOrderForm.items.forEach((item, index) => {
+      if (!item.name.trim()) errors[`itemName_${index}`] = "Item name is required";
+      if (item.qty < 1) errors[`itemQty_${index}`] = "Quantity must be at least 1";
+      if (item.unitPrice <= 0 && item.unitPrice !== 0) errors[`itemPrice_${index}`] = "Price cannot be negative";
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('token');
+
+      const payload = {
+        customer: {
+          name: newOrderForm.customerName,
+          phone: newOrderForm.customerPhone,
+          email: newOrderForm.customerEmail
+        },
+        address: {
+          line1: newOrderForm.addressLine1,
+          line2: newOrderForm.addressLine2,
+          city: newOrderForm.city,
+          state: newOrderForm.state,
+          pincode: newOrderForm.pincode
+        },
+        items: newOrderForm.items,
+        orderValue: calculateOrderValue(newOrderForm.items),
+        paymentStatus: newOrderForm.paymentStatus,
+        orderStatus: newOrderForm.status,
+        channel: newOrderForm.channel,
+        notes: newOrderForm.notes
+      };
+
+      const res = await fetch(`${API_BASE_URL}/api/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || 'Failed to create order');
+
+      // Optimistic update
+      setOrders(prev => [data.order, ...prev]);
+
+      toast({ title: "Order Created", description: `Order ${data.order.orderId} created successfully.`, variant: "default" });
+      setNewOrderForm(initialOrderState);
+      setIsCreateDrawerOpen(false);
+
+    } catch (error: any) {
+      toast({ title: "Failed to create order", description: error.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Package className="h-6 w-6 text-primary" />
-            My Orders
-          </h1>
-          <p className="text-muted-foreground">
-            Track your shipments and view delivery status
-          </p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <ShoppingBag className="h-6 w-6 text-primary" />
+              My Orders
+            </h1>
+            <p className="text-muted-foreground">
+              Manage all your customer orders from various channels.
+            </p>
+          </div>
+          <Button className="gradient-primary" onClick={() => setIsCreateDrawerOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Order
+          </Button>
         </div>
 
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full justify-start overflow-x-auto h-auto p-1 bg-transparent border-b rounded-none mb-6">
-            <TabsTrigger value="all" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">All Orders</TabsTrigger>
-            <TabsTrigger value="pending" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Pending</TabsTrigger>
-            <TabsTrigger value="transit" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">In Transit</TabsTrigger>
-            <TabsTrigger value="delivered" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">Delivered</TabsTrigger>
-          </TabsList>
-
-          {/* Search */}
-          <Card className="mb-6">
-            <CardContent className="pt-6 py-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by AWB, City..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Loading */}
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto flex-1">
+            <div className="relative flex-1 md:max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search Order ID, Customer..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-10 w-full"
+              />
             </div>
-          )}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-[140px] h-10">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="confirmed">Confirmed</SelectItem>
+                <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="shipped">Shipped</SelectItem>
+                <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+              <SelectTrigger className="w-full md:w-[140px] h-10">
+                <SelectValue placeholder="Payment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Modes</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="unpaid">Unpaid</SelectItem>
+                <SelectItem value="cod">COD</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="w-full md:w-[140px] h-10">
+                <SelectValue placeholder="Channel" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Channels</SelectItem>
+                <SelectItem value="shopify">Shopify</SelectItem>
+                <SelectItem value="woocommerce">WooCommerce</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleExportCSV} variant="outline" className="h-10 w-full md:w-auto">
+            <Download className="h-4 w-4 mr-2" />
+            Download CSV
+          </Button>
+        </div>
 
-          {/* Orders Table */}
-          {!loading && (
-            <Card>
-              <CardContent className="p-0 overflow-x-auto">
-                <Table>
-                  <TableHeader>
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
+
+        {/* Main Orders Table */}
+        {!loading && (
+          <Card className="border shadow-sm overflow-hidden">
+            <div className="overflow-x-auto w-full">
+              <Table className="whitespace-nowrap w-max min-w-full">
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="w-[50px]"><input type="checkbox" className="rounded border-gray-300" /></TableHead>
+                    <TableHead>Order ID</TableHead>
+                    <TableHead>Customer Name</TableHead>
+                    <TableHead>Customer Phone</TableHead>
+                    <TableHead>Order Date</TableHead>
+                    <TableHead className="text-center">Items</TableHead>
+                    <TableHead className="text-right">Order Value</TableHead>
+                    <TableHead>Payment Status</TableHead>
+                    <TableHead>Order Status</TableHead>
+                    <TableHead>Channel</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredOrders.length === 0 ? (
                     <TableRow>
-                      <TableHead>AWB</TableHead>
-                      <TableHead>Route</TableHead>
-                      <TableHead className="hidden sm:table-cell">Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden md:table-cell">Driver</TableHead>
-                      <TableHead className="text-right">Cost</TableHead>
-                      <TableHead className="text-center">Actions</TableHead>
+                      <TableCell colSpan={11} className="text-center py-16 bg-white">
+                        <div className="flex flex-col items-center justify-center space-y-3">
+                          <div className="h-16 w-16 rounded-full bg-muted/60 flex items-center justify-center">
+                            <ShoppingBag className="h-8 w-8 text-muted-foreground/50" />
+                          </div>
+                          <p className="text-lg font-medium text-foreground">
+                            {orders.length === 0 ? "No orders yet" : "No matching orders found"}
+                          </p>
+                          <p className="text-sm text-muted-foreground max-w-sm">
+                            Orders synced from your channels will appear here.
+                          </p>
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredOrders.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                          {orders.length === 0 ? "No orders yet. Create your first shipment!" : "No orders match your search."}
+                  ) : (
+                    filteredOrders.map((order) => (
+                      <TableRow key={order._id} className="hover:bg-muted/30">
+                        <TableCell><input type="checkbox" className="rounded border-gray-300" /></TableCell>
+                        <TableCell className="font-mono font-semibold text-primary">{order.orderId}</TableCell>
+                        <TableCell className="font-medium">{order.customer?.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{order.customer?.phone}</TableCell>
+                        <TableCell>{formatDate(order.createdAt)}</TableCell>
+                        <TableCell className="text-center">{order.items?.length || 0}</TableCell>
+                        <TableCell className="text-right font-medium">₹{order.orderValue?.toLocaleString('en-IN')}</TableCell>
+                        <TableCell>{getPaymentStatusBadge(order.paymentStatus)}</TableCell>
+                        <TableCell>{getStatusBadge(order.orderStatus || 'New')}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="bg-slate-100 font-normal shadow-sm">
+                            {order.channel || 'Manual'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right pr-4">
+                          <OrderActions
+                            order={order}
+                            onOrderUpdate={handleOrderUpdateLocally}
+                            onOrderDuplicate={handleOrderDuplicateLocally}
+                          />
                         </TableCell>
                       </TableRow>
-                    ) : (
-                      filteredOrders.map((order) => (
-                        <TableRow key={order.id}>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-primary font-mono text-sm">{order.awb}</span>
-                              <span className="text-xs text-muted-foreground">{formatDate(order.createdAt)}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-1 text-sm">
-                              <div className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3 text-green-600" />
-                                <span>{order.pickup?.city || "—"}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Navigation className="h-3 w-3 text-red-600" />
-                                <span>{order.delivery?.city || "—"}</span>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <span className="text-sm capitalize">{order.contentType || "—"}</span>
-                          </TableCell>
-                          <TableCell>{getStatusBadge(order.status)}</TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {order.scan_pickup?.driver_name ? (
-                              <div className="flex flex-col text-sm">
-                                <span className="font-medium flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  {order.scan_pickup.driver_name}
-                                </span>
-                                {order.scan_pickup.scanned_at && (
-                                  <span className="text-xs flex items-center gap-1 text-green-600">
-                                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                                    ✓ Scanned
-                                  </span>
-                                )}
-                              </div>
-                            ) : order.assignedDriverName ? (
-                              <div className="flex flex-col text-sm">
-                                <span className="font-medium flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  {order.assignedDriverName}
-                                </span>
-                                {order.driverLocation && (
-                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <div className={`w-2 h-2 rounded-full ${order.driverLocation.online ? "bg-green-500" : "bg-gray-400"}`} />
-                                    {order.driverLocation.online ? "Online" : "Offline"}
-                                  </span>
-                                )}
-                              </div>
-                            ) : order.status === "partner_assigned" ? (
-                              <span className="text-orange-500 text-sm font-medium">Not assigned</span>
-                            ) : ["payment_received", "pending_acceptance", "pending"].includes(order.status) ? (
-                              <span className="text-muted-foreground text-sm">Awaiting Partner</span>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">Not assigned</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {order.shippingCost ? `₹${order.shippingCost.toLocaleString()}` : "—"}
-                            <div className="text-xs text-muted-foreground capitalize">{order.paymentMode}</div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => viewOrderDetails(order)}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                View
-                              </Button>
-                              {canTrackLive(order.status) && order.assignedDriver && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  className="bg-blue-600 hover:bg-blue-700"
-                                  onClick={() => navigate(`/track-live/${order.awb}`)}
-                                >
-                                  <Radio className="h-4 w-4 mr-1" />
-                                  Track Live
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-        </Tabs>
-
-        {/* ─── My Parcels Section ─── */}
-        {parcels.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-xl font-bold flex items-center gap-2 mb-4">
-              <Truck className="h-5 w-5 text-blue-600" />
-              My Parcels
-              <Badge variant="secondary" className="ml-2">{parcels.length}</Badge>
-            </h2>
-            <p className="text-muted-foreground text-sm mb-4">
-              Parcels linked to your account — scanned and tracked across the delivery network
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {parcels.map((p) => (
-                <Card key={p._id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="pt-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-sm font-medium text-primary">{p.parcelId}</span>
-                      {getParcelStatusBadge(p.status)}
-                    </div>
-
-                    <div className="space-y-1 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span>{p.packageName || p.barcode}</span>
-                      </div>
-                      {p.receiver?.name && (
-                        <div className="flex items-center gap-2">
-                          <User className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span>{p.receiver.name}{p.receiver.city ? ` — ${p.receiver.city}` : ""}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span>Scanned {new Date(p.scannedAt).toLocaleDateString()}</span>
-                      </div>
-                      {p.scannedBy?.name && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <User className="h-3.5 w-3.5" />
-                          <span>By {p.scannedBy.name}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Driver info */}
-                    {p.driverLocation && (
-                      <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-md text-sm">
-                        <div className={`w-2 h-2 rounded-full ${p.driverLocation.online ? "bg-green-500" : "bg-gray-400"}`} />
-                        <span className="font-medium">{p.driverLocation.driverName}</span>
-                        <span className="text-muted-foreground">{p.driverLocation.online ? "Online" : "Offline"}</span>
-                      </div>
-                    )}
-
-                    {/* Track Live button */}
-                    {p.awb && ["dispatched", "in_transit", "out_for_delivery"].includes(p.status) && p.assignedDriver && (
-                      <Button
-                        size="sm"
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                        onClick={() => navigate(`/track-live/${p.awb}`)}
-                      >
-                        <Radio className="h-4 w-4 mr-2" />
-                        Track Live
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
-          </div>
+          </Card>
         )}
+      </div>
 
-        {parcelsLoading && (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Loading parcels...</span>
-          </div>
-        )}
+      {/* CREATE ORDER RIGHT SLIDE-OVER */}
+      <Sheet open={isCreateDrawerOpen} onOpenChange={setIsCreateDrawerOpen}>
+        <SheetContent className="sm:max-w-xl overflow-y-auto">
+          <SheetHeader className="mb-6">
+            <SheetTitle>Create New Order</SheetTitle>
+            <SheetDescription>
+              Fill in the required information below to rapidly generate a new order.
+            </SheetDescription>
+          </SheetHeader>
 
-        {/* Order Details Dialog */}
-        <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Order Details - {selectedOrder?.awb}
-              </DialogTitle>
-            </DialogHeader>
+          <form onSubmit={handleCreateOrder} className="space-y-6">
 
-            {selectedOrder && (
-              <div className="space-y-6">
-                {/* Status Banner */}
-                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Current Status</p>
-                    <div className="mt-1">{getStatusBadge(selectedOrder.status)}</div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Estimated Delivery</p>
-                    <p className="font-medium flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      {formatDate(selectedOrder.estimatedDelivery)}
-                    </p>
-                  </div>
+            {/* SECTION 1: Customer Details */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-primary border-b pb-2 uppercase tracking-wider">Customer Details</h3>
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <Label>Customer Name <span className="text-red-500">*</span></Label>
+                  <Input
+                    placeholder="Enter full name"
+                    value={newOrderForm.customerName}
+                    onChange={(e) => setNewOrderForm({ ...newOrderForm, customerName: e.target.value })}
+                  />
+                  {formErrors.customerName && <p className="text-xs text-red-500">{formErrors.customerName}</p>}
                 </div>
 
-                {/* Route Info */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
-                      <MapPin className="h-4 w-4 text-green-600" /> Pickup Location
-                    </p>
-                    <p className="font-medium">{selectedOrder.pickup?.address}</p>
-                    <p className="text-sm text-muted-foreground">{selectedOrder.pickup?.city} - {selectedOrder.pickup?.pincode}</p>
+                  <div className="space-y-2">
+                    <Label>Customer Phone <span className="text-red-500">*</span></Label>
+                    <Input
+                      placeholder="+91 XXXXX XXXXX"
+                      type="tel"
+                      maxLength={10}
+                      value={newOrderForm.customerPhone}
+                      onChange={(e) => setNewOrderForm({ ...newOrderForm, customerPhone: e.target.value.replace(/\D/g, '') })}
+                    />
+                    {formErrors.customerPhone && <p className="text-xs text-red-500">{formErrors.customerPhone}</p>}
                   </div>
-                  <div className="p-4 border rounded-lg">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
-                      <Navigation className="h-4 w-4 text-red-600" /> Delivery Location
-                    </p>
-                    <p className="font-medium">{selectedOrder.delivery?.address}</p>
-                    <p className="text-sm text-muted-foreground">{selectedOrder.delivery?.city} - {selectedOrder.delivery?.pincode}</p>
-                  </div>
-                </div>
-
-                {/* Driver Info */}
-                {selectedOrder.assignedDriverName && (
-                  <div className="p-4 border rounded-lg bg-blue-50">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
-                      <User className="h-4 w-4" /> Assigned Driver
-                    </p>
-                    <p className="font-medium text-lg">{selectedOrder.assignedDriverName}</p>
-                    {selectedOrder.driverLocation && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <div className={`w-2 h-2 rounded-full ${selectedOrder.driverLocation.online ? "bg-green-500" : "bg-gray-400"}`} />
-                        <span className="text-sm">{selectedOrder.driverLocation.online ? "Currently Online" : "Offline"}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Track Live Button */}
-                {canTrackLive(selectedOrder.status) && selectedOrder.assignedDriver && (
-                  <Button
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                    onClick={() => {
-                      setDetailsOpen(false);
-                      navigate(`/track-live/${selectedOrder.awb}`);
-                    }}
-                  >
-                    <Radio className="h-4 w-4 mr-2" />
-                    Track Live on Map
-                  </Button>
-                )}
-
-                {/* Tracking Timeline */}
-                {selectedOrder.trackingHistory && selectedOrder.trackingHistory.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-3">Tracking History</h4>
-                    <div className="space-y-3">
-                      {[...selectedOrder.trackingHistory].reverse().map((event, index) => (
-                        <div key={index} className="flex items-start gap-3">
-                          <div className={`w-3 h-3 rounded-full mt-1.5 ${index === 0 ? 'bg-primary' : 'bg-gray-300'}`} />
-                          <div className="flex-1">
-                            <p className="font-medium">{event.description || event.status}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {event.location && `${event.location} • `}
-                              {new Date(event.timestamp).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Order Summary */}
-                <div className="p-4 border rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Content</span>
-                    <span className="capitalize">{selectedOrder.contentType}</span>
-                  </div>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-muted-foreground">Weight</span>
-                    <span>{selectedOrder.totalWeight ? `${selectedOrder.totalWeight} kg` : "—"}</span>
-                  </div>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-muted-foreground">Service</span>
-                    <Badge variant="outline" className="capitalize">{selectedOrder.serviceType}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center mt-2 pt-2 border-t">
-                    <span className="font-medium">Shipping Cost</span>
-                    <span className="font-bold text-lg">
-                      {selectedOrder.shippingCost ? `₹${selectedOrder.shippingCost.toLocaleString()}` : "—"}
-                    </span>
+                  <div className="space-y-2">
+                    <Label>Customer Email</Label>
+                    <Input
+                      placeholder="customer@email.com"
+                      type="email"
+                      value={newOrderForm.customerEmail}
+                      onChange={(e) => setNewOrderForm({ ...newOrderForm, customerEmail: e.target.value })}
+                    />
                   </div>
                 </div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
+            </div>
+
+            {/* SECTION 2: Delivery Address */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-primary border-b pb-2 uppercase tracking-wider">Delivery Address</h3>
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <Label>Address Line 1 <span className="text-red-500">*</span></Label>
+                  <Input
+                    placeholder="House/Flat no., Street, Area"
+                    value={newOrderForm.addressLine1}
+                    onChange={(e) => setNewOrderForm({ ...newOrderForm, addressLine1: e.target.value })}
+                  />
+                  {formErrors.addressLine1 && <p className="text-xs text-red-500">{formErrors.addressLine1}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label>Address Line 2</Label>
+                  <Input
+                    placeholder="Landmark (optional)"
+                    value={newOrderForm.addressLine2}
+                    onChange={(e) => setNewOrderForm({ ...newOrderForm, addressLine2: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>City <span className="text-red-500">*</span></Label>
+                    <Input
+                      placeholder="City"
+                      value={newOrderForm.city}
+                      onChange={(e) => setNewOrderForm({ ...newOrderForm, city: e.target.value })}
+                    />
+                    {formErrors.city && <p className="text-xs text-red-500">{formErrors.city}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>State <span className="text-red-500">*</span></Label>
+                    <Select value={newOrderForm.state} onValueChange={(v) => setNewOrderForm({ ...newOrderForm, state: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select State" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {indianStates.map(state => (
+                          <SelectItem key={state} value={state}>{state}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formErrors.state && <p className="text-xs text-red-500">{formErrors.state}</p>}
+                  </div>
+                  <div className="space-y-2 col-span-2 md:col-span-1">
+                    <Label>Pincode <span className="text-red-500">*</span></Label>
+                    <Input
+                      placeholder="000000"
+                      maxLength={6}
+                      value={newOrderForm.pincode}
+                      onChange={(e) => setNewOrderForm({ ...newOrderForm, pincode: e.target.value.replace(/\D/g, '') })}
+                    />
+                    {formErrors.pincode && <p className="text-xs text-red-500">{formErrors.pincode}</p>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 3: Order Items */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center border-b pb-2">
+                <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Order Items</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setNewOrderForm(prev => ({
+                    ...prev,
+                    items: [...prev.items, { name: "", qty: 1, unitPrice: 0, total: 0 }]
+                  }))}
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Add Item
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {newOrderForm.items.map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-2 bg-slate-50 p-3 rounded-lg border">
+                    <div className="grid grid-cols-12 gap-3 flex-1">
+                      <div className="col-span-12 sm:col-span-5 space-y-1">
+                        <Label className="text-xs">Item Name <span className="text-red-500">*</span></Label>
+                        <Input
+                          placeholder="Product Name"
+                          value={item.name}
+                          onChange={(e) => {
+                            const newItems = [...newOrderForm.items];
+                            newItems[idx].name = e.target.value;
+                            setNewOrderForm({ ...newOrderForm, items: newItems });
+                          }}
+                        />
+                        {formErrors[`itemName_${idx}`] && <p className="text-[10px] text-red-500 m-0">{formErrors[`itemName_${idx}`]}</p>}
+                      </div>
+                      <div className="col-span-4 sm:col-span-2 space-y-1">
+                        <Label className="text-xs">Qty <span className="text-red-500">*</span></Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={item.qty}
+                          onChange={(e) => {
+                            const newItems = [...newOrderForm.items];
+                            newItems[idx].qty = parseInt(e.target.value) || 0;
+                            newItems[idx].total = newItems[idx].qty * newItems[idx].unitPrice;
+                            setNewOrderForm({ ...newOrderForm, items: newItems });
+                          }}
+                        />
+                      </div>
+                      <div className="col-span-8 sm:col-span-3 space-y-1">
+                        <Label className="text-xs">Price (₹) <span className="text-red-500">*</span></Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={item.unitPrice}
+                          onChange={(e) => {
+                            const newItems = [...newOrderForm.items];
+                            newItems[idx].unitPrice = parseFloat(e.target.value) || 0;
+                            newItems[idx].total = newItems[idx].qty * newItems[idx].unitPrice;
+                            setNewOrderForm({ ...newOrderForm, items: newItems });
+                          }}
+                        />
+                      </div>
+                      <div className="col-span-12 sm:col-span-2 space-y-1">
+                        <Label className="text-xs">Total</Label>
+                        <Input disabled value={`₹${item.total}`} className="bg-slate-100 font-semibold" />
+                      </div>
+                    </div>
+                    {newOrderForm.items.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-500 shrink-0 mt-5"
+                        onClick={() => {
+                          const newItems = newOrderForm.items.filter((_, i) => i !== idx);
+                          setNewOrderForm({ ...newOrderForm, items: newItems });
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end p-3 bg-slate-100 rounded-lg border">
+                <div className="text-right">
+                  <span className="text-sm text-muted-foreground mr-3">Total Order Value:</span>
+                  <span className="text-lg font-bold text-primary">₹{(calculateOrderValue(newOrderForm.items)).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 4: Order Metadata */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-primary border-b pb-2 uppercase tracking-wider">Order Details</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Payment Status <span className="text-red-500">*</span></Label>
+                  <Select value={newOrderForm.paymentStatus} onValueChange={(v) => setNewOrderForm({ ...newOrderForm, paymentStatus: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Paid">Paid</SelectItem>
+                      <SelectItem value="Unpaid">Unpaid</SelectItem>
+                      <SelectItem value="COD Pending">COD Pending</SelectItem>
+                      <SelectItem value="Refunded">Refunded</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Order Status <span className="text-red-500">*</span></Label>
+                  <Select value={newOrderForm.status} onValueChange={(v) => setNewOrderForm({ ...newOrderForm, status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="New">New</SelectItem>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Confirmed">Confirmed</SelectItem>
+                      <SelectItem value="Processing">Processing</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label>Channel <span className="text-red-500">*</span></Label>
+                  <Select value={newOrderForm.channel} onValueChange={(v) => setNewOrderForm({ ...newOrderForm, channel: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Manual">Manual</SelectItem>
+                      <SelectItem value="Shopify">Shopify</SelectItem>
+                      <SelectItem value="WooCommerce">WooCommerce</SelectItem>
+                      <SelectItem value="Marketplace">Marketplace</SelectItem>
+                      <SelectItem value="API">API</SelectItem>
+                      <SelectItem value="Custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label>Notes / Remarks</Label>
+                  <Textarea
+                    placeholder="Any special instructions..."
+                    rows={2}
+                    value={newOrderForm.notes}
+                    onChange={(e) => setNewOrderForm({ ...newOrderForm, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <SheetFooter className="mt-8 pt-4 border-t flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsCreateDrawerOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="gradient-primary" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Order
+              </Button>
+            </SheetFooter>
+          </form>
+        </SheetContent>
+      </Sheet>
     </DashboardLayout>
   );
 };

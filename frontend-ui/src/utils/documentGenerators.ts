@@ -24,7 +24,8 @@ export const maskName = (name: string): string => {
 // ─── Shared Styles ───
 const BRAND_COLOR = '#011E41';
 const ACCENT_COLOR = '#0066FF';
-const FASTFARE_LOGO_SVG = `<svg viewBox="0 0 24 24" width="28" height="28" style="display:inline-block;vertical-align:middle;margin-right:8px;"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" fill="${BRAND_COLOR}"/></svg>`;
+const FASTFARE_LOGO_IMG = `<img src="/logo.png" style="display:inline-block;vertical-align:middle;height:36px;margin-right:8px;" alt="FastFare" />`;
+const FASTFARE_LOGO_ICON_IMG = `<img src="/logo-icon.png" style="display:inline-block;vertical-align:middle;height:24px;margin-right:6px;" alt="FastFare Icon" />`;
 
 // ──────────────────────────────────────────────
 // MANIFEST GENERATOR
@@ -77,7 +78,7 @@ export const generateManifestHTML = (
   <!-- Header -->
   <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid ${BRAND_COLOR};padding-bottom:16px;margin-bottom:16px">
     <div>
-      <div style="font-size:24px;font-weight:bold;color:${BRAND_COLOR}">${FASTFARE_LOGO_SVG}FastFare</div>
+      <div style="font-size:24px;font-weight:bold;color:${BRAND_COLOR}">${FASTFARE_LOGO_IMG}</div>
       <div style="font-size:20px;font-weight:600;color:#333;margin-top:4px">Manifest</div>
       <div style="font-size:12px;color:#888;margin-top:4px">Generated on ${dateStr} at ${timeStr}</div>
     </div>
@@ -228,7 +229,7 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
   <!-- Header -->
   <div class="header">
     <div>
-      <div style="font-size:22px;font-weight:bold;color:${BRAND_COLOR}">${FASTFARE_LOGO_SVG}FastFare</div>
+      <div style="font-size:22px;font-weight:bold;color:${BRAND_COLOR}">${FASTFARE_LOGO_IMG}</div>
       <div style="margin-top:8px;font-size:11px;color:#666">
         FastFare Logistics Pvt Ltd<br>
         Plot No. 123, Sector 44, Gurugram<br>
@@ -457,8 +458,7 @@ th { font-weight: bold; padding: 4px; border-bottom: 1px solid #000; }
 <!-- FastFare Header -->
 <div style="padding:6px 12px;background:${BRAND_COLOR};color:#fff;display:flex;justify-content:space-between;align-items:center">
   <div style="font-size:16px;font-weight:bold">
-    <svg viewBox="0 0 24 24" width="18" height="18" style="display:inline-block;vertical-align:middle;margin-right:6px"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" fill="#fff"/></svg>
-    FastFare
+    ${FASTFARE_LOGO_ICON_IMG} <span style="vertical-align:middle;">FastFare</span>
   </div>
   <div style="font-size:11px">${invoiceDate}</div>
 </div>

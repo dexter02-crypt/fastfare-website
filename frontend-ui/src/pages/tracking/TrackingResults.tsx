@@ -78,10 +78,9 @@ const TrackingResults = () => {
           const t = data.tracking;
 
           // Build timeline from trackingHistory
-          const statusOrder = ['pending', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered'];
+          const statusOrder = ['pending', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered'];
           const statusLabels: Record<string, string> = {
-            pending: 'Order Created',
-            pickup_scheduled: 'Pickup Scheduled',
+            pending: 'Order Confirmed',
             picked_up: 'Picked Up',
             in_transit: 'In Transit',
             out_for_delivery: 'Out for Delivery',
@@ -89,26 +88,55 @@ const TrackingResults = () => {
           };
           const statusDescriptions: Record<string, string> = {
             pending: 'Shipment has been booked and is awaiting pickup',
-            pickup_scheduled: 'Pickup has been scheduled by the carrier',
             picked_up: 'Package picked up from sender',
             in_transit: 'Package is in transit to destination',
             out_for_delivery: 'Package is out for delivery',
             delivered: 'Package delivered successfully',
           };
 
-          const currentIdx = statusOrder.indexOf(t.status);
+          // Determine the logical current step based on the actual status
+          let logicalStatus = 'pending';
+          if (['delivered', 'settled'].includes(t.status)) logicalStatus = 'delivered';
+          else if (['out_for_delivery'].includes(t.status)) logicalStatus = 'out_for_delivery';
+          else if (['in_transit'].includes(t.status)) logicalStatus = 'in_transit';
+          else if (['picked_up', 'picked_up_by_driver'].includes(t.status)) logicalStatus = 'picked_up';
+          else if (['returned', 'rto'].includes(t.status)) logicalStatus = 'returned'; // Special case
+          else if (['cancelled'].includes(t.status)) logicalStatus = 'cancelled'; // Special case
+
+          const currentIdx = statusOrder.indexOf(logicalStatus);
+
           const timeline = statusOrder.map((s, i) => {
-            // Find matching history entry
-            const historyEntry = t.history?.find((h: any) => h.status === s);
+            // Find most recent matching history entry that logically maps to this step
+            const historyEntry = t.history?.find((h: any) => {
+              if (s === 'pending') return ['pending', 'booked', 'payment_received', 'partner_assigned', 'pickup_scheduled'].includes(h.status);
+              if (s === 'picked_up') return ['picked_up', 'picked_up_by_driver'].includes(h.status);
+              if (s === 'in_transit') return ['in_transit'].includes(h.status);
+              if (s === 'out_for_delivery') return ['out_for_delivery'].includes(h.status);
+              if (s === 'delivered') return ['delivered', 'settled'].includes(h.status);
+              return h.status === s;
+            });
+
             return {
               status: statusLabels[s] || s,
               description: historyEntry?.description || statusDescriptions[s] || '',
               time: historyEntry ? formatDateTime(historyEntry.timestamp) : (i <= currentIdx ? 'Completed' : 'Pending'),
-              location: historyEntry?.location || (i <= currentIdx ? t.origin || '—' : '—'),
+              location: historyEntry?.location || (i <= currentIdx ? (i === 0 ? (t.origin || '—') : '—') : '—'),
               completed: i <= currentIdx,
               current: i === currentIdx,
             };
           });
+
+          // Handle special cases
+          if (logicalStatus === 'returned' || logicalStatus === 'cancelled') {
+            timeline.push({
+              status: formatStatus(t.status),
+              description: `Package was ${t.status}`,
+              time: 'Completed',
+              location: '—',
+              completed: true,
+              current: true
+            });
+          }
 
           setTrackingData({
             awb: t.awb || awb || "",

@@ -188,23 +188,9 @@ const NewShipmentBooking = () => {
 
         // Payment Processing Logic
         if (packageData.paymentMode === 'razorpay') {
-          // Calculate total cost (same calculation as ReviewConfirm)
-          const getCarrierPrice = (carrier: string) => {
-            const prices: Record<string, number> = { bluedart: 149, delhivery: 129, fedex: 199, dtdc: 99 };
-            return prices[carrier] || 99;
-          };
-          const getServiceMultiplier = (type: string) => {
-            const multipliers: Record<string, number> = { standard: 1, express: 1.5, "same-day": 2.5 };
-            return multipliers[type] || 1;
-          };
-
-          const basePrice = getCarrierPrice(serviceData.carrier);
-          const serviceMultiplier = getServiceMultiplier(serviceData.serviceType);
-          const shippingCost = Math.round(basePrice * serviceMultiplier);
-          const insuranceCost = serviceData.insurance ? 29 : 0;
-          const fragileCost = serviceData.fragileHandling ? 49 : 0;
-          const signatureCost = serviceData.signatureRequired ? 19 : 0;
-          const totalCost = Math.round((shippingCost + insuranceCost + fragileCost + signatureCost) * 1.18);
+          // Calculate total cost based on the weight-based shippingCost
+          const shippingCost = serviceData.shippingCost || 0;
+          const totalCost = Math.round(shippingCost * 1.18);
 
           // Get Razorpay Order
           const orderData = await paymentApi.createOrder(totalCost);
@@ -273,7 +259,8 @@ const NewShipmentBooking = () => {
       case 2:
         return deliveryData.name && deliveryData.phone && deliveryData.address && deliveryData.pincode;
       case 3:
-        return packageData.contentType && packageData.packages.length > 0;
+        const validCod = packageData.paymentMode === 'cod' ? (packageData.codAmount > 0 && packageData.codAmount <= 100000) : true;
+        return packageData.contentType && packageData.packages.length > 0 && validCod;
       case 4:
         return termsAccepted && serviceData.carrier;
       default:
@@ -301,7 +288,12 @@ const NewShipmentBooking = () => {
         );
       case 3:
         return <PackageForm data={packageData} onChange={setPackageData} />;
-      case 4:
+      case 4: {
+        const getVolumetricWeight = (l: number, w: number, h: number) => (l * w * h) / 5000;
+        const totalActualWeight = packageData.packages.reduce((sum, p) => sum + p.weight * p.quantity, 0);
+        const totalVolumetricWeight = packageData.packages.reduce((sum, p) => sum + getVolumetricWeight(p.length, p.width, p.height) * p.quantity, 0);
+        const chargeableWeight = Math.max(totalActualWeight, totalVolumetricWeight);
+
         return (
           <>
             <ServiceSelection
@@ -309,6 +301,7 @@ const NewShipmentBooking = () => {
               onChange={setServiceData}
               pickupPincode={pickupData.pincode}
               deliveryPincode={deliveryData.pincode}
+              chargeableWeight={chargeableWeight}
             />
             <div className="mt-8">
               <ReviewConfirm
@@ -326,6 +319,7 @@ const NewShipmentBooking = () => {
             </div>
           </>
         );
+      }
       default:
         return null;
     }

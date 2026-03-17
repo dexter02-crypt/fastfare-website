@@ -197,7 +197,7 @@ const BillingDashboard = () => {
               <p className="text-2xl sm:text-4xl font-bold tracking-tight">
                 {billingData?.creditLimit !== null && billingData?.creditLimit !== undefined
                   ? '₹' + Number(billingData.creditLimit).toLocaleString('en-IN')
-                  : <span className="text-muted-foreground text-[1rem] sm:text-lg">N/A</span>
+                  : <span className="text-muted-foreground text-[1rem] sm:text-lg">Not Activated</span>
                 }
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-1">Credit Limit</p>

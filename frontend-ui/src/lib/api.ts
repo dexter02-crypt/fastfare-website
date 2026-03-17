@@ -335,6 +335,18 @@ export const settlementApi = {
     deleteAccount: async (id: string, reason: string) => apiRequest(`/admin/partners/${id}`, { method: 'DELETE', body: JSON.stringify({ reason }) }),
 };
 
+// ─── Returns & RTO API ───
+export const returnsApi = {
+    getRTOStats: async () => apiRequest('/returns/rto'),
+    initiateReversePickup: async (data: any) => apiRequest('/returns/reverse-pickup', { method: 'POST', body: JSON.stringify(data) })
+};
+
+// ─── Weight Disputes API ───
+export const weightDisputesApi = {
+    getDisputes: async () => apiRequest('/weight-disputes'),
+    raiseDispute: async (id: string, dispute_reason: string) => apiRequest(`/weight-disputes/${id}/dispute`, { method: 'POST', body: JSON.stringify({ dispute_reason }) })
+};
+
 export default {
     auth: authApi,
     shipments: shipmentsApi,
@@ -345,5 +357,7 @@ export default {
     payment: paymentApi,
     wms: wmsApi,
     settlement: settlementApi,
+    returns: returnsApi,
+    weightDisputes: weightDisputesApi,
 };
 

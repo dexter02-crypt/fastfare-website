@@ -348,7 +348,7 @@ const Dashboard = () => {
             {/* Quick Actions */}
             <div className="mb-8">
               <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-              <div className="grid sm:grid-cols-3 gap-4">
+              <div className="grid sm:grid-cols-4 gap-4">
                 <Button className="h-auto py-4 gradient-primary text-primary-foreground hover:opacity-90 gap-2">
                   <Plus size={20} />
                   New Shipment
@@ -361,6 +361,12 @@ const Dashboard = () => {
                   <Search size={20} />
                   Track Order
                 </Button>
+                <Link to="/my-reports?tab=cod" className="contents">
+                  <Button variant="outline" className="h-auto py-4 gap-2 w-full text-blue-700 border-blue-200 bg-blue-50/50 hover:bg-blue-100">
+                    <Wallet size={20} />
+                    COD Remittance Status
+                  </Button>
+                </Link>
               </div>
             </div>
 

@@ -10,6 +10,8 @@ import authRoutes from './routes/auth.js';
 import shipmentRoutes from './routes/shipments.js';
 import trackingRoutes from './routes/tracking.js';
 import userRoutes from './routes/users.js';
+import returnsRoutes from './routes/returns.js';
+import weightDisputesRoutes from './routes/weight-disputes.js';
 import gstinRoutes from './routes/gstin.js';
 import paymentRoutes from './routes/payment.js';
 import kycRoutes from './routes/kyc.js';
@@ -71,8 +73,8 @@ import userReportsRoutes from './routes/user-reports.js';
 import partnerPricingRoutes from './routes/partner-pricing.js';
 import ratesRoutes from './routes/rates.js';
 
-
-
+// User Orders Route (3-dot action menu)
+import ordersRoutes from './routes/orders.js';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -125,6 +127,8 @@ app.use('/downloads', express.static('public/downloads'));
 // ─── Existing Website Routes ───
 app.use('/api/auth', authRoutes);
 app.use('/api/shipments', shipmentRoutes);
+app.use('/api/returns', returnsRoutes);
+app.use('/api/weight-disputes', weightDisputesRoutes);
 app.use('/api/tracking', trackingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/gstin', gstinRoutes);
@@ -134,6 +138,7 @@ app.use('/api/fleet', fleetRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/user/reports', userReportsRoutes);
+app.use('/api/orders', ordersRoutes);
 
 // ─── WMS Routes (Warehouse Management System) ───
 app.use('/api/wms/vehicles', wmsVehicleRoutes);

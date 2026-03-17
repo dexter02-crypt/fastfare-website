@@ -130,6 +130,19 @@ const shipmentSchema = new mongoose.Schema({
     },
     settlementDate: Date,
     rtoCharges: { type: Number, default: 0 },
+    rto_reason: {
+        type: String,
+        enum: ['Customer Refused', 'Not Available', 'Wrong Address', 'Other', null],
+        default: null
+    },
+    delivery_attempts: { type: Number, default: 0 },
+    rto_triggered_at: { type: Date, default: null },
+    debit_note_number: { type: String, default: null },
+    return_status: {
+        type: String,
+        enum: ['Returning', 'In Transit', 'Delivered Back', null],
+        default: null
+    },
     createdAt: {
         type: Date,
         default: Date.now

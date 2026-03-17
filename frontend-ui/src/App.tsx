@@ -84,6 +84,8 @@ import PartnerPricingPage from "./pages/partner/PartnerPricingPage";
 import PartnerOrders from "./pages/orders/PartnerOrders";
 import PartnerActivity from "./pages/orders/PartnerActivity";
 import UserOrders from "./pages/orders/UserOrders";
+import ReturnsRto from "./pages/orders/ReturnsRto";
+import WeightDisputes from "./pages/orders/WeightDisputes";
 
 // Driver App (Standalone)
 import DriverLogin from "./pages/driver-app/DriverLogin";
@@ -314,6 +316,8 @@ const App = () => (
               <Route path="/partner/team" element={<PartnerRoute><PartnerTeamManagement /></PartnerRoute>} />
               <Route path="/partner/pricing" element={<PartnerRoute><PartnerPricingPage /></PartnerRoute>} />
               <Route path="/my-orders" element={<ProtectedRoute><UserOrders /></ProtectedRoute>} />
+              <Route path="/returns-rto" element={<ProtectedRoute><ReturnsRto /></ProtectedRoute>} />
+              <Route path="/weight-disputes" element={<ProtectedRoute><WeightDisputes /></ProtectedRoute>} />
 
               {/* Analytics */}
               <Route path="/analytics" element={<ProtectedRoute><AnalyticsDashboard /></ProtectedRoute>} />

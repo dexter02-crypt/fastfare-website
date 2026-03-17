@@ -23,7 +23,8 @@ import {
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useWallet } from "@/contexts/WalletContext";
-import logo from "@/assets/logo.png";
+import logo from "/logo.png";
+import logoIcon from "/logo-icon.png";
 import { authApi } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import {
@@ -112,33 +113,41 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between gap-4">
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Mobile Menu Button - for authenticated dashboard sidebar */}
-          {isAuthenticated && onMobileMenuToggle && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              onClick={toggleMobileMenu}
-              title="Toggle Menu"
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-          )}
-          {/* Back Button — hidden on dashboard (root page) */}
+      <div className="flex h-16 w-full items-center justify-between gap-4" style={{ paddingLeft: 0, paddingRight: '1rem' }}>
+        <div className="flex items-center gap-2 shrink-0" style={{ paddingLeft: '16px' }}>
+          {/* Back Button — hidden on dashboard (root page), explicitly positioned first and flush left */}
           {location.pathname !== "/" && location.pathname !== "/dashboard" && (
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate(-1)}
               title="Go Back"
+              className="mr-2 h-8 w-8 rounded-md shrink-0 flex items-center justify-center p-0"
+              style={{ marginLeft: 0, position: 'static' }}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-2">
-            <img src={logo} alt="FastFare" className="h-8 w-auto" />
+
+          {/* Mobile Menu Button - for authenticated dashboard sidebar */}
+          {isAuthenticated && onMobileMenuToggle && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden shrink-0"
+              onClick={toggleMobileMenu}
+              title="Toggle Menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          )}
+
+          <Link
+            to={isAuthenticated ? "/dashboard" : "/"}
+            className="flex items-center shrink-0"
+            style={{ position: 'static', marginLeft: 0, marginRight: '8px' }}
+          >
+            <img src={logo} alt="FastFare" className="h-10 w-auto object-contain" />
           </Link>
         </div>
 
@@ -182,23 +191,26 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                 <span className="hidden lg:inline">Need Help</span>
               </div>
 
-              {/* All Products */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="hidden md:flex">
-                    <Grid className="h-5 w-5 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>All Products</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/shipments')}>Shipments</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/analytics')}>Analytics</DropdownMenuItem>
-                  {user?.role !== 'user' && (
-                    <DropdownMenuItem onClick={() => navigate('/fleet-tracking')}>Fleet</DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* APPS_SECTION_START — Hidden for Partner role. To restore: remove the role condition below */}
+              {user?.role !== 'partner' && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="hidden md:flex">
+                      <Grid className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>All Products</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/shipments')}>Shipments</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/analytics')}>Analytics</DropdownMenuItem>
+                    {user?.role !== 'user' && (
+                      <DropdownMenuItem onClick={() => navigate('/fleet-tracking')}>Fleet</DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {/* APPS_SECTION_END */}
 
               {/* Notifications */}
               <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
