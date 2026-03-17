@@ -9,15 +9,16 @@ import DashboardLayout from "@/components/DashboardLayout";
 import Footer from "@/components/Footer";
 import GettingStarted from "@/components/dashboard/GettingStarted";
 import DashboardSummary from "@/components/dashboard/DashboardSummary";
-import ActionsNeeded from "@/components/dashboard/ActionsNeeded";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Package, TrendingUp, Clock, CheckCircle, AlertTriangle, Truck,
   Plus, Search, Bell, ArrowUpRight, ArrowDownRight, ArrowRight, BarChart3,
-  Calendar, MapPin, Users, Wallet, Shield, Mail, Undo2, Loader2
+  Calendar, MapPin, Users, Wallet, Shield, Mail, Undo2, Loader2,
+  ShoppingBag
 } from "lucide-react";
 
 import { authApi, alertsApi, shipmentsApi } from "@/lib/api";
+import { API_BASE_URL } from "@/config";
 import { format, isToday, isYesterday, isThisMonth, parseISO, isAfter } from "date-fns";
 
 const OrganizationDashboard = () => {
@@ -36,6 +37,10 @@ const OrganizationDashboard = () => {
   // Shipments state
   const [shipments, setShipments] = useState<any[]>([]);
   const [shipmentsLoading, setShipmentsLoading] = useState(true);
+
+  // Orders state (from My Orders)
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
 
   const user = authApi.getCurrentUser();
   const isAdmin = user?.role === 'admin';
@@ -58,6 +63,28 @@ const OrganizationDashboard = () => {
     fetchShipments();
   }, []);
 
+  // Fetch real orders
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setOrdersLoading(true);
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/api/orders/my-orders`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setOrders(data.orders || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch orders:', err);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
+
   // Fetch dynamic alerts based on actual shipment data + system alerts
   useEffect(() => {
     const fetchAlerts = async () => {
@@ -66,9 +93,9 @@ const OrganizationDashboard = () => {
         const data = await alertsApi.getAlerts();
         let fetchedAlerts = data.success ? data.alerts || [] : [];
 
-        // Generate dynamic alerts from shipments
-        const rtoCount = shipments.filter(s => ['Returned', 'RTO'].includes(s.status)).length;
-        const pendingCount = shipments.filter(s => ['Pending', 'Pending Acceptance', 'Partner Assigned'].includes(s.status)).length;
+        // Generate dynamic alerts from shipments (use lowercase statuses)
+        const rtoCount = shipments.filter(s => ['returned', 'rto'].includes((s.status || '').toLowerCase())).length;
+        const pendingCount = shipments.filter(s => ['pending', 'pending_acceptance', 'partner_assigned', 'payment_received', 'booked', 'pending_pickup'].includes((s.status || '').toLowerCase())).length;
 
         let dynamicAlerts = [...fetchedAlerts];
 
@@ -115,20 +142,26 @@ const OrganizationDashboard = () => {
   }, [kycCompleted, walletRecharged, firstOrderPlaced]);
 
   // Derived calculations for Summary Cards (Orders + Revenue)
+  // Combines both Orders (from My Orders) and Shipments for complete data
   const summaryData = useMemo(() => {
-    const today = shipments.filter(s => isToday(parseISO(s.createdAt)));
-    const yesterday = shipments.filter(s => isYesterday(parseISO(s.createdAt)));
+    // Orders from the orders collection
+    const ordersCreatedToday = orders.filter(o => isToday(parseISO(o.createdAt)));
+    const ordersCreatedYesterday = orders.filter(o => isYesterday(parseISO(o.createdAt)));
+    // Shipments created today/yesterday
+    const shipmentsToday = shipments.filter(s => isToday(parseISO(s.createdAt)));
+    const shipmentsYesterday = shipments.filter(s => isYesterday(parseISO(s.createdAt)));
 
-    const ordersToday = today.length;
-    const ordersYesterday = yesterday.length;
+    const totalToday = ordersCreatedToday.length + shipmentsToday.length;
+    const totalYesterday = ordersCreatedYesterday.length + shipmentsYesterday.length;
 
-    const getRevenue = (orders: any[]) => orders.reduce((sum, order) => {
-      // Default to declaredValue, fallback to codAmount if available
-      return sum + (Number(order.packageDetails?.declaredValue) || Number(order.paymentDetails?.codAmount) || 0);
-    }, 0);
+    // Revenue: sum orderValue from orders + totalValue/shippingCost from shipments
+    const orderRevenueToday = ordersCreatedToday.reduce((sum, o) => sum + (Number(o.orderValue) || 0), 0);
+    const orderRevenueYesterday = ordersCreatedYesterday.reduce((sum, o) => sum + (Number(o.orderValue) || 0), 0);
+    const shipmentRevenueToday = shipmentsToday.reduce((sum, s) => sum + (Number(s.totalValue) || Number(s.shippingCost) || Number(s.codAmount) || 0), 0);
+    const shipmentRevenueYesterday = shipmentsYesterday.reduce((sum, s) => sum + (Number(s.totalValue) || Number(s.shippingCost) || Number(s.codAmount) || 0), 0);
 
-    const revenueToday = getRevenue(today);
-    const revenueYesterday = getRevenue(yesterday);
+    const revenueToday = orderRevenueToday + shipmentRevenueToday;
+    const revenueYesterday = orderRevenueYesterday + shipmentRevenueYesterday;
 
     const calcChange = (current: number, previous: number) => {
       if (previous === 0) return current > 0 ? 100 : 0;
@@ -136,33 +169,55 @@ const OrganizationDashboard = () => {
     };
 
     return {
-      ordersToday,
-      ordersYesterday,
-      ordersChange: calcChange(ordersToday, ordersYesterday),
+      ordersToday: totalToday,
+      ordersYesterday: totalYesterday,
+      ordersChange: calcChange(totalToday, totalYesterday),
       revenueToday,
       revenueYesterday,
       revenueChange: calcChange(revenueToday, revenueYesterday),
     };
-  }, [shipments]);
+  }, [shipments, orders]);
 
   // Derived calculations for Metric Cards (Total, Transit, Delivered, Pending)
   const displayStats = useMemo(() => {
     const totalShipments = shipments.length;
     let inTransit = 0, deliveredToday = 0, pendingPickup = 0;
 
-    shipments.forEach(s => {
-      const status = s.status;
-      if (status === "In Transit") inTransit++;
-      if (status === "Delivered" && isToday(parseISO(s.statusUpdates?.[s.statusUpdates.length - 1]?.date || s.createdAt))) deliveredToday++;
-      if (['Pending', 'Pending Acceptance', 'Partner Assigned'].includes(status)) pendingPickup++;
+    // Month-over-month for trend
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const thisMonthShips = shipments.filter(s => new Date(s.createdAt) >= thisMonthStart);
+    const lastMonthShips = shipments.filter(s => {
+      const d = new Date(s.createdAt);
+      return d >= lastMonthStart && d < thisMonthStart;
     });
 
-    // Dummy trends for now, could be calculated similarly to ordersChange
+    shipments.forEach(s => {
+      const status = (s.status || '').toLowerCase();
+      if (['in_transit', 'out_for_delivery', 'pickup'].includes(status)) inTransit++;
+      if (status === 'delivered') {
+        // Check if delivered today using trackingHistory or actualDelivery
+        const deliveryDate = s.actualDelivery || s.updatedAt || s.createdAt;
+        if (deliveryDate && isToday(new Date(deliveryDate))) deliveredToday++;
+      }
+      if (['pending', 'pending_acceptance', 'partner_assigned', 'payment_received', 'booked', 'pending_pickup'].includes(status)) pendingPickup++;
+    });
+
+    const calcTrend = (current: number, prev: number) => {
+      if (prev === 0) return current > 0 ? { change: '+100%', trend: 'up' } : { change: '0%', trend: 'neutral' };
+      const pct = Math.round(((current - prev) / prev) * 100);
+      return { change: `${pct > 0 ? '+' : ''}${pct}%`, trend: pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral' };
+    };
+
+    const totalTrend = calcTrend(thisMonthShips.length, lastMonthShips.length);
+
+    const loading = shipmentsLoading;
     return [
-      { label: "Total Shipments", value: shipmentsLoading ? "-" : totalShipments.toString(), change: "0%", trend: "neutral", icon: Package },
-      { label: "In Transit", value: shipmentsLoading ? "-" : inTransit.toString(), change: "0%", trend: "neutral", icon: Truck },
-      { label: "Delivered Today", value: shipmentsLoading ? "-" : deliveredToday.toString(), change: "0%", trend: "neutral", icon: CheckCircle },
-      { label: "Pending Pickup", value: shipmentsLoading ? "-" : pendingPickup.toString(), change: "0%", trend: "neutral", icon: Clock },
+      { label: "Total Shipments", value: loading ? "-" : totalShipments.toString(), change: totalTrend.change, trend: totalTrend.trend, icon: Package },
+      { label: "In Transit", value: loading ? "-" : inTransit.toString(), change: "0%", trend: "neutral", icon: Truck },
+      { label: "Delivered Today", value: loading ? "-" : deliveredToday.toString(), change: "0%", trend: "neutral", icon: CheckCircle },
+      { label: "Pending Pickup", value: loading ? "-" : pendingPickup.toString(), change: "0%", trend: "neutral", icon: Clock },
     ];
   }, [shipments, shipmentsLoading, dateRange]);
 
@@ -176,20 +231,20 @@ const OrganizationDashboard = () => {
     let rtoCount = 0;
 
     thisMonthShipments.forEach(s => {
-      if (s.status === "Delivered") {
+      const status = (s.status || '').toLowerCase();
+      if (status === 'delivered') {
         deliveredCount++;
-        // Rough estimate of on-time: delivered date <= estDelivery date
-        const deliveryDateUpdate = s.statusUpdates?.find((su: any) => su.status === "Delivered");
-        if (s.estDelivery && deliveryDateUpdate) {
-          if (!isAfter(parseISO(deliveryDateUpdate.date), parseISO(s.estDelivery))) {
+        // Rough estimate of on-time: actual delivery date <= estimated delivery date
+        if (s.estimatedDelivery && s.actualDelivery) {
+          if (!isAfter(new Date(s.actualDelivery), new Date(s.estimatedDelivery))) {
             onTimeCount++;
           }
         } else {
-          // Default to on-time if dates are muddy but it's delivered
+          // Default to on-time if dates are unavailable
           onTimeCount++;
         }
       }
-      if (['Returned', 'RTO'].includes(s.status)) {
+      if (['returned', 'rto'].includes(status)) {
         rtoCount++;
       }
     });
@@ -202,22 +257,52 @@ const OrganizationDashboard = () => {
     };
   }, [shipments]);
 
-  // Recent Shipments (top 5)
+  // Recent Shipments (top 5) — uses correct Shipment model field names
   const recentTopShipments = useMemo(() => {
     return [...shipments]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5)
       .map(s => ({
-        id: s.awbNumber || s._id.substring(0, 8).toUpperCase(),
+        id: s.awb || s._id?.substring(0, 8).toUpperCase(),
         actualId: s._id,
-        status: s.status,
+        status: s.status || 'payment_received',
         date: format(parseISO(s.createdAt), 'dd MMM yyyy'),
-        origin: s.pickupDetails?.address?.city || 'Unknown',
-        destination: s.deliveryDetails?.address?.city || 'Unknown',
-        amount: s.paymentDetails?.codAmount || s.packageDetails?.declaredValue || 0,
-        paymentMode: s.paymentDetails?.mode || 'PREPAID',
+        origin: s.pickup?.city || s.pickup?.state || s.pickup?.pincode || '—',
+        destination: s.delivery?.city || s.delivery?.state || s.delivery?.pincode || '—',
+        amount: Number(s.shippingCost) || Number(s.totalValue) || Number(s.codAmount) || 0,
+        paymentMode: (s.paymentMode || 'prepaid').toUpperCase(),
       }));
   }, [shipments]);
+
+  // Recent Orders (top 5) — from Orders collection
+  const recentTopOrders = useMemo(() => {
+    return [...orders]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5);
+  }, [orders]);
+
+  // Actions needing attention (dynamic counts)
+  const actionItems = useMemo(() => {
+    const items: { label: string; count: number; href: string; color: string }[] = [];
+
+    // Orders not yet shipped
+    const unshippedOrders = orders.filter(o => ['New', 'Pending'].includes(o.orderStatus)).length;
+    if (unshippedOrders > 0) items.push({ label: `${unshippedOrders} order(s) not yet shipped`, count: unshippedOrders, href: '/my-orders', color: 'text-blue-600' });
+
+    // Pending pickups
+    const pendingPickups = shipments.filter(s => ['pending', 'payment_received', 'booked', 'pending_pickup'].includes((s.status || '').toLowerCase())).length;
+    if (pendingPickups > 0) items.push({ label: `${pendingPickups} shipment(s) need pickup scheduling`, count: pendingPickups, href: '/shipments', color: 'text-orange-600' });
+
+    // RTO / returns
+    const rtoCount = shipments.filter(s => ['returned', 'rto'].includes((s.status || '').toLowerCase())).length;
+    if (rtoCount > 0) items.push({ label: `${rtoCount} returned shipment(s) need attention`, count: rtoCount, href: '/shipments', color: 'text-red-600' });
+
+    // COD pending
+    const codPending = shipments.filter(s => (s.paymentMode || '').toLowerCase() === 'cod' && (s.status || '').toLowerCase() === 'delivered').length;
+    if (codPending > 0) items.push({ label: `${codPending} COD remittance(s) pending`, count: codPending, href: '/my-reports?tab=cod', color: 'text-amber-600' });
+
+    return items;
+  }, [shipments, orders]);
 
   const filteredQuickActions = [
     { label: "New Shipment", icon: Plus, href: "/shipment/new", color: "bg-primary" },
@@ -306,7 +391,7 @@ const OrganizationDashboard = () => {
         </div>
 
         {/* Getting Started Section */}
-        {showOnboarding && shipments.length === 0 && !shipmentsLoading && (
+        {showOnboarding && shipments.length === 0 && orders.length === 0 && !shipmentsLoading && !ordersLoading && (
           <GettingStarted
             showWelcomeOffer={true}
             kycCompleted={kycCompleted}
@@ -318,7 +403,7 @@ const OrganizationDashboard = () => {
         {/* Summary Section */}
         <div>
           <h2 className="text-lg font-semibold mb-4">Summary</h2>
-          {shipmentsLoading ? (
+          {shipmentsLoading && ordersLoading ? (
             <div className="grid md:grid-cols-2 gap-4">
               <div className="h-[120px] bg-muted animate-pulse rounded-xl"></div>
               <div className="h-[120px] bg-muted animate-pulse rounded-xl"></div>
@@ -415,17 +500,24 @@ const OrganizationDashboard = () => {
                         </div>
                         <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0">
                           <div className="text-left sm:text-right">
-                            <p className="text-sm font-semibold">₹{shipment.amount.toLocaleString('en-IN')}</p>
-                            <p className="text-xs text-muted-foreground">{shipment.paymentMode}</p>
+                            <p className="text-sm font-semibold">₹{Number(shipment.amount).toLocaleString('en-IN')}</p>
+                            <Badge variant="outline" className={shipment.paymentMode === 'COD' ? 'border-orange-300 text-orange-700 bg-orange-50' : 'border-green-300 text-green-700 bg-green-50'}>
+                              {shipment.paymentMode}
+                            </Badge>
                           </div>
                           <div className="text-right">
                             <Badge
-                              variant={
-                                shipment.status === "Delivered" ? "default" :
-                                  shipment.status === "In Transit" ? "secondary" : "outline"
-                              }
+                              variant="secondary"
+                              className={(() => {
+                                const st = (shipment.status || '').toLowerCase();
+                                if (st === 'delivered') return 'bg-green-100 text-green-800';
+                                if (['in_transit', 'out_for_delivery', 'pickup'].includes(st)) return 'bg-orange-100 text-orange-800';
+                                if (['returned', 'rto'].includes(st)) return 'bg-red-100 text-red-800';
+                                if (['partner_assigned', 'driver_assigned'].includes(st)) return 'bg-blue-100 text-blue-800';
+                                return 'bg-slate-100 text-slate-800';
+                              })()}
                             >
-                              {shipment.status}
+                              {(shipment.status || 'pending').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                             </Badge>
                             <p className="text-xs text-muted-foreground mt-1">{shipment.date}</p>
                           </div>
@@ -560,7 +652,39 @@ const OrganizationDashboard = () => {
         </Card>
 
         {/* Actions Needed Section */}
-        <ActionsNeeded hasActions={false} />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Actions Needing Your Attention Today</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(shipmentsLoading && ordersLoading) ? (
+              <div className="space-y-3">
+                {[1, 2].map(i => <div key={i} className="h-12 bg-muted animate-pulse rounded-lg"></div>)}
+              </div>
+            ) : actionItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="h-24 w-24 bg-muted/50 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle className="h-10 w-10 text-green-500" />
+                </div>
+                <p className="text-muted-foreground">All caught up for today! No actions needed right now.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {actionItems.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className={`h-5 w-5 ${item.color}`} />
+                      <span className="text-sm font-medium">{item.label}</span>
+                    </div>
+                    <Link to={item.href}>
+                      <Button variant="ghost" size="sm" className="text-xs">View →</Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Footer />
       </div>

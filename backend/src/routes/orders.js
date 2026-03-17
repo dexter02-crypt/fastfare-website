@@ -1,11 +1,83 @@
 import express from 'express';
 import Order from '../models/Order.js';
+import Shipment from '../models/Shipment.js';
+import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Generate a random Order ID (e.g. ORD-FF-8A91B)
 const generateOrderId = () => `ORD-FF-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+// @route   GET /api/orders/stats/dashboard
+// @desc    Aggregated stats for the Dashboard page (orders + shipments + wallet)
+// @access  Private
+router.get('/stats/dashboard', protect, async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        // Run all queries in parallel for speed
+        const [
+            totalOrders,
+            deliveredOrders,
+            newOrders,
+            processingOrders,
+            cancelledOrders,
+            inTransitShipments,
+            rtoShipments,
+            deliveredShipments,
+            codAgg,
+            revenueAgg,
+            recentOrders,
+            user
+        ] = await Promise.all([
+            Order.countDocuments({ userId }),
+            Order.countDocuments({ userId, orderStatus: 'Delivered' }),
+            Order.countDocuments({ userId, orderStatus: 'New' }),
+            Order.countDocuments({ userId, orderStatus: { $in: ['Processing', 'Confirmed'] } }),
+            Order.countDocuments({ userId, orderStatus: 'Cancelled' }),
+            Shipment.countDocuments({ user: userId, status: { $in: ['in_transit', 'partner_assigned', 'picked_up'] } }),
+            Shipment.countDocuments({ user: userId, status: 'returned' }),
+            Shipment.countDocuments({ user: userId, status: 'delivered' }),
+            // COD pending aggregation
+            Shipment.aggregate([
+                { $match: { user: userId, paymentMode: 'COD', codStatus: { $ne: 'remitted' } } },
+                { $group: { _id: null, total: { $sum: '$codAmount' } } }
+            ]),
+            // Total order revenue
+            Order.aggregate([
+                { $match: { userId } },
+                { $group: { _id: null, total: { $sum: '$orderValue' } } }
+            ]),
+            // Recent 5 orders
+            Order.find({ userId }).sort({ createdAt: -1 }).limit(5).lean(),
+            // Wallet balance
+            User.findById(userId).select('walletBalance businessName').lean()
+        ]);
+
+        res.json({
+            success: true,
+            stats: {
+                totalOrders,
+                deliveredOrders,
+                newOrders,
+                processingOrders,
+                cancelledOrders,
+                inTransitShipments,
+                rtoShipments,
+                deliveredShipments,
+                codPendingAmount: codAgg[0]?.total || 0,
+                totalRevenue: revenueAgg[0]?.total || 0,
+                walletBalance: user?.walletBalance || 0,
+                businessName: user?.businessName || 'User',
+                recentOrders
+            }
+        });
+    } catch (error) {
+        console.error('Dashboard stats error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load dashboard stats' });
+    }
+});
 
 // @route   GET /api/orders/my-orders
 // @desc    Get all orders for the logged-in user
