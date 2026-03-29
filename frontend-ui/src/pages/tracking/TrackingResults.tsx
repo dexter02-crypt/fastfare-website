@@ -19,6 +19,15 @@ import {
   Loader2,
   Copy,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import Logo from "@/components/Logo";
 import { API_BASE_URL } from "@/config";
@@ -55,6 +64,7 @@ const TrackingResults = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isLiveMapModalOpen, setLiveMapModalOpen] = useState(false);
   const isLoggedIn = authApi.isAuthenticated();
 
   const copyToClipboard = (text: string, field: string) => {
@@ -510,7 +520,7 @@ const TrackingResults = () => {
             <Button
               variant="outline"
               className="flex-1"
-              onClick={() => navigate(`/tracking/${awb}/live`)}
+              onClick={() => setLiveMapModalOpen(true)}
             >
               <Map className="h-4 w-4 mr-2" /> View Live Map
             </Button>
@@ -526,6 +536,28 @@ const TrackingResults = () => {
           </div>
         </div>
       </main>
+
+      {/* Live Map Coming Soon Modal */}
+      <Dialog open={isLiveMapModalOpen} onOpenChange={setLiveMapModalOpen}>
+        <DialogContent className="sm:max-w-md text-center">
+          <DialogHeader>
+            <div className="mx-auto bg-primary/10 p-4 rounded-full mb-4">
+              <MapPin className="h-8 w-8 text-primary" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-center">Live Map — Coming Soon</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-muted-foreground">
+              Real-time shipment tracking on map is currently under development. We'll notify you when it's live.
+            </p>
+          </div>
+          <DialogFooter className="sm:justify-center">
+            <Button type="button" onClick={() => setLiveMapModalOpen(false)}>
+              Got it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="border-t py-8 mt-16">

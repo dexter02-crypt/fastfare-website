@@ -238,7 +238,7 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, customer: Cust
   * { box-sizing: border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; color: #333; background: #fff; font-size: 13px; }
   .container { max-width: 800px; margin: 0 auto; border: 1px solid #ddd; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 24px; border-bottom: 2px solid ${BRAND_COLOR}; }
+  .header { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px 12px 16px; border-bottom: 2px solid ${BRAND_COLOR}; min-height: 100px; }
   .details-grid { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #ddd; }
   .details-grid > div { padding: 16px 24px; }
   .details-grid > div:first-child { border-right: 1px solid #ddd; }
@@ -257,8 +257,10 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, customer: Cust
   <!-- Header -->
   <div class="header">
     <div>
-      <div style="font-size:22px;font-weight:bold;color:${BRAND_COLOR}">${FASTFARE_LOGO_IMG}</div>
-      <div style="margin-top:8px;font-size:11px;color:#666">
+      <div style="margin-bottom:8px">
+        <img src="/logo.png" style="min-width: 160px; max-width: 200px; height: auto; object-fit: contain; display: block;" alt="FastFare" />
+      </div>
+      <div style="font-size:11px;color:#666">
         ${co.companyName}<br>
         ${co.companyAddress}<br>
         ${co.companyCity}, ${co.companyState} — ${co.companyPIN}, India<br>

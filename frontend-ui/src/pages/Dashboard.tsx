@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { API_BASE_URL } from "@/config";
+import { FEATURES } from "@/config/features";
 import { formatDate } from "@/utils/dateFormat";
 import { useWallet } from "@/contexts/WalletContext";
 
@@ -76,7 +77,7 @@ const Dashboard = () => {
 
     // Check KYC status
     const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!user.gstin || user.kyc?.status === "pending") {
+    if (FEATURES.KYC_ENABLED && (!user.gstin || user.kyc?.status === "pending")) {
       setShowKycReminder(true);
     }
   }, []);

@@ -114,8 +114,8 @@ const InvoicesPage = () => {
             const opt = {
                 margin: 10,
                 filename: `Invoice_${inv.id}.pdf`,
-                image: { type: 'jpeg' as const, quality: 0.98 },
-                html2canvas: { scale: 2 },
+                image: { type: 'jpeg' as const, quality: 1 },
+                html2canvas: { scale: 4, useCORS: true },
                 jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
             };
 

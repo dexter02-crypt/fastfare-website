@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/config";
+import { FEATURES } from "@/config/features";
 import { BackButton } from "@/components/BackButton";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 
@@ -345,14 +346,18 @@ const SettingsPage = () => {
               <Shield className="h-4 w-4" />
               Security
             </TabsTrigger>
-            <TabsTrigger value="api" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
-              <Key className="h-4 w-4" />
-              API
-            </TabsTrigger>
-            <TabsTrigger value="mobile-apps" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
-              <Smartphone className="h-4 w-4" />
-              Mobile Apps
-            </TabsTrigger>
+            {FEATURES.APPS_SECTION_ENABLED && (
+              <>
+                <TabsTrigger value="api" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+                  <Key className="h-4 w-4" />
+                  API
+                </TabsTrigger>
+                <TabsTrigger value="mobile-apps" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+                  <Smartphone className="h-4 w-4" />
+                  Mobile Apps
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <TabsContent value="general">
@@ -702,7 +707,8 @@ const SettingsPage = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="api">
+          {FEATURES.APPS_SECTION_ENABLED && (
+            <TabsContent value="api">
             <Card>
               <CardHeader>
                 <CardTitle>API Keys</CardTitle>
@@ -743,10 +749,12 @@ const SettingsPage = () => {
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
+            </TabsContent>
+          )}
 
           {/* Mobile Apps Tab */}
-          <TabsContent value="mobile-apps">
+          {FEATURES.APPS_SECTION_ENABLED && (
+            <TabsContent value="mobile-apps">
             <div className="space-y-6">
               <Card>
                 <CardHeader>
@@ -836,7 +844,8 @@ const SettingsPage = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 

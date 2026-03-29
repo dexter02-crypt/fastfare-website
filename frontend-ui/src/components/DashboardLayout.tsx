@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { FEATURES } from "@/config/features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,7 +32,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const user = authApi.getCurrentUser();
 
     // Check if KYC/GSTIN is incomplete
-    const needsKyc = user && (!user.gstin || user.kyc?.status === 'pending');
+    const needsKyc = FEATURES.KYC_ENABLED && user && (!user.gstin || user.kyc?.status === 'pending');
 
     // Sidebar expands on hover, collapses when mouse leaves
     const effectiveCollapsed = sidebarCollapsed && !sidebarHovered;

@@ -177,11 +177,6 @@ const ServiceSelection = ({ data, onChange, pickupPincode, deliveryPincode, char
                           <span key={feature} className="text-xs text-muted-foreground">• {feature}</span>
                         ))}
                       </div>
-                      {carrier.perKgRate && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          ₹{carrier.perKgRate}/kg × {chargeableWeight.toFixed(2)} kg
-                        </div>
-                      )}
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-bold text-primary">

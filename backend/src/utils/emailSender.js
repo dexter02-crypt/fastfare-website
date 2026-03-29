@@ -75,12 +75,26 @@ export const sendPasswordResetEmail = async (email, otpCode) => {
 
         if (error) {
             console.error('Error sending password reset email:', error);
+            if (process.env.NODE_ENV === 'development') {
+                console.log('\n=============================================');
+                console.log(`[DEV MODE] Password reset email failed to send (Resend API strict limits).`);
+                console.log(`[DEV MODE] OTP for ${email} is: ${otpCode}`);
+                console.log('=============================================\n');
+                return { success: true, bypassed: true };
+            }
             throw new Error('Failed to send email via Resend');
         }
 
         return data;
     } catch (err) {
         console.error('Exception in sendPasswordResetEmail:', err);
+        if (process.env.NODE_ENV === 'development') {
+            console.log('\n=============================================');
+            console.log(`[DEV MODE] Password reset email exception caught.`);
+            console.log(`[DEV MODE] OTP for ${email} is: ${otpCode}`);
+            console.log('=============================================\n');
+            return { success: true, bypassed: true };
+        }
         throw err;
     }
 };
@@ -223,11 +237,25 @@ export const sendRegistrationOtpEmail = async (email, otpCode) => {
 
         if (error) {
             console.error('Error sending registration OTP email:', error);
+            if (process.env.NODE_ENV === 'development') {
+                console.log('\n=============================================');
+                console.log(`[DEV MODE] Registration email failed to send (Resend API strict limits).`);
+                console.log(`[DEV MODE] Registration OTP for ${email} is: ${otpCode}`);
+                console.log('=============================================\n');
+                return { success: true, bypassed: true };
+            }
             throw new Error('Failed to send email via Resend');
         }
         return { success: true };
     } catch (err) {
         console.error('Exception in sendRegistrationOtpEmail:', err);
+        if (process.env.NODE_ENV === 'development') {
+            console.log('\n=============================================');
+            console.log(`[DEV MODE] Registration email exception caught.`);
+            console.log(`[DEV MODE] Registration OTP for ${email} is: ${otpCode}`);
+            console.log('=============================================\n');
+            return { success: true, bypassed: true };
+        }
         throw err;
     }
 };

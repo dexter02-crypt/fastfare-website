@@ -25,6 +25,44 @@ const GstReportTab = () => {
         { id: "2", invoice: "FF-INV-13548602", date: "15 Mar", awb: "FFMM2026002", ffGstin: "06XXXX1234X1ZY", userGstin: "08BLXPV9775J1ZK", sac: "996812", pos: "08-Rajasthan", taxable: 80.51, igst: 14.49, cgst: "—", sgst: "—", total: 95 },
     ];
 
+    const handleDownloadCSV = () => {
+        const headers = ["INVOICE NO.", "DATE", "AWB", "FASTFARE GSTIN", "YOUR GSTIN", "SAC", "PLACE OF SUPPLY", "TAXABLE", "IGST", "CGST", "SGST", "TOTAL", "ITC ELIGIBLE"];
+        const rows = itcData.map(row => [
+            row.invoice,
+            row.date,
+            row.awb,
+            row.ffGstin,
+            row.userGstin,
+            row.sac,
+            row.pos,
+            row.taxable,
+            row.igst,
+            row.cgst,
+            row.sgst,
+            row.total,
+            "Yes"
+        ]);
+        
+        const csvContent = [
+            headers.join(","),
+            ...rows.map(r => r.join(","))
+        ].join("\n");
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "gst_itc_report.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleDownloadPDF = () => {
+        // Quick frontend trick to generate PDF summary is via print dialog
+        window.print();
+    };
+
     return (
         <div className="space-y-6 mt-6">
             <div>
@@ -58,10 +96,10 @@ const GstReportTab = () => {
                         </Select>
 
                         <div className="flex gap-2 w-full sm:w-auto">
-                            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto">
+                            <Button onClick={handleDownloadCSV} className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto">
                                 <Download className="h-4 w-4 mr-2" /> GSTR CSV (for CA)
                             </Button>
-                            <Button variant="secondary" className="w-full sm:w-auto">
+                            <Button onClick={handleDownloadPDF} variant="secondary" className="w-full sm:w-auto">
                                 <Download className="h-4 w-4 mr-2" /> PDF Summary
                             </Button>
                         </div>
@@ -142,7 +180,7 @@ const GstReportTab = () => {
                             Currently FastFare does not auto-generate your outward GSTR-1. Use the Orders CSV and share with your CA.
                         </p>
                         <div className="ml-7 pt-2">
-                            <Button>
+                            <Button onClick={handleDownloadCSV}>
                                 <Download className="h-4 w-4 mr-2" /> Download Orders CSV
                             </Button>
                         </div>

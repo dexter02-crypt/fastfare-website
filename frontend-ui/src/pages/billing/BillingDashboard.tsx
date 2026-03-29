@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
 import { formatDate } from "@/utils/dateFormat";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,7 @@ interface WalletData {
 
 const BillingDashboard = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [userRole, setUserRole] = useState<string>("");
 
   useEffect(() => {
@@ -144,7 +145,7 @@ const BillingDashboard = () => {
             <p className="text-muted-foreground">Manage your wallet, invoices, and payments</p>
           </div>
           <div className="flex gap-3">
-            <Button className="gap-2 gradient-primary" onClick={() => toast({ title: "Coming Soon", description: "Wallet recharge will be available soon!" })}>
+            <Button className="gap-2 gradient-primary" onClick={() => navigate("/billing/recharge")}>
               <Plus className="h-4 w-4" />
               Add Funds
             </Button>

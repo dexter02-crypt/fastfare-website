@@ -19,6 +19,7 @@ import {
 
 import { authApi, alertsApi, shipmentsApi } from "@/lib/api";
 import { API_BASE_URL } from "@/config";
+import { FEATURES } from "@/config/features";
 import { format, isToday, isYesterday, isThisMonth, parseISO, isAfter } from "date-fns";
 
 const OrganizationDashboard = () => {
@@ -346,7 +347,7 @@ const OrganizationDashboard = () => {
         </div>
 
         {/* KYC Alert */}
-        {user && user?.kycStatus !== 'complete' && user?.kyc?.status !== 'verified' && (
+        {FEATURES.KYC_ENABLED && user && user?.kycStatus !== 'complete' && user?.kyc?.status !== 'verified' && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -485,14 +486,15 @@ const OrganizationDashboard = () => {
                     {recentTopShipments.map((shipment) => (
                       <div
                         key={shipment.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors gap-3 sm:gap-0"
+                        onClick={() => navigate(`/shipment/${shipment.actualId}`)}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors gap-3 sm:gap-0 cursor-pointer"
                       >
                         <div className="flex items-center gap-4">
                           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                             <Package className="h-5 w-5 text-primary" />
                           </div>
                           <div>
-                            <Link to={`/shipments`} className="font-medium text-primary hover:underline">{shipment.id}</Link>
+                            <Link to={`/shipment/${shipment.actualId}`} className="font-medium text-primary hover:underline" onClick={(e) => e.stopPropagation()}>{shipment.id}</Link>
                             <p className="text-sm text-muted-foreground break-all">
                               {shipment.origin} → {shipment.destination}
                             </p>
