@@ -27,10 +27,10 @@ import {
     Radio,
     Crown,
     Tag,
+    Ticket,
     Scale
 } from "lucide-react";
-import logo from "/logo.png";
-import logoIcon from "/logo-icon.png";
+import Logo from "@/components/Logo";
 import { authApi, returnsApi, weightDisputesApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 
@@ -65,6 +65,9 @@ const primaryNavItems: NavItem[] = [
     { label: "Analytics", href: "/analytics", icon: BarChart3 },
     { label: "Partner Mgmt", href: "/admin/partners", icon: Users },
     { label: "Carriers", href: "/admin/carriers", icon: Truck },
+    { label: "Promo Codes", href: "/admin/promo-codes", icon: Ticket },
+    { label: "Wallet Recharges", href: "/admin/recharges", icon: Wallet },
+    { label: "Payment Gateway", href: "/admin/payment-gateway", icon: Settings },
     { label: "Team", href: "/partner/team", icon: Users },
     { label: "Pricing & Services", href: "/partner/pricing", icon: Tag },
     // WMS Items (visible to partners)
@@ -163,12 +166,12 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
         >
             <div className="flex flex-col h-full">
                 {/* Logo Section */}
-                <div className={cn("flex items-center p-4 min-h-[64px]", collapsed ? "justify-center" : "justify-between border-b border-sidebar-border/50")}>
-                    <Link to="/dashboard" onClick={handleLinkClick} className="flex items-center">
-                        <img
-                            src={collapsed ? logoIcon : logo}
-                            alt="FastFare Logo"
-                            className={cn("w-auto object-contain transition-all duration-300", collapsed ? "h-8" : "h-9")}
+                <div className={cn("flex items-center p-4 h-[64px]", collapsed ? "justify-center" : "justify-between border-b border-sidebar-border/50")}>
+                    <Link to="/dashboard" onClick={handleLinkClick} className="flex items-center w-full h-full min-w-fit overflow-visible">
+                        <Logo
+                            size="md"
+                            variant={collapsed ? "icon" : "full"}
+                            className={cn(!collapsed && "pl-3")}
                         />
                     </Link>
                 </div>
@@ -195,7 +198,7 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                         }
 
                         // Admin-only items - hide from non-admins
-                        const adminItems = ["Users", "Warehouse", "Drivers", "Bulk Ops", "Fleet", "Fleet Tracking", "Reports", "Analytics", "Partner Mgmt", "Carriers"];
+                        const adminItems = ["Users", "Warehouse", "Drivers", "Bulk Ops", "Fleet", "Fleet Tracking", "Reports", "Analytics", "Partner Mgmt", "Carriers", "Promo Codes", "Wallet Recharges", "Payment Gateway"];
                         if (user?.role !== 'admin' && adminItems.includes(item.label)) {
                             // Allow shipment_partner to see Fleet Tracking and Fleet
                             if (user?.role === 'shipment_partner' && (item.label === "Fleet Tracking" || item.label === "Fleet")) {

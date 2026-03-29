@@ -23,8 +23,8 @@ router.post('/create-order', protect, async (req, res) => {
         const { amount } = req.body; // Amount in rupees
         const userId = req.user._id;
 
-        if (!amount || amount < 1) {
-            return res.status(400).json({ error: 'Amount must be at least ₹1' });
+        if (!amount || amount < 500) {
+            return res.status(400).json({ error: 'Minimum recharge amount is ₹500.' });
         }
 
         const options = {

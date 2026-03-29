@@ -107,7 +107,14 @@ const SkeletonCard = () => (
 // ─── Main Component ───────────────────────────────────────────────────────────
 const UserReportsInner = () => {
     const [searchParams, setSearchParams] = useSearchParams();
-    const defaultTab = searchParams.get("tab") || "overview";
+    const requestedTab = searchParams.get("tab");
+    const defaultTab = requestedTab === "pnl" ? "overview" : (requestedTab || "overview");
+
+    useEffect(() => {
+        if (requestedTab === "pnl") {
+            setSearchParams({ tab: "overview" }, { replace: true });
+        }
+    }, [requestedTab, setSearchParams]);
 
     const [dateRange, setDateRange] = useState("30days");
     const [isLoading, setIsLoading] = useState(true);
@@ -303,7 +310,7 @@ const UserReportsInner = () => {
                         <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent pb-3 pt-2 px-4 shadow-none">Overview</TabsTrigger>
                         <TabsTrigger value="gst" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent pb-3 pt-2 px-4 shadow-none">GST Report</TabsTrigger>
                         <TabsTrigger value="cod" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent pb-3 pt-2 px-4 shadow-none">COD Remittance</TabsTrigger>
-                        <TabsTrigger value="pnl" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent pb-3 pt-2 px-4 shadow-none">P&amp;L Statement</TabsTrigger>
+                        {/* <TabsTrigger value="pnl" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent pb-3 pt-2 px-4 shadow-none">P&amp;L Statement</TabsTrigger> */}
                         <TabsTrigger value="request" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent pb-3 pt-2 px-4 shadow-none">Request Reports</TabsTrigger>
                     </TabsList>
 

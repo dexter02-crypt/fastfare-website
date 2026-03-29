@@ -10,7 +10,7 @@ import { Eye, EyeOff, User, Truck, Shield, Mail } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/contexts/WalletContext";
-import logo from "@/assets/logo.png";
+import Logo from "@/components/Logo";
 import authBg from "@/assets/auth-bg.png";
 
 type RoleType = "user" | "shipment_partner" | "admin";
@@ -149,7 +149,7 @@ const Login = () => {
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8">
             <Link to="/">
-              <img src={logo} alt="FastFare" className="h-10 w-auto" />
+              <Logo size="lg" variant="full" />
             </Link>
           </div>
 

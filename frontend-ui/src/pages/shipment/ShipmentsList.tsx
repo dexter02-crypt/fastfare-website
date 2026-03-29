@@ -87,6 +87,8 @@ interface OrderData {
   rto_charge?: number;
   scan_pickup: any;
   driverLocation: any;
+  promoCode?: string;
+  discountApplied?: number;
   createdAt: string;
 }
 
@@ -452,7 +454,12 @@ const ShipmentsList = () => {
                               {order.paymentMode?.toUpperCase()}
                             </Badge>
                           </TableCell>
-                          <TableCell className="font-medium">₹{order.shippingCost?.toLocaleString() || "0"}</TableCell>
+                          <TableCell className="font-medium">
+                            ₹{order.shippingCost?.toLocaleString() || "0"}
+                            {order.promoCode && (order.discountApplied || 0) > 0 && (
+                              <Badge variant="outline" className="ml-2 text-[9px] bg-green-50 text-green-700 border-green-200 uppercase tracking-wider px-1.5 py-0 items-center justify-center -translate-y-[1px]">Promo</Badge>
+                            )}
+                          </TableCell>
                           <TableCell className="text-amber-700 font-medium">₹{order.codAmount?.toLocaleString() || "0"}</TableCell>
                           <TableCell>₹{order.packageValue?.toLocaleString() || "0"}</TableCell>
                           <TableCell className="capitalize">{order.serviceType || "Standard"}</TableCell>

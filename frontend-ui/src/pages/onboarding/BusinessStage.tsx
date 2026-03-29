@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Rocket, Building2, Package } from "lucide-react";
-import logo from "@/assets/logo.png";
+import Logo from "@/components/Logo";
 
 const BusinessStage = () => {
   const navigate = useNavigate();
@@ -56,7 +56,7 @@ const BusinessStage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <img src={logo} alt="FastFare" className="h-10 mx-auto mb-8" />
+          <Logo size="lg" variant="full" />
           <h1 className="text-2xl md:text-3xl font-bold mb-2">
             Let's get your shipping journey started!
           </h1>

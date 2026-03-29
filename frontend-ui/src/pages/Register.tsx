@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { User, Truck, ArrowRight, Shield, Building2, CheckCircle } from "lucide-react";
-import logo from "@/assets/logo.png";
+import Logo from "@/components/Logo";
 import heroImage from "@/assets/hero-illustration.png";
 
 const Register = () => {
@@ -100,7 +100,7 @@ const Register = () => {
           {/* Mobile Logo */}
           <div className="lg:hidden mb-6">
             <Link to="/">
-              <img src={logo} alt="FastFare" className="h-10 w-auto" />
+              <Logo size="lg" variant="full" />
             </Link>
           </div>
 

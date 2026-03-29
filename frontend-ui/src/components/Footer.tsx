@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import logo from "@/assets/logo.png";
+import Logo from "@/components/Logo";
 import { Twitter, Linkedin, Globe } from "lucide-react";
 
 const Footer = () => {
@@ -38,8 +38,8 @@ const Footer = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-8">
           {/* Brand */}
           <div className="col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-4">
-              <img src={logo} alt="FastFare" className="h-8 w-auto" />
+            <Link to="/" className="flex items-center gap-2 mb-3 h-[36px]">
+              <Logo size="sm" variant="full" />
             </Link>
             <p className="text-sm text-muted-foreground mb-4 max-w-xs">
               Modern B2B logistics infrastructure for global businesses. Scale your operations with speed and precision.

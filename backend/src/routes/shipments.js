@@ -3,6 +3,12 @@ import Shipment from '../models/Shipment.js';
 import { protect } from '../middleware/auth.js';
 import { fireWebhook } from '../services/webhookService.js';
 import jwt from 'jsonwebtoken';
+import { triggerShipmentEmail } from '../lib/emails/shipmentEmails.js';
+import PromoCode from '../models/PromoCode.js';
+import PromoUsage from '../models/PromoUsage.js';
+import mongoose from 'mongoose';
+import Transaction from '../models/Transaction.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 
@@ -22,6 +28,8 @@ const calculateShippingCost = (shipment) => {
 
 // Create shipment (POST /api/shipments/)
 router.post('/', protect, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { pickup, delivery, packages, contentType, description, paymentMode, codAmount,
             serviceType, carrier, carrierId, insurance, fragileHandling, signatureRequired,
@@ -53,55 +61,95 @@ router.post('/', protect, async (req, res) => {
             }]
         };
 
-        console.log('Saving carrier:', req.body.carrier, 'id:', req.body.carrierId);
+        const shipment = await Shipment.create([shipmentData], { session });
+        const createdShipment = shipment[0];
 
-        const shipment = await Shipment.create(shipmentData);
-
-        // Bug 7: Use shippingCost from request if provided, otherwise calculate
         if (req.body.shippingCost && req.body.shippingCost > 0) {
-            shipment.shippingCost = req.body.shippingCost;
+            createdShipment.shippingCost = req.body.shippingCost;
         } else {
-            shipment.shippingCost = calculateShippingCost(shipment);
+            createdShipment.shippingCost = calculateShippingCost(createdShipment);
         }
 
-        // GST calculation: 18% on delivery fare
-        const deliveryFare = shipment.shippingCost;
-        const gstAmount = Math.round(deliveryFare * 0.18 * 100) / 100;
-        const totalPayable = Math.round((deliveryFare + gstAmount) * 100) / 100;
-        shipment.gstAmount = gstAmount;
-        shipment.totalPayable = totalPayable;
+        const deliveryFare = createdShipment.shippingCost;
+        let gstAmount = Math.round(deliveryFare * 0.18 * 100) / 100;
+        let totalPayable = Math.round((deliveryFare + gstAmount) * 100) / 100;
 
-        const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
-        shipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-        await shipment.save();
+        let discountApplied = 0;
+        let appliedPromoCode = null;
 
-        // Fire webhook to carrier if assigned
-        if (carrierId) {
-            fireWebhook(carrierId, 'shipment.assigned', shipment).catch(err => {
-                console.error('Webhook fire error:', err);
-            });
+        if (req.body.promoCode) {
+            const upperCode = req.body.promoCode.toUpperCase().trim();
+            const promo = await PromoCode.findOne({ code: upperCode }).session(session);
 
-            // Real-time Socket.IO push to carrier dashboard
-            const io = req.app.get('io');
-            if (io) {
-                io.to(`carrier_${carrierId}`).emit('new_shipment', {
-                    shipmentId: shipment._id,
-                    awb: shipment.awb,
-                    pickup: shipment.pickup,
-                    delivery: shipment.delivery,
-                    serviceType: shipment.serviceType,
-                    shippingCost: shipment.shippingCost,
-                    createdAt: shipment.createdAt
-                });
+            if (promo && promo.is_active && (!promo.expires_at || new Date() < new Date(promo.expires_at)) && totalPayable >= promo.minimum_order_value) {
+                const userUsageCount = await PromoUsage.countDocuments({ promo_code: upperCode, user_id: req.user._id }).session(session);
+                if (userUsageCount < promo.per_user_limit) {
+                    const updatedPromo = await PromoCode.findOneAndUpdate(
+                        { 
+                            code: upperCode, 
+                            $or: [ { max_uses: null }, { $expr: { $lt: ["$used_count", "$max_uses"] } } ]
+                        },
+                        { $inc: { used_count: 1 } },
+                        { new: true, session }
+                    );
+
+                    if (updatedPromo) {
+                        discountApplied = updatedPromo.discount_amount;
+                        appliedPromoCode = upperCode;
+                        totalPayable = Math.max(0, totalPayable - discountApplied);
+                    }
+                }
             }
         }
 
-        res.status(201).json({
-            success: true,
-            shipment,
-            totalAmount: parseFloat((shipment.shippingCost * 1.18).toFixed(2))
-        });
+        if (paymentMode === 'wallet') {
+            const user = await User.findById(req.user._id).session(session);
+            if (!user || user.walletBalance < totalPayable) {
+                throw new Error('Insufficient wallet balance');
+            }
+            user.walletBalance -= totalPayable;
+            await user.save({ session });
+            await Transaction.create([{
+                user: req.user._id,
+                amount: totalPayable,
+                type: 'debit',
+                description: 'Shipment payment',
+                shipment: createdShipment._id
+            }], { session });
+        }
+
+        createdShipment.gstAmount = gstAmount;
+        createdShipment.totalPayable = totalPayable;
+        createdShipment.promoCode = appliedPromoCode;
+        createdShipment.discountApplied = discountApplied;
+
+        const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
+        createdShipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+        await createdShipment.save({ session });
+
+        if (appliedPromoCode) {
+            await PromoUsage.create([{
+                promo_code: appliedPromoCode,
+                user_id: req.user._id,
+                shipment_id: createdShipment._id,
+                discount_applied: discountApplied
+            }], { session });
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+
+        if (carrierId) {
+            fireWebhook(carrierId, 'shipment.assigned', createdShipment).catch(err => console.error(err));
+            const io = req.app.get('io');
+            if (io) io.to(`carrier_${carrierId}`).emit('new_shipment', createdShipment);
+        }
+
+        triggerShipmentEmail('order_placed', createdShipment);
+        res.status(201).json({ success: true, shipment: createdShipment });
     } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
         console.error('Create shipment error:', error);
         res.status(500).json({ error: error.message });
     }
@@ -109,6 +157,8 @@ router.post('/', protect, async (req, res) => {
 
 // Also accept POST /api/shipments/create (alias for frontend compatibility)
 router.post('/create', protect, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { pickup, delivery, packages, contentType, description, paymentMode, codAmount,
             serviceType, carrier, carrierId, insurance, fragileHandling, signatureRequired,
@@ -140,45 +190,115 @@ router.post('/create', protect, async (req, res) => {
             }]
         };
 
-        const shipment = await Shipment.create(shipmentData);
-        shipment.shippingCost = calculateShippingCost(shipment);
+        const shipment = await Shipment.create([shipmentData], { session });
+        const createdShipment = shipment[0];
 
-        // GST calculation: 18% on delivery fare
-        const deliveryFare = shipment.shippingCost;
-        const gstAmount = Math.round(deliveryFare * 0.18 * 100) / 100;
-        const totalPayable = Math.round((deliveryFare + gstAmount) * 100) / 100;
-        shipment.gstAmount = gstAmount;
-        shipment.totalPayable = totalPayable;
+        if (req.body.shippingCost && req.body.shippingCost > 0) {
+            createdShipment.shippingCost = req.body.shippingCost;
+        } else {
+            createdShipment.shippingCost = calculateShippingCost(createdShipment);
+        }
 
-        const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
-        shipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-        await shipment.save();
+        const deliveryFare = createdShipment.shippingCost;
+        const isCOD = paymentMode === 'cod';
+        const codFee = isCOD ? 50 : 0;
+        
+        const totalTaxableAmount = deliveryFare + codFee;
+        let gstAmount = Math.round(totalTaxableAmount * 0.18 * 100) / 100;
+        let totalPayable = Math.round((totalTaxableAmount + gstAmount) * 100) / 100;
 
-        if (carrierId) {
-            fireWebhook(carrierId, 'shipment.assigned', shipment).catch(err => {
-                console.error('Webhook fire error:', err);
-            });
+        let discountApplied = 0;
+        let appliedPromoCode = null;
 
-            // Real-time Socket.IO push to carrier dashboard
-            const io = req.app.get('io');
-            if (io) {
-                io.to(`carrier_${carrierId}`).emit('new_shipment', {
-                    shipmentId: shipment._id,
-                    awb: shipment.awb,
-                    pickup: shipment.pickup,
-                    delivery: shipment.delivery,
-                    serviceType: shipment.serviceType,
-                    shippingCost: shipment.shippingCost,
-                    createdAt: shipment.createdAt
-                });
+        if (req.body.promoCode) {
+            const upperCode = req.body.promoCode.toUpperCase().trim();
+            const promo = await PromoCode.findOne({ code: upperCode }).session(session);
+
+            if (promo && promo.is_active && (!promo.expires_at || new Date() < new Date(promo.expires_at)) && totalPayable >= promo.minimum_order_value) {
+                const userUsageCount = await PromoUsage.countDocuments({ promo_code: upperCode, user_id: req.user._id }).session(session);
+                if (userUsageCount < promo.per_user_limit) {
+                    const updatedPromo = await PromoCode.findOneAndUpdate(
+                        { 
+                            code: upperCode, 
+                            $or: [ { max_uses: null }, { $expr: { $lt: ["$used_count", "$max_uses"] } } ]
+                        },
+                        { $inc: { used_count: 1 } },
+                        { new: true, session }
+                    );
+
+                    if (updatedPromo) {
+                        discountApplied = updatedPromo.discount_amount;
+                        appliedPromoCode = upperCode;
+                        totalPayable = Math.max(0, totalPayable - discountApplied);
+                    }
+                }
             }
         }
 
-        res.status(201).json({
-            success: true,
-            shipment
-        });
+        if (paymentMode === 'wallet') {
+            const user = await User.findById(req.user._id).session(session);
+            if (!user || user.walletBalance < totalPayable) {
+                throw new Error('Insufficient wallet balance');
+            }
+            
+            const balanceBefore = user.walletBalance;
+            user.walletBalance -= totalPayable;
+            const balanceAfter = user.walletBalance;
+            
+            await user.save({ session });
+            
+            await Transaction.create([{
+                userId: req.user._id,
+                amount: totalPayable,
+                type: 'shipment_charge',
+                status: 'completed',
+                description: `Shipment payment for ${createdShipment.awb || createdShipment._id}`,
+                balanceBefore,
+                balanceAfter
+            }], { session });
+        }
+
+        createdShipment.gstAmount = gstAmount;
+        createdShipment.codFee = codFee;
+        createdShipment.totalPayable = totalPayable;
+        createdShipment.promoCode = appliedPromoCode;
+        createdShipment.discountApplied = discountApplied;
+
+        const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
+        createdShipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+        await createdShipment.save({ session });
+
+        if (appliedPromoCode) {
+            await PromoUsage.create([{
+                promo_code: appliedPromoCode,
+                user_id: req.user._id,
+                shipment_id: createdShipment._id,
+                discount_applied: discountApplied
+            }], { session });
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+
+        if (carrierId) {
+            fireWebhook(carrierId, 'shipment.assigned', createdShipment).catch(err => console.error(err));
+            const io = req.app.get('io');
+            if (io) io.to(`carrier_${carrierId}`).emit('new_shipment', {
+                    shipmentId: createdShipment._id,
+                    awb: createdShipment.awb,
+                    pickup: createdShipment.pickup,
+                    delivery: createdShipment.delivery,
+                    serviceType: createdShipment.serviceType,
+                    shippingCost: createdShipment.shippingCost,
+                    createdAt: createdShipment.createdAt
+            });
+        }
+
+        triggerShipmentEmail('order_placed', createdShipment);
+        res.status(201).json({ success: true, shipment: createdShipment });
     } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
         console.error('Create shipment error:', error);
         res.status(500).json({ error: error.message });
     }
@@ -666,6 +786,9 @@ router.put('/carrier/:id/update-status', protect, requirePartner, async (req, re
             console.error('Status webhook error:', err);
         });
 
+        // Trigger email
+        triggerShipmentEmail(status, shipment, { location, description });
+
         res.json({ success: true, message: `Shipment updated to '${status}'`, shipment });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -718,6 +841,9 @@ router.patch('/:id/status', async (req, res) => {
                 timestamp: new Date()
             });
         }
+
+        // Trigger email
+        triggerShipmentEmail(status, shipment);
 
         res.json({ success: true, message: `Status updated to ${status}`, updated_shipment: shipment });
     } catch (error) {

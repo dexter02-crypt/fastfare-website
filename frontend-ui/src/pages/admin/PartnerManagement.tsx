@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "@/config";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +49,7 @@ const TIER_STYLES: Record<string, { label: string; icon: any; bg: string; text: 
 };
 
 const PartnerManagement = () => {
+    const navigate = useNavigate();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [partners, setPartners] = useState<any[]>([]);
@@ -84,8 +87,8 @@ const PartnerManagement = () => {
     const [statusReason, setStatusReason] = useState('');
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<any>(null);
-    const [deleteReason, setDeleteReason] = useState('');
-    const [deleteConfirm, setDeleteConfirm] = useState('');
+    const [deleteConfirmChecked, setDeleteConfirmChecked] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     useEffect(() => { loadPartners(); loadWithdrawals(); }, [page, tierFilter]);
 
@@ -184,17 +187,32 @@ const PartnerManagement = () => {
     };
 
     const handleDeleteAccount = async () => {
-        if (!deleteTarget || !deleteReason || deleteConfirm !== 'DELETE') return;
+        if (!deleteTarget || !deleteConfirmChecked) return;
+        setDeleteLoading(true);
         try {
-            await settlementApi.deleteAccount(deleteTarget._id, deleteReason);
-            toast({ title: "🗑️ Account Deleted", description: `${deleteTarget.businessName || deleteTarget.email} permanently removed` });
-            setDeleteDialogOpen(false);
-            setDeleteReason('');
-            setDeleteConfirm('');
-            setSelectedPartner(null);
-            loadPartners();
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE_URL}/api/admin/delete-account`, {
+                method: 'DELETE',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}` 
+                },
+                body: JSON.stringify({ userId: deleteTarget._id, accountType: 'partner' })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                toast({ title: "🗑️ Account Deleted", description: `${deleteTarget.businessName || deleteTarget.email} permanently removed` });
+                setDeleteDialogOpen(false);
+                setDeleteConfirmChecked(false);
+                setSelectedPartner(null);
+                loadPartners();
+            } else {
+                toast({ title: "Error", description: data.message || "Failed to delete account", variant: "destructive" });
+            }
         } catch (err: any) {
-            toast({ title: "Error", description: err.message, variant: "destructive" });
+            toast({ title: "Error", description: err.message || "Failed to delete account", variant: "destructive" });
+        } finally {
+            setDeleteLoading(false);
         }
     };
 
@@ -457,10 +475,9 @@ const PartnerManagement = () => {
                     open={deleteDialogOpen}
                     onOpenChange={setDeleteDialogOpen}
                     target={deleteTarget}
-                    reason={deleteReason}
-                    setReason={setDeleteReason}
-                    confirm={deleteConfirm}
-                    setConfirm={setDeleteConfirm}
+                    confirmChecked={deleteConfirmChecked}
+                    setConfirmChecked={setDeleteConfirmChecked}
+                    loading={deleteLoading}
                     onSubmit={handleDeleteAccount}
                 />
             </DashboardLayout>
@@ -600,6 +617,15 @@ const PartnerManagement = () => {
                                                         ₹{(p.totalPayouts || 0).toLocaleString('en-IN')}
                                                     </div>
                                                     <div className="col-span-2 flex justify-end gap-1">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-7 w-7 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors"
+                                                            title="Delete Partner"
+                                                            onClick={() => navigate('/account/delete/acknowledge', { state: { targetUserId: p._id, targetName: p.businessName || p.name, targetEmail: p.email, accountType: 'partner' } })}
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
                                                         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openPartnerDetail(p)}>
                                                             <Eye className="h-3 w-3 mr-1" /> View
                                                         </Button>
@@ -628,9 +654,6 @@ const PartnerManagement = () => {
                                                                     </DropdownMenuItem>
                                                                 )}
                                                                 <DropdownMenuSeparator />
-                                                                <DropdownMenuItem className="text-destructive" onClick={() => { setDeleteTarget(p); setDeleteDialogOpen(true); }}>
-                                                                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
-                                                                </DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
                                                     </div>
@@ -800,10 +823,9 @@ const PartnerManagement = () => {
                 open={deleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
                 target={deleteTarget}
-                reason={deleteReason}
-                setReason={setDeleteReason}
-                confirm={deleteConfirm}
-                setConfirm={setDeleteConfirm}
+                confirmChecked={deleteConfirmChecked}
+                setConfirmChecked={setDeleteConfirmChecked}
+                loading={deleteLoading}
                 onSubmit={handleDeleteAccount}
             />
         </DashboardLayout>
@@ -961,34 +983,62 @@ const StatusUpdateDialog = ({ open, onOpenChange, target, action, reason, setRea
     );
 };
 
-const DeleteAccountDialog = ({ open, onOpenChange, target, reason, setReason, confirm, setConfirm, onSubmit }: any) => (
+const DeleteAccountDialog = ({ open, onOpenChange, target, confirmChecked, setConfirmChecked, onSubmit, loading }: any) => (
     <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-destructive">
-                    <Trash2 className="h-5 w-5" /> Delete Account Permanently
-                </DialogTitle>
-                <DialogDescription>
-                    This action <strong>cannot be undone</strong>. This will permanently delete the account
-                    for <strong>{target?.businessName || target?.email || 'this user'}</strong> and all associated data.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-                <div>
-                    <label className="text-sm font-medium mb-1.5 block">Reason for deletion (required)</label>
-                    <Textarea placeholder="Reason for permanent account deletion..." value={reason} onChange={(e) => setReason(e.target.value)} />
+        <DialogContent className="max-w-[460px] rounded-xl p-0 overflow-hidden border-0 shadow-[0_20px_60px_rgba(0,0,0,0.15)]">
+            <div className="p-6">
+                <div className="mx-auto w-14 h-14 bg-red-500 rounded-full flex items-center justify-center mb-5">
+                    <Trash2 className="h-6 w-6 text-white" />
                 </div>
-                <div>
-                    <label className="text-sm font-medium mb-1.5 block">Type <code className="bg-muted px-1 rounded">DELETE</code> to confirm</label>
-                    <Input placeholder="Type DELETE to confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+                
+                <DialogTitle className="text-center text-[20px] font-bold text-slate-900 mb-4">
+                    Delete Partner Account?
+                </DialogTitle>
+                
+                <div className="text-slate-600 text-[14px] mb-6">
+                    <p className="mb-4">You are about to permanently delete the account for:</p>
+                    
+                    <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 mb-4 font-medium text-slate-900 space-y-1">
+                        <div className="flex gap-2"><span className="text-slate-500 w-12">Name:</span> {target?.businessName || target?.name || '—'}</div>
+                        <div className="flex gap-2"><span className="text-slate-500 w-12">Email:</span> {target?.email || '—'}</div>
+                        <div className="flex gap-2"><span className="text-slate-500 w-12">Role:</span> Partner</div>
+                    </div>
+                    
+                    <p className="mb-4">This will remove them completely from the FastFare platform including all their shipment history, balance records, and login credentials. Their email will be freed for re-registration.</p>
+                    
+                    <p className="font-semibold text-red-600">This action CANNOT be undone.</p>
+                </div>
+
+                <label className="flex items-start gap-3 p-3 border rounded-lg bg-red-50/50 mb-6 cursor-pointer hover:bg-red-50 transition-colors">
+                    <input 
+                        type="checkbox" 
+                        className="mt-1 flex-shrink-0 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                        checked={confirmChecked}
+                        onChange={(e) => setConfirmChecked(e.target.checked)}
+                    />
+                    <span className="text-sm font-medium text-red-900 leading-snug">
+                        I understand this action is permanent and irreversible
+                    </span>
+                </label>
+
+                <div className="flex gap-3">
+                    <Button 
+                        variant="outline" 
+                        className="flex-1 bg-white border-slate-200 text-slate-600 rounded-lg h-11"
+                        onClick={() => onOpenChange(false)}
+                        disabled={loading}
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        className={`flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg h-11 transition-opacity ${!confirmChecked ? "opacity-50 cursor-not-allowed" : "opacity-100 cursor-pointer"}`}
+                        disabled={!confirmChecked || loading}
+                        onClick={onSubmit}
+                    >
+                        {loading ? <div className="h-4 w-4 animate-spin border-2 border-white border-t-transparent rounded-full mx-auto" /> : "Delete Account"}
+                    </Button>
                 </div>
             </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button variant="destructive" onClick={onSubmit} disabled={!reason || confirm !== 'DELETE'}>
-                    <Trash2 className="h-4 w-4 mr-2" /> Delete Permanently
-                </Button>
-            </DialogFooter>
         </DialogContent>
     </Dialog>
 );

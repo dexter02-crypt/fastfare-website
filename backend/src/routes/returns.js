@@ -2,6 +2,7 @@ import express from 'express';
 import Shipment from '../models/Shipment.js';
 import ReversePickup from '../models/ReversePickup.js';
 import { protect } from '../middleware/auth.js';
+import { sendReturnInitiatedEmail } from '../lib/emails/shipmentEmails.js';
 
 const router = express.Router();
 
@@ -54,6 +55,26 @@ router.post('/reverse-pickup', protect, async (req, res) => {
             contact_phone,
             package_description
         });
+
+        try {
+            const shipment = await Shipment.findById(shipment_id).populate('user');
+            if (shipment) {
+                await sendReturnInitiatedEmail({
+                    customer_name: shipment.user?.name || shipment.user?.contactPerson || 'Customer',
+                    customer_email: shipment.user?.email || 'customer@example.com',
+                    order_id: shipment._id.toString().slice(-8).toUpperCase(),
+                    awb_number: shipment.awb || 'Pending',
+                    return_awb: rp._id.toString().slice(-8).toUpperCase(),
+                    return_initiated_at: new Date().toLocaleDateString(),
+                    pickup_name: contact_name,
+                    pickup_address: pickup_address,
+                    pickup_city: shipment.pickup?.city || '',
+                    tracking_url: `https://fastfare.com/track?awb=${shipment.awb || 'Pending'}`
+                });
+            }
+        } catch (e) {
+            console.error('[FastFare Email] Failed to send return initiated email:', e);
+        }
 
         res.json({ success: true, reverse_pickup: rp });
     } catch (error) {

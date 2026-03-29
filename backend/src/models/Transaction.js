@@ -32,6 +32,12 @@ const transactionSchema = new mongoose.Schema({
     description: {
         type: String
     },
+    balanceBefore: {
+        type: Number
+    },
+    balanceAfter: {
+        type: Number
+    },
     createdAt: {
         type: Date,
         default: Date.now

@@ -20,7 +20,7 @@ import {
   Copy,
 } from "lucide-react";
 import { toast } from "sonner";
-import logo from "@/assets/logo.png";
+import Logo from "@/components/Logo";
 import { API_BASE_URL } from "@/config";
 import { formatDate, formatDateTime } from "@/utils/dateFormat";
 import { formatStatus, getStatusStyle } from "@/utils/formatStatus";
@@ -267,7 +267,7 @@ const TrackingResults = () => {
             <div className="flex items-center gap-4">
               <BackButton fallback="/track" />
               <a href="/" className="flex items-center gap-2">
-                <img src={logo} alt="FastFare" className="h-8 w-auto" />
+                <Logo size="lg" variant="full" />
               </a>
             </div>
           </div>
@@ -296,7 +296,7 @@ const TrackingResults = () => {
               <div className="flex items-center gap-4">
                 <BackButton fallback="/track" />
                 <a href="/" className="flex items-center gap-2">
-                  <img src={logo} alt="FastFare" className="h-8 w-auto" />
+                  <Logo size="lg" variant="full" />
                 </a>
               </div>
               <div className="flex items-center gap-2">

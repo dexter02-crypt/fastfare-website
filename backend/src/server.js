@@ -18,6 +18,8 @@ import kycRoutes from './routes/kyc.js';
 import fleetRoutes from './routes/fleet.js';
 import reportsRoutes from './routes/reports.js';
 import alertsRoutes from './routes/alerts.js';
+import promoRoutes from './routes/promo.js';
+import walletRoutes from './routes/wallet.js';
 
 // WMS routes (from PC software)
 import wmsVehicleRoutes from './routes/wms-vehicles.js';
@@ -66,6 +68,10 @@ import scanRoutes from './routes/scan.js';
 import billingRoutes from './routes/billing.js';
 import settingsRoutes from './routes/settings.js';
 
+// Account & Admin Deletion Routes
+import accountRoutes from './routes/account.js';
+import adminRoutes from './routes/admin.js';
+
 // User-facing My Reports routes
 import userReportsRoutes from './routes/user-reports.js';
 
@@ -81,19 +87,19 @@ const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Socket.io setup with CORS
-const WEB_ORIGINS = ['https://fastfare.in', 'https://www.fastfare.in', 'https://fastfare.org', 'https://www.fastfare.org'];
+const WEB_ORIGINS = ['http://localhost:8080', 'http://localhost:5173', 'https://fastfare.in', 'https://www.fastfare.in', 'https://fastfare.org', 'https://www.fastfare.org'];
 
 // CORS handler: allows web origins + native mobile apps (no Origin header)
-const corsHandler = process.env.NODE_ENV === 'production'
-  ? (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, server-to-server)
+const corsHandler = (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, server-to-server) or matched origins
     if (!origin || WEB_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else if (process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
-  }
-  : true; // Allow all origins in development
+  };
 
 const io = new Server(httpServer, {
   cors: {
@@ -116,7 +122,11 @@ app.use(cors({
   origin: corsHandler,
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString();
+  }
+}));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
@@ -133,7 +143,9 @@ app.use('/api/tracking', trackingRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/gstin', gstinRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/wallet', walletRoutes);
 app.use('/api/kyc', kycRoutes);
+app.use('/api/promo', promoRoutes);
 app.use('/api/fleet', fleetRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/alerts', alertsRoutes);
@@ -183,6 +195,10 @@ app.use('/api/scan', scanRoutes);
 // ─── Billing & Settings Routes (Bugs 26-29) ───
 app.use('/api/billing', billingRoutes);
 app.use('/api/settings', settingsRoutes);
+
+// ─── Account & Admin Deletion Routes ───
+app.use('/api/account', accountRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

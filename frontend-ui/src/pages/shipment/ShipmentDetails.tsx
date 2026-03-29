@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/config";
 import { generateShippingLabelHTML, generateTaxInvoiceHTML, generateManifestHTML } from "@/utils/documentGenerators";
+import { calculateInvoiceCharges } from "@/utils/invoiceUtils";
 import { formatDate, formatDateTime } from "@/utils/dateFormat";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -28,7 +29,8 @@ import {
   Scale,
   Receipt,
   FileSpreadsheet,
-  Info
+  Info,
+  Printer
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { toast, useToast } from "@/hooks/use-toast";
@@ -85,6 +87,8 @@ interface Shipment {
   totalTax?: number;
   rto_charge?: number;
   totalAmount?: number;
+  promoCode?: string;
+  discountApplied?: number;
   invoiceNumber?: string;
   ewayBillNumber?: string;
   createdAt?: string;
@@ -126,6 +130,9 @@ const ShipmentDetails = () => {
   const [error, setError] = useState("");
   const [showLiveMap, setShowLiveMap] = useState(false);
   const [driverLocation, setDriverLocation] = useState<{ lat: number, lng: number } | null>(null);
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [invoiceHtml, setInvoiceHtml] = useState<string>("");
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -308,13 +315,76 @@ const ShipmentDetails = () => {
     }
   };
 
-  const handleDownloadInvoice = () => {
+  const handleDownloadInvoice = async () => {
     if (!shipment) return;
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const invoiceWindow = window.open('', '_blank', 'width=800,height=1000');
-    if (invoiceWindow) {
-      invoiceWindow.document.write(generateTaxInvoiceHTML(shipment, user));
-      invoiceWindow.document.close();
+    
+    try {
+      toast({ title: "Generating Invoice", description: "Fetching organization details..." });
+      
+      let customerProfile = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_BASE_URL}/api/settings/organization`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const orgData = await response.json();
+        customerProfile = { ...customerProfile, ...orgData };
+      }
+      
+      toast({ title: "Processing PDF", description: "Please wait..." });
+      const htmlString = generateTaxInvoiceHTML(shipment, customerProfile, false);
+      
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.opacity = '0';
+      container.innerHTML = htmlString;
+      document.body.appendChild(container);
+      
+      const invoiceNode = (container.querySelector('.container') || container) as HTMLElement;
+      const html2pdf = (await import('html2pdf.js')).default;
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const opt = {
+        margin: 10,
+        filename: `Invoice_${shipment.awb || shipment._id}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+      };
+      
+      await html2pdf().set(opt).from(invoiceNode).save();
+      document.body.removeChild(container);
+      
+      toast({ title: "Success", description: "Invoice downloaded successfully" });
+    } catch (err) {
+      console.error("Failed to generate invoice", err);
+      toast({ title: "Error", description: "Failed to generate invoice", variant: "destructive" });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleOpenInvoicePreview = async () => {
+    if (!shipment) return;
+    try {
+      toast({ title: "Loading Invoice", description: "Fetching details..." });
+      let customerProfile = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/settings/organization`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const orgData = await response.json();
+        customerProfile = { ...customerProfile, ...orgData };
+      }
+      setInvoiceHtml(generateTaxInvoiceHTML(shipment, customerProfile, false));
+      setShowInvoicePreview(true);
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to load invoice preview", variant: "destructive" });
     }
   };
 
@@ -456,8 +526,8 @@ const ShipmentDetails = () => {
             <Button variant="outline" size="sm" onClick={handlePrintLabel}>
               <Download className="h-4 w-4 mr-2" /> Print Label
             </Button>
-            <Button variant="outline" size="sm" onClick={handleDownloadInvoice}>
-              <Download className="h-4 w-4 mr-2" /> Invoice
+            <Button variant="outline" size="sm" onClick={handleOpenInvoicePreview}>
+              <Receipt className="h-4 w-4 mr-2" /> Invoice
             </Button>
             <Button variant="outline" size="sm" onClick={handleDownloadManifest}>
               <FileText className="h-4 w-4 mr-2" /> Manifest
@@ -633,45 +703,63 @@ const ShipmentDetails = () => {
               <CardContent className="pt-6">
                 <div className="space-y-3 text-sm">
                   {(() => {
-                    // Use actual DB values if available, else derive for display fallback
-                    const fwCharge = shipment.shippingFee || shipment.shippingCost || 0;
-                    const rtoCharge = shipment.rto_charge || 0;
-                    const codFee = shipment.paymentMode === 'cod' ? (shipment.codFee || 50) : 0;
-                    const taxable = fwCharge + rtoCharge + codFee;
-                    const igst = shipment.totalTax || (taxable * 0.18);
-                    const finalAmount = shipment.totalAmount || (taxable + igst);
+                    const charges = calculateInvoiceCharges(shipment);
 
                     return (
                       <>
+                        <div className="flex justify-between items-center mb-2 pb-2 border-b border-dashed">
+                          <span className="text-muted-foreground font-medium">Payment Mode</span>
+                          {shipment.paymentMode === 'wallet' ? (
+                            <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none">Wallet Paid</Badge>
+                          ) : shipment.paymentMode === 'cod' ? (
+                            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">Cash on Delivery</Badge>
+                          ) : (
+                            <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-none capitalize">{shipment.paymentMode || 'Prepaid'}</Badge>
+                          )}
+                        </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Forward Charge</span>
-                          <span className="font-medium">₹{fwCharge.toFixed(2)}</span>
+                          <span className="font-medium">₹{charges.forwardCharge.toFixed(2)}</span>
                         </div>
-                        {rtoCharge > 0 && (
+                        {charges.rtoCharge > 0 && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">RTO Charge</span>
-                            <span className="font-medium text-red-600">₹{rtoCharge.toFixed(2)}</span>
+                            <span className="font-medium text-red-600">₹{charges.rtoCharge.toFixed(2)}</span>
                           </div>
                         )}
-                        {shipment.paymentMode === 'cod' && (
+                        {charges.codFee > 0 && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">COD Fee</span>
-                            <span className="font-medium">₹{codFee.toFixed(2)}</span>
+                            <span className="font-medium">₹{charges.codFee.toFixed(2)}</span>
                           </div>
                         )}
                         <Separator className="my-2" />
                         <div className="flex justify-between font-medium">
                           <span>Total Taxable Amount</span>
-                          <span>₹{taxable.toFixed(2)}</span>
+                          <span>₹{charges.totalTaxableAmount.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">IGST (18%)</span>
-                          <span className="font-medium">₹{igst.toFixed(2)}</span>
+                          <span className="font-medium">₹{charges.igstAmount.toFixed(2)}</span>
                         </div>
+                        {shipment.discountApplied > 0 && (
+                          <>
+                            <Separator className="my-2" />
+                            <div className="flex justify-between text-green-600">
+                              <span className="flex items-center gap-1">
+                                Promo Discount
+                                {shipment.promoCode && (
+                                  <Badge variant="outline" className="ml-1 text-[10px] px-1.5 py-0 border-green-300 text-green-700 bg-green-50">{shipment.promoCode}</Badge>
+                                )}
+                              </span>
+                              <span className="font-semibold">-₹{shipment.discountApplied.toFixed(2)}</span>
+                            </div>
+                          </>
+                        )}
                         <Separator className="my-2" />
                         <div className="flex justify-between text-base font-bold text-primary">
                           <span>Final Amount</span>
-                          <span>₹{finalAmount.toFixed(2)}</span>
+                          <span>₹{Math.max(0, charges.finalAmount - (shipment.discountApplied || 0)).toFixed(2)}</span>
                         </div>
                       </>
                     );
@@ -993,6 +1081,55 @@ const ShipmentDetails = () => {
           />
         )
       }
+
+      {/* Full Screen Invoice Modal with Fixed Action Bar */}
+      <Dialog open={showInvoicePreview} onOpenChange={setShowInvoicePreview}>
+        <DialogContent className="max-w-[100vw] w-screen h-screen m-0 p-0 flex flex-col rounded-none overflow-hidden bg-gray-100">
+          {/* Fixed Action Bar */}
+          <div className="h-16 shrink-0 bg-white border-b flex items-center justify-between px-6 sticky top-0 z-50 shadow-sm">
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-primary" />
+              Tax Invoice — {shipment?.awb}
+            </DialogTitle>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={() => setShowInvoicePreview(false)}>
+                Close
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  const printWin = window.open('', '_blank');
+                  if (printWin) {
+                    printWin.document.write(invoiceHtml);
+                    printWin.document.close();
+                    setTimeout(() => printWin.print(), 500);
+                  }
+                }}
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                Print
+              </Button>
+              <Button onClick={handleDownloadInvoice} disabled={isGeneratingPdf} className="min-w-[140px]">
+                {isGeneratingPdf ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                {isGeneratingPdf ? "Generating..." : "Download PDF"}
+              </Button>
+            </div>
+          </div>
+          
+          {/* Full Screen Iframe View */}
+          <div className="flex-1 w-full h-full overflow-hidden flex justify-center py-6">
+            <iframe 
+              srcDoc={invoiceHtml} 
+              className="w-full max-w-[850px] h-full bg-white shadow-xl border border-gray-200 rounded-lg"
+              title="Invoice Preview"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout >
   );
 };

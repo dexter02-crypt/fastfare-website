@@ -2,6 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import Shipment from '../models/Shipment.js';
 import User from '../models/User.js';
+import { triggerShipmentEmail } from '../lib/emails/shipmentEmails.js';
 
 const router = express.Router();
 
@@ -91,6 +92,9 @@ router.post('/status', async (req, res) => {
                 timestamp: new Date()
             });
         }
+
+        // Trigger email
+        triggerShipmentEmail(status, shipment, { location, description });
 
         res.json({
             success: true,

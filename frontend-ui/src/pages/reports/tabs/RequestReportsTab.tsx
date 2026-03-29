@@ -80,6 +80,19 @@ const RequestReportsTab = () => {
 
     return (
         <div className="space-y-8 mt-6 pb-12">
+            <div className="flex flex-col items-center justify-center py-[80px] px-4 text-center">
+                <Clock className="h-20 w-20 text-blue-400 mb-6" />
+                <h2 className="text-3xl font-bold mb-4">Coming Soon</h2>
+                <p className="text-muted-foreground max-w-lg mb-4">
+                    Custom report generation is currently being built. You'll be able to request detailed fulfilment, payment, tax, and invoice reports very soon.
+                </p>
+                <p className="text-sm text-muted-foreground/60">
+                    Check back soon — we'll notify you when this feature goes live.
+                </p>
+            </div>
+
+            {false && (
+                <>
             <div>
                 <h2 className="text-xl font-bold">Request Reports — All Types</h2>
                 <div className="mt-2 flex items-start gap-2 bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-md text-sm">
@@ -193,6 +206,8 @@ const RequestReportsTab = () => {
                 </p>
             </div>
 
+                </>
+            )}
         </div>
     );
 };

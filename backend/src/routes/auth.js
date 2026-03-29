@@ -2,8 +2,12 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { Resend } from 'resend';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
+import { Otp } from '../models/Otp.js';
+import { generateOTP } from '../utils/otpGenerator.js';
+import { sendPasswordResetEmail, sendPasswordChangedEmail } from '../utils/emailSender.js';
 
 const router = express.Router();
 
@@ -33,143 +37,120 @@ const sendEmail = async ({ to, subject, html }) => {
 
 // ============= Registration OTP (Public - No Auth Required) =============
 
-// In-memory OTP store: Map<email, { hashedCode, expires, verified }>
-const registrationOtpStore = new Map();
+import { EmailVerification } from '../models/EmailVerification.js';
+import { sendRegistrationOtpEmail } from '../utils/emailSender.js';
 
-// Clean up expired OTPs every 5 minutes
-setInterval(() => {
-    const now = Date.now();
-    for (const [email, data] of registrationOtpStore.entries()) {
-        if (now > data.expires) {
-            registrationOtpStore.delete(email);
-        }
-    }
-}, 5 * 60 * 1000);
-
-
-// Send OTP to email for registration (no auth required)
+// Send OTP to email for registration
 router.post('/send-registration-otp', async (req, res) => {
     try {
         const { email } = req.body;
-
         if (!email) {
-            return res.status(400).json({ error: 'Email is required' });
+            return res.status(400).json({ error: 'Please enter a valid email address.' });
         }
-
         const normalizedEmail = email.toLowerCase().trim();
 
-        // Check if email is already registered
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(normalizedEmail)) {
+            return res.status(400).json({ error: 'Please enter a valid email address.' });
+        }
+
         const existingUser = await User.findOne({ email: normalizedEmail });
+        // NOTE: Partner check uses User model since partners are inside User but we will explicitly block anyways
         if (existingUser) {
-            return res.status(400).json({ error: 'This email is already registered. Please log in instead.' });
+            return res.status(400).json({ error: 'An account with this email already exists. Please log in instead.' });
         }
 
-        // Rate limiting: don't send again if last code was sent < 60 seconds ago
-        const existing = registrationOtpStore.get(normalizedEmail);
-        if (existing && existing.sentAt && (Date.now() - existing.sentAt) < 60000) {
-            const waitSeconds = Math.ceil((60000 - (Date.now() - existing.sentAt)) / 1000);
-            return res.status(429).json({
-                error: `Please wait ${waitSeconds} seconds before requesting a new code`,
-                retryAfter: waitSeconds,
-            });
+        // Rate limiting: 3 reqs per 15 minutes
+        const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+        const attemptCount = await EmailVerification.countDocuments({
+            email: normalizedEmail,
+            purpose: 'registration',
+            createdAt: { $gte: fifteenMinsAgo }
+        });
+
+        if (attemptCount >= 3) {
+            return res.status(429).json({ error: 'Too many OTP requests. Please wait 15 minutes before trying again.' });
         }
 
-        // Generate 6-digit code
-        const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const hashedCode = crypto.createHash('sha256').update(verificationCode).digest('hex');
+        // Generate cryptographically secure OTP
+        const otpCode = crypto.randomInt(100000, 999999).toString();
+        const otpHash = crypto.createHash('sha256').update(otpCode).digest('hex');
 
-        // Store with 10-minute expiry
-        registrationOtpStore.set(normalizedEmail, {
-            hashedCode,
-            expires: Date.now() + 10 * 60 * 1000,
-            sentAt: Date.now(),
-            verified: false,
+        // Delete old unexpired codes
+        await EmailVerification.deleteMany({ email: normalizedEmail, purpose: 'registration' });
+
+        // Save new OTP
+        await EmailVerification.create({
+            email: normalizedEmail,
+            otpHash,
+            purpose: 'registration',
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
         });
 
-        // Send verification email
-        await sendEmail({
-            to: normalizedEmail,
-            subject: 'FastFare — Verify Your Email',
-            html: `
-                <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #f9fafb;">
-                    <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="text-align: center; margin-bottom: 30px;">
-                            <h1 style="color: #011E41; font-size: 28px; margin: 0;">FastFare</h1>
-                            <p style="color: #999; font-size: 14px; margin-top: 4px;">B2B Logistics Platform</p>
-                        </div>
-                        <h2 style="color: #333; font-size: 20px; text-align: center;">Email Verification</h2>
-                        <p style="color: #666; line-height: 1.6; text-align: center;">
-                            Use the following code to verify your email and complete registration:
-                        </p>
-                        <div style="text-align: center; margin: 30px 0;">
-                            <div style="display: inline-block; background: #f0f4ff; border: 2px dashed #011E41; border-radius: 12px; padding: 20px 40px;">
-                                <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #011E41; font-family: monospace;">
-                                    ${verificationCode}
-                                </span>
-                            </div>
-                        </div>
-                        <p style="color: #999; font-size: 13px; line-height: 1.5; text-align: center;">
-                            This code expires in <strong>10 minutes</strong>. Do not share it with anyone.
-                        </p>
-                        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-                        <p style="color: #999; font-size: 12px; text-align: center;">
-                            &copy; ${new Date().getFullYear()} FastFare. All rights reserved.
-                        </p>
-                    </div>
-                </div>
-            `,
-        });
+        // Send Email
+        try {
+            await sendRegistrationOtpEmail(normalizedEmail, otpCode);
+        } catch (emailErr) {
+            console.error('Failed to dispatch registration email via Resend:', emailErr);
+            return res.status(500).json({ error: 'We had trouble sending the verification email. Please check your email address and try again, or contact support@fastfare.in.' });
+        }
 
-        res.json({
+        res.status(200).json({
             success: true,
-            message: 'Verification code sent',
-            email: normalizedEmail.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
+            message: 'A 6-digit verification code has been sent to your email. Please check your inbox.',
         });
-
     } catch (error) {
         console.error('Send registration OTP error:', error);
         res.status(500).json({ error: 'Failed to send verification email. Please try again.' });
     }
 });
 
-
 // Verify registration OTP (no auth required)
 router.post('/verify-registration-otp', async (req, res) => {
     try {
-        const { email, code } = req.body;
-
-        if (!email || !code) {
+        const { email, otp } = req.body;
+        if (!email || !otp) {
             return res.status(400).json({ error: 'Email and verification code are required' });
         }
-
+        
         const normalizedEmail = email.toLowerCase().trim();
-        const stored = registrationOtpStore.get(normalizedEmail);
+        const record = await EmailVerification.findOne({ email: normalizedEmail, purpose: 'registration' });
 
-        if (!stored) {
-            return res.status(400).json({ error: 'No verification code found. Please request a new one.' });
+        if (!record) {
+            return res.status(400).json({ error: 'No verification code was requested for this email. Please go back and try again.' });
+        }
+        if (new Date() > record.expiresAt) {
+            return res.status(400).json({ error: 'Your verification code has expired. Please request a new one.' });
+        }
+        if (record.used) {
+            return res.status(400).json({ error: 'This verification code has already been used.' });
         }
 
-        if (Date.now() > stored.expires) {
-            registrationOtpStore.delete(normalizedEmail);
-            return res.status(400).json({ error: 'Code has expired. Please request a new one.' });
+        if (record.attempts >= 5) {
+            await EmailVerification.deleteOne({ _id: record._id });
+            return res.status(400).json({ error: 'Too many incorrect attempts. Please request a new verification code.' });
         }
 
-        const hashedCode = crypto.createHash('sha256').update(code.toString()).digest('hex');
-
-        if (hashedCode !== stored.hashedCode) {
-            return res.status(400).json({ error: 'Invalid verification code' });
+        const hashedCode = crypto.createHash('sha256').update(otp.toString()).digest('hex');
+        if (hashedCode !== record.otpHash) {
+            record.attempts += 1;
+            await record.save();
+            return res.status(400).json({ error: 'Incorrect verification code. Please check and try again.' });
         }
 
-        // Mark as verified
-        stored.verified = true;
-        registrationOtpStore.set(normalizedEmail, stored);
+        record.used = true;
+        await record.save();
 
-        res.json({
+        const verifiedToken = jwt.sign(
+            { email: normalizedEmail, purpose: 'registration', verified: true },
+            process.env.JWT_SECRET,
+            { expiresIn: '30m' }
+        );
+
+        res.status(200).json({
             success: true,
-            message: 'Email verified successfully',
-            verified: true,
+            verifiedToken
         });
-
     } catch (error) {
         console.error('Verify registration OTP error:', error);
         res.status(500).json({ error: 'Verification failed' });
@@ -181,16 +162,27 @@ router.post('/verify-registration-otp', async (req, res) => {
 router.post('/register', async (req, res) => {
     // Note: email must be verified via /send-registration-otp + /verify-registration-otp before registering
     try {
-        const { businessName, gstin, businessType, contactPerson, email, phone, password, role } = req.body;
+        const { verifiedToken, businessName, gstin, businessType, contactPerson, email, phone, password, role } = req.body;
 
-        // ⚠️ TODO: RE-ENABLE once domain email propagation is complete (48hr wait)
-        // Check if email was verified via registration OTP
-        // const normalizedEmail = email.toLowerCase().trim();
-        // const otpData = registrationOtpStore.get(normalizedEmail);
-        // if (!otpData || !otpData.verified) {
-        //     return res.status(400).json({ error: 'Please verify your email before registering' });
-        // }
+        if (!verifiedToken) {
+            return res.status(400).json({ error: 'Email verification is required before creating an account.' });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(verifiedToken, process.env.JWT_SECRET);
+        } catch (err) {
+            return res.status(401).json({ error: 'Email verification failed or expired. Please verify your email again.' });
+        }
+
+        if (decoded.purpose !== 'registration' || !decoded.verified || !decoded.email) {
+            return res.status(401).json({ error: 'Email verification failed or expired. Please verify your email again.' });
+        }
+
         const normalizedEmail = email.toLowerCase().trim();
+        if (decoded.email !== normalizedEmail) {
+            return res.status(401).json({ error: 'Email verification failed or expired. Please verify your email again.' });
+        }
 
         // Validate role - only user and shipment_partner allowed through registration
         const validRoles = ['user', 'shipment_partner'];
@@ -255,8 +247,8 @@ router.post('/register', async (req, res) => {
 
         const user = await User.create(userData);
 
-        // Clean up the OTP from store
-        registrationOtpStore.delete(normalizedEmail);
+        // Clean up the OTP from collection
+        await EmailVerification.deleteMany({ email: normalizedEmail, purpose: 'registration' });
 
         const token = generateToken(user._id);
 
@@ -527,76 +519,75 @@ router.get('/email-status', protect, async (req, res) => {
 });
 
 
-// ============= Forgot Password =============
+// ============= Forgot Password (OTP-based) =============
 
-// Request password reset (sends email with reset link)
+const forgotPasswordRateLimit = new Map();
+const usedResetTokensCache = new Set();
+
+// Periodically clean up rate limit map
+setInterval(() => {
+    const now = Date.now();
+    for (const [email, data] of forgotPasswordRateLimit.entries()) {
+        if (now - data.windowStart > 15 * 60 * 1000) forgotPasswordRateLimit.delete(email);
+    }
+}, 15 * 60 * 1000);
+
+// Request password reset (sends OTP email)
 router.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
-
         if (!email) {
             return res.status(400).json({ error: 'Email is required' });
         }
 
-        const user = await User.findOne({ email: email.toLowerCase() });
+        const normalizedEmail = email.toLowerCase().trim();
 
+        // Rate limiting
+        const now = Date.now();
+        const windowMs = 15 * 60 * 1000;
+        let rlRecord = forgotPasswordRateLimit.get(normalizedEmail);
+        
+        if (!rlRecord || now - rlRecord.windowStart > windowMs) {
+            forgotPasswordRateLimit.set(normalizedEmail, { count: 1, windowStart: now });
+        } else {
+            if (rlRecord.count >= 3) {
+                return res.status(429).json({ success: false, message: 'Too many requests. Please wait before requesting another code.' });
+            }
+            rlRecord.count++;
+        }
+
+        const user = await User.findOne({ email: normalizedEmail });
+
+        // Don't reveal if email exists — always return success
         if (!user) {
-            // Don't reveal if email exists — always return success
             return res.json({
                 success: true,
-                message: 'If an account with that email exists, a password reset link has been sent.',
+                message: 'If this email is registered, a reset code has been sent.',
             });
         }
 
-        // Generate reset token
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+        // Invalidate previous unexpired OTPs for this email to prevent flooding
+        await Otp.updateMany({ email: normalizedEmail, used: false }, { used: true });
 
-        user.resetPasswordToken = hashedToken;
-        user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-        await user.save({ validateBeforeSave: false });
+        // Generate OTP
+        const otpCode = generateOTP();
+        const otpHash = crypto.createHash('sha256').update(otpCode).digest('hex');
 
-        // Build reset URL
-        const frontendUrl = process.env.FRONTEND_URL || 'https://fastfare.in';
-        const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
-
-        // Send email
-        await sendEmail({
-            to: user.email,
-            subject: 'FastFare — Reset Your Password',
-            html: `
-                <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #f9fafb;">
-                    <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="text-align: center; margin-bottom: 30px;">
-                            <h1 style="color: #011E41; font-size: 28px; margin: 0;">FastFare</h1>
-                        </div>
-                        <h2 style="color: #333; font-size: 20px;">Reset Your Password</h2>
-                        <p style="color: #666; line-height: 1.6;">
-                            Hello ${user.contactPerson || user.businessName},
-                        </p>
-                        <p style="color: #666; line-height: 1.6;">
-                            We received a request to reset your password. Click the button below to create a new password:
-                        </p>
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="${resetUrl}" style="display: inline-block; background: #011E41; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
-                                Reset Password
-                            </a>
-                        </div>
-                        <p style="color: #999; font-size: 13px; line-height: 1.5;">
-                            This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email.
-                        </p>
-                        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-                        <p style="color: #999; font-size: 12px; text-align: center;">
-                            &copy; ${new Date().getFullYear()} FastFare. All rights reserved.
-                        </p>
-                    </div>
-                </div>
-            `,
+        // Store OTP
+        await Otp.create({
+            email: normalizedEmail,
+            otpHash,
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+            used: false,
+            attempts: 0
         });
+
+        // Send Email
+        await sendPasswordResetEmail(normalizedEmail, otpCode);
 
         res.json({
             success: true,
-            message: 'If an account with that email exists, a password reset link has been sent.',
+            message: 'If this email is registered, a reset code has been sent.',
         });
 
     } catch (error) {
@@ -605,74 +596,125 @@ router.post('/forgot-password', async (req, res) => {
     }
 });
 
-
-// Reset password (using token from email)
-router.post('/reset-password', async (req, res) => {
+// Verify OTP
+router.post('/verify-otp', async (req, res) => {
     try {
-        const { token, email, newPassword } = req.body;
-
-        if (!token || !email || !newPassword) {
-            return res.status(400).json({ error: 'Token, email, and new password are required' });
+        const { email, otp } = req.body;
+        if (!email || !otp) {
+            return res.status(400).json({ error: 'Email and OTP are required' });
         }
 
-        if (newPassword.length < 8) {
-            return res.status(400).json({ error: 'Password must be at least 8 characters' });
+        const normalizedEmail = email.toLowerCase().trim();
+        const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+
+        const otpRecord = await Otp.findOne({
+            email: normalizedEmail,
+            used: false,
+            expiresAt: { $gt: Date.now() }
+        }).sort({ createdAt: -1 });
+
+        if (!otpRecord) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired code.' });
         }
 
-        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-
-        const user = await User.findOne({
-            email: email.toLowerCase(),
-            resetPasswordToken: hashedToken,
-            resetPasswordExpires: { $gt: Date.now() },
-        });
-
-        if (!user) {
-            return res.status(400).json({ error: 'Invalid or expired reset token' });
+        // Validate OTP
+        if (otpRecord.otpHash !== otpHash) {
+            otpRecord.attempts = (otpRecord.attempts || 0) + 1;
+            if (otpRecord.attempts >= 5) {
+                otpRecord.used = true; // Invalidate
+                await otpRecord.save();
+                return res.status(400).json({ success: false, message: 'Too many failed attempts. Please request a new code.' });
+            }
+            await otpRecord.save();
+            return res.status(400).json({ success: false, message: 'Invalid or expired code.' });
         }
 
-        // Update password
-        user.password = newPassword;
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpires = undefined;
-        await user.save();
+        // Valid OTP
+        otpRecord.used = true;
+        await otpRecord.save();
 
-        // Send confirmation email
-        await sendEmail({
-            to: user.email,
-            subject: 'FastFare — Password Changed Successfully',
-            html: `
-                <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #f9fafb;">
-                    <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="text-align: center; margin-bottom: 30px;">
-                            <h1 style="color: #011E41; font-size: 28px; margin: 0;">FastFare</h1>
-                        </div>
-                        <h2 style="color: #333; font-size: 20px;">Password Changed</h2>
-                        <p style="color: #666; line-height: 1.6;">
-                            Hello ${user.contactPerson || user.businessName},
-                        </p>
-                        <p style="color: #666; line-height: 1.6;">
-                            Your password has been changed successfully. If you did not make this change, please contact our support team immediately.
-                        </p>
-                        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-                        <p style="color: #999; font-size: 12px; text-align: center;">
-                            &copy; ${new Date().getFullYear()} FastFare. All rights reserved.
-                        </p>
-                    </div>
-                </div>
-            `,
-        }).catch(() => { }); // Don't fail if confirmation email fails
+        // Return short-lived signed JWT correctly issued for password reset
+        const resetToken = jwt.sign(
+            { email: normalizedEmail, purpose: 'password_reset' },
+            process.env.JWT_SECRET,
+            { expiresIn: '5m' }
+        );
 
-        res.json({
-            success: true,
-            message: 'Password has been reset successfully. You can now log in.',
-        });
+        res.json({ success: true, resetToken });
 
     } catch (error) {
-        console.error('Reset password error:', error);
-        res.status(500).json({ error: 'Failed to reset password' });
+        console.error('Verify OTP error:', error);
+        res.status(500).json({ error: 'Failed to verify OTP' });
     }
 });
+
+// Reset password
+router.post('/reset-password', async (req, res) => {
+    console.log('reset-password body received:', req.body);
+    const { resetToken, newPassword } = req.body;
+
+    if (!resetToken || typeof resetToken !== 'string' || resetToken.trim() === '') {
+        return res.status(400).json({ success: false, message: "Reset token is missing." });
+    }
+
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.trim() === '') {
+        return res.status(400).json({ success: false, message: "New password is required." });
+    }
+
+    if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, message: "Password too short." });
+    }
+
+    if (!/[A-Z]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: "Password needs uppercase." });
+    }
+
+    if (!/[a-z]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: "Password needs lowercase." });
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: "Password needs a number." });
+    }
+
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+        return res.status(400).json({ success: false, message: "Password needs a special character." });
+    }
+
+    console.log('Password passed all validation checks');
+
+    let decoded;
+    try {
+        decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+        console.log('Token decoded successfully:', decoded);
+    } catch (err) {
+        return res.status(401).json({ success: false, message: "Invalid or expired reset token." });
+    }
+
+    if (decoded.purpose !== 'password_reset' && decoded.purpose !== 'reset') {
+        return res.status(401).json({ success: false, message: "Invalid token purpose." });
+    }
+
+    const userEmail = decoded.email;
+    const user = await User.findOne({ email: userEmail });
+
+    if (!user) {
+        return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await User.updateOne({ _id: user._id }, { $set: { password: hashedPassword } });
+
+    // Send Password Changed Successfully Email asynchronously
+    sendPasswordChangedEmail(user.email, user.name || user.email.split('@')[0]).catch(err => {
+        console.error('Failed to send password changed notification email:', err);
+    });
+
+    return res.status(200).json({ success: true, message: "Password updated successfully." });
+});
+
 
 
 // ============= Notification Email Preferences =============

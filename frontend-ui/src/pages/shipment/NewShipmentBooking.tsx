@@ -91,6 +91,13 @@ const NewShipmentBooking = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  // Promo code state
+  const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null);
+  const [promoDiscount, setPromoDiscount] = useState(0);
+
+  // Wallet sufficiency state
+  const [isWalletSufficient, setIsWalletSufficient] = useState(true);
+
   const handleNext = async () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
@@ -137,6 +144,7 @@ const NewShipmentBooking = () => {
             scheduledPickup: serviceData.scheduledPickup,
             pickupDate: serviceData.pickupDate,
             pickupSlot: serviceData.pickupSlot,
+            ...(appliedPromoCode ? { promoCode: appliedPromoCode } : {}),
           };
 
           const response = await fetch(`${API_BASE_URL}/api/shipments/create`, {
@@ -262,7 +270,7 @@ const NewShipmentBooking = () => {
         const validCod = packageData.paymentMode === 'cod' ? (packageData.codAmount > 0 && packageData.codAmount <= 100000) : true;
         return packageData.contentType && packageData.packages.length > 0 && validCod;
       case 4:
-        return termsAccepted && serviceData.carrier;
+        return termsAccepted && serviceData.carrier && isWalletSufficient;
       default:
         return false;
     }
@@ -315,6 +323,16 @@ const NewShipmentBooking = () => {
                 onTermsChange={(v: boolean) => { setTermsAccepted(v); setTcError(false); }}
                 tcError={tcError}
                 onEditStep={handleEditStep}
+                onPaymentModeChange={(mode) => setPackageData(prev => ({ ...prev, paymentMode: mode }))}
+                onWalletSufficiencyChange={(sufficient) => setIsWalletSufficient(sufficient)}
+                onPromoApplied={(code, discount) => {
+                  setAppliedPromoCode(code);
+                  setPromoDiscount(discount);
+                }}
+                onPromoRemoved={() => {
+                  setAppliedPromoCode(null);
+                  setPromoDiscount(0);
+                }}
               />
             </div>
           </>

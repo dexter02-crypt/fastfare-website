@@ -148,60 +148,88 @@ export const generateManifestHTML = (
 // ──────────────────────────────────────────────
 // TAX INVOICE GENERATOR
 // ──────────────────────────────────────────────
-interface InvoiceUser {
-  businessName?: string;
-  email?: string;
-  phone?: string;
-  gstin?: string;
-  contactPerson?: string;
-}
+import {
+  calculateInvoiceCharges,
+  getInvoiceNumber,
+  getInvoiceLineItems,
+  getPlaceOfSupply,
+  getProfileWarning,
+  amountToWordsINR,
+  FASTFARE_COMPANY_CONFIG,
+  type CustomerProfile,
+  type InvoiceShipment,
+} from './invoiceUtils';
 
-interface InvoiceShipment {
-  awb?: string;
-  _id?: string;
-  shippingCost?: number;
-  totalValue?: number;
-  codAmount?: number;
-  paymentMode?: string;
-  serviceType?: string;
-  carrier?: string;
-  packages?: Array<{ name?: string; weight?: number; quantity?: number; value?: number }>;
-  pickup?: { city?: string; state?: string; pincode?: string; address?: string };
-  delivery?: { city?: string; state?: string; pincode?: string; name?: string };
-  createdAt?: string;
-  status?: string;
-  platformFee?: number;
-}
+export { type CustomerProfile, type InvoiceShipment } from './invoiceUtils';
 
-function numberToWords(num: number): string {
-  if (num === 0) return 'Zero';
-  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
-    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-  if (num < 20) return ones[num];
-  if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '');
-  if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 ? ' and ' + numberToWords(num % 100) : '');
-  if (num < 100000) return numberToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
-  if (num < 10000000) return numberToWords(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 ? ' ' + numberToWords(num % 100000) : '');
-  return numberToWords(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 ? ' ' + numberToWords(num % 10000000) : '');
-}
+export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, customer: CustomerProfile, autoDownloadPdf = false): string => {
+  const charges = calculateInvoiceCharges(shipment);
+  const invoiceNo = getInvoiceNumber(shipment);
+  const lineItems = getInvoiceLineItems(shipment, charges);
+  const placeOfSupply = getPlaceOfSupply(customer, shipment);
+  const profileWarning = getProfileWarning(customer);
+  const co = FASTFARE_COMPANY_CONFIG;
 
-export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceUser): string => {
-  const invoiceNo = `FF-INV-${String(Date.now()).slice(-8)}`;
   const invoiceDate = new Date(shipment.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
-  const deliveryFare = shipment.shippingCost || 0;
-  const gstRate = 0.18;
-  const gstAmount = Math.round(deliveryFare * gstRate * 100) / 100;
-  const totalPayable = Math.round((deliveryFare + gstAmount) * 100) / 100;
-
-  // Bug 35 — fix COD invoice status
-  const isCOD = shipment.paymentMode === 'cod';
-  const isPaid = !isCOD && (shipment.status === 'delivered' || shipment.paymentMode === 'prepaid' || shipment.paymentMode === 'razorpay');
+  const isCOD = (shipment.paymentMode || '').toLowerCase() === 'cod';
+  const isPaid = !isCOD && (shipment.status === 'delivered' || ['prepaid', 'razorpay', 'wallet'].includes(shipment.paymentMode || ''));
   const invoiceStatus = isCOD ? 'COD' : isPaid ? 'PAID' : 'PENDING';
 
-  const placeOfSupply = shipment.delivery?.state || shipment.pickup?.state || 'Haryana';
+  const lineItemRows = lineItems.map((item, i) => `
+    <tr>
+      <td style="text-align:center;">${i + 1}</td>
+      <td>
+        <strong>${item.description}</strong><br>
+        <span style="color:#888;font-size:10px">${item.subDescription}</span>
+      </td>
+      <td style="text-align:center;">${item.qty}</td>
+      <td style="text-align:center;">${item.hsnSac}</td>
+      <td style="text-align:right;">₹${item.amount.toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  const hasBankDetails = co.bankAccountNumber && co.bankIFSC && co.bankName;
+  const bankSection = hasBankDetails ? `
+    <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">Account Name:</td><td style="border:0;padding:2px 0">${co.bankAccountName}</td></tr>
+    <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">Account No:</td><td style="border:0;padding:2px 0">${co.bankAccountNumber}</td></tr>
+    <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">IFSC Code:</td><td style="border:0;padding:2px 0">${co.bankIFSC}</td></tr>
+    <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">Bank Name:</td><td style="border:0;padding:2px 0">${co.bankName}</td></tr>
+  ` : `
+    <tr><td colspan="2" style="border:0;padding:2px 0;color:#666;font-style:italic">${co.bankContactNote}</td></tr>
+  `;
+
+  const warningBanner = profileWarning ? `
+    <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:6px;padding:10px 16px;margin:0 24px 16px;font-size:12px;color:#92400e;">
+      ${profileWarning}
+    </div>
+  ` : '';
+
+  const codFeeRow = charges.codFee > 0 ? `
+    <tr>
+      <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">COD Handling Fee</td>
+      <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${charges.codFee.toFixed(2)}</td>
+    </tr>
+  ` : '';
+
+  const rtoChargeRow = charges.rtoCharge > 0 ? `
+    <tr>
+      <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">RTO Charge</td>
+      <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${charges.rtoCharge.toFixed(2)}</td>
+    </tr>
+  ` : '';
+
+  const promoDiscountAmount = shipment.discountApplied || 0;
+  const promoDiscountRow = promoDiscountAmount > 0 ? `
+    <tr>
+      <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee; color:#16a34a;">Promo Discount${shipment.promoCode ? ' (Code: ' + shipment.promoCode + ')' : ''}</td>
+      <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee; color:#16a34a; font-weight:600;">-₹${promoDiscountAmount.toFixed(2)}</td>
+    </tr>
+  ` : '';
+
+  const adjustedFinalAmount = Math.max(0, charges.finalAmount - promoDiscountAmount);
+  const adjustedAmountInWords = promoDiscountAmount > 0 ? amountToWordsINR(adjustedFinalAmount) : charges.amountInWords;
 
   return `<!DOCTYPE html>
 <html><head><title>Tax Invoice - ${invoiceNo}</title>
@@ -217,7 +245,6 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
   table { width: 100%; border-collapse: collapse; }
   th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 600; border: 1px solid #ddd; font-size: 11px; }
   td { padding: 10px 12px; border: 1px solid #ddd; font-size: 12px; }
-  .total-row td { font-weight: 700; background: #f0f4ff; }
   .footer { padding: 16px 24px; border-top: 1px solid #ddd; }
   .badge { display: inline-block; padding: 4px 16px; border-radius: 4px; font-weight: 700; font-size: 14px; }
   .badge-paid { background: #dcfce7; color: #166534; }
@@ -225,16 +252,17 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
 </style>
 </head>
 <body>
-<div class="container">
+<div class="container" id="invoice-container">
+  ${warningBanner}
   <!-- Header -->
   <div class="header">
     <div>
       <div style="font-size:22px;font-weight:bold;color:${BRAND_COLOR}">${FASTFARE_LOGO_IMG}</div>
       <div style="margin-top:8px;font-size:11px;color:#666">
-        FastFare Logistics Pvt Ltd<br>
-        Plot No. 123, Sector 44, Gurugram<br>
-        Haryana — 122003, India<br>
-        <strong>PAN:</strong> ${user.gstin ? user.gstin.substring(2, 12) : 'N/A'} &nbsp; <strong>GSTIN:</strong> ${user.gstin || 'Not Provided'}
+        ${co.companyName}<br>
+        ${co.companyAddress}<br>
+        ${co.companyCity}, ${co.companyState} — ${co.companyPIN}, India<br>
+        <strong>PAN:</strong> ${co.companyPAN} &nbsp; <strong>GSTIN:</strong> ${co.companyGSTIN}
       </div>
     </div>
     <div style="text-align:right">
@@ -247,11 +275,12 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
   <div class="details-grid">
     <div>
       <div style="font-weight:600;margin-bottom:8px;color:${BRAND_COLOR}">Invoice To</div>
-      <div style="font-weight:600;font-size:14px">${user.businessName || user.contactPerson || '—'}</div>
+      <div style="font-weight:600;font-size:14px">${customer.businessName || customer.contactPerson || '—'}</div>
       <div style="color:#666;margin-top:4px">
-        ${user.email || ''}<br>
-        Phone: ${user.phone || '—'}<br>
-        ${user.gstin ? `GSTIN: ${user.gstin}` : ''}
+        ${customer.email || ''}<br>
+        ${customer.phone ? 'Phone: ' + customer.phone : ''}
+        ${customer.gstin ? '<br>GSTIN: ' + customer.gstin : ''}
+        ${customer.pan ? '<br>PAN: ' + customer.pan : ''}
       </div>
     </div>
     <div>
@@ -280,16 +309,7 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td style="text-align:center;">1</td>
-          <td>
-            <strong>Delivery Fare — ${shipment.serviceType ? shipment.serviceType.charAt(0).toUpperCase() + shipment.serviceType.slice(1) : 'Express'} Delivery</strong><br>
-            <span style="color:#888;font-size:10px">Carrier: ${shipment.carrier || 'FastFare'} | AWB: ${shipment.awb || '—'}</span>
-          </td>
-          <td style="text-align:center;">1</td>
-          <td style="text-align:center;">996812</td>
-          <td style="text-align:right;">${deliveryFare.toFixed(2)}</td>
-        </tr>
+        ${lineItemRows}
       </tbody>
     </table>
 
@@ -301,28 +321,34 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
         <table style="border:0; width: 100%; font-size: 12px; margin:0;">
           <tr>
             <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Delivery Fare</td>
-            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${deliveryFare.toFixed(2)}</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${charges.forwardCharge.toFixed(2)}</td>
+          </tr>
+          ${codFeeRow}
+          ${rtoChargeRow}
+          <tr>
+            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee; font-weight:600;">Total Taxable Amount</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee; font-weight:600;">₹${charges.totalTaxableAmount.toFixed(2)}</td>
           </tr>
           <tr>
-            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">Taxes (GST @18%)</td>
-            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${gstAmount.toFixed(2)}</td>
+            <td style="padding:8px 16px; border:0; border-bottom:1px solid #eee;">IGST @18%</td>
+            <td style="padding:8px 16px; text-align:right; border:0; border-bottom:1px solid #eee;">₹${charges.igstAmount.toFixed(2)}</td>
           </tr>
-          <tr style="background: #f0f4ff;">
-            <td style="padding:12px 16px; border:0; font-weight:bold; color: ${BRAND_COLOR}; font-size: 14px;">TOTAL PAYABLE</td>
-            <td style="padding:12px 16px; text-align:right; border:0; font-weight:bold; color: ${BRAND_COLOR}; font-size: 14px;">₹${totalPayable.toFixed(2)}</td>
+          ${promoDiscountRow}
+          <tr style="background: #1a3c8f;">
+            <td style="padding:12px 16px; border:0; font-weight:bold; color: #fff; font-size: 14px;">TOTAL PAYABLE</td>
+            <td style="padding:12px 16px; text-align:right; border:0; font-weight:bold; color: #fff; font-size: 14px;">₹${adjustedFinalAmount.toFixed(2)}</td>
           </tr>
         </table>
+        <div style="padding:8px 16px; font-size:11px; color:#888; font-style:italic; border-top:1px solid #eee;">
+          ${adjustedAmountInWords}
+        </div>
       </div>
-    </div>
-
-    <div style="margin-top:12px; text-align:right; font-size:11px; color:#888;">
-      INR ${numberToWords(Math.round(totalPayable))} Only
     </div>
 
     <div style="margin-top:16px; font-size:11px; color:#666;">
       <p style="margin:2px 0;"><strong>Note:</strong></p>
-      <p style="margin:2px 0;">GST @18% charged on delivery fare as per applicable tax regulations.</p>
-      <p style="margin:2px 0;">GSTIN: ${user.gstin || 'Not Provided'} | SAC: 996812</p>
+      <p style="margin:2px 0;">IGST @18% charged on total taxable amount as per applicable tax regulations.</p>
+      <p style="margin:2px 0;">SAC: ${co.companySACCode} | Supplier GSTIN: ${co.companyGSTIN}</p>
       ${isCOD ? '<p style="margin:2px 0;">Payment mode: Cash on Delivery — Amount collected at delivery.</p>' : ''}
     </div>
 
@@ -332,7 +358,7 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
         ${isCOD ? 'Payment Mode' : 'Amount Due'}
         <span class="badge ${invoiceStatus === 'PAID' ? 'badge-paid' : invoiceStatus === 'COD' ? 'badge-paid' : 'badge-unpaid'}" style="font-size: 11px; padding: 2px 8px; ${invoiceStatus === 'COD' ? 'background:#dbeafe;color:#1d4ed8' : ''}">${invoiceStatus}</span>
       </div>
-      <div style="font-size:${isCOD ? '13' : '18'}px;font-weight:bold;color:${invoiceStatus === 'PAID' ? '#166534' : invoiceStatus === 'COD' ? '#1d4ed8' : '#92400e'}">${isCOD ? 'Cash on Delivery — Collected at delivery' : isPaid ? '₹0.00' : '₹' + totalPayable.toFixed(2)}</div>
+      <div style="font-size:${isCOD ? '13' : '18'}px;font-weight:bold;color:${invoiceStatus === 'PAID' ? '#166534' : invoiceStatus === 'COD' ? '#1d4ed8' : '#92400e'}">${isCOD ? 'Cash on Delivery — Collected at delivery' : isPaid ? '₹0.00' : '₹' + charges.finalAmount.toFixed(2)}</div>
     </div>
   </div>
 
@@ -340,13 +366,10 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
   <div class="footer">
     <div style="font-weight:600;margin-bottom:8px;color:${BRAND_COLOR}">Bank & Commercial Details</div>
     <table style="font-size:12px;border:0;width:auto">
-      <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">Account Name:</td><td style="border:0;padding:2px 0">FastFare Logistics Pvt Ltd</td></tr>
-      <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">Account No:</td><td style="border:0;padding:2px 0">Contact billing@fastfare.in</td></tr>
-      <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">IFSC Code:</td><td style="border:0;padding:2px 0">Contact billing@fastfare.in</td></tr>
-      <tr><td style="border:0;padding:2px 16px 2px 0;color:#666">Bank Name:</td><td style="border:0;padding:2px 0">Contact billing@fastfare.in</td></tr>
+      ${bankSection}
     </table>
     <div style="margin-top:24px;text-align:right">
-      <div style="font-size:11px;color:#888">For FastFare Logistics Pvt Ltd</div>
+      <div style="font-size:11px;color:#888">For ${co.companyName}</div>
       <div style="margin-top:32px;font-weight:600;font-size:12px">Authorized Signatory</div>
     </div>
     <div style="margin-top:16px;text-align:center;font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:12px">
@@ -354,8 +377,10 @@ export const generateTaxInvoiceHTML = (shipment: InvoiceShipment, user: InvoiceU
     </div>
   </div>
 </div>
+${autoDownloadPdf ? `<script>window.onload=function(){window.print();window.close();}</script>` : ''}
 </body></html>`;
 };
+
 
 
 // ──────────────────────────────────────────────
@@ -422,10 +447,13 @@ export const generateShippingLabelHTML = (shipment: LabelShipment, masked: boole
   const serviceType = (shipment.serviceType || 'standard').charAt(0).toUpperCase() + (shipment.serviceType || 'standard').slice(1);
   const carrier = shipment.carrier || 'FastFare';
 
-  // Bug 2 — COD / Prepaid footer
-  const codFooter = (shipment.paymentMode || '').toLowerCase() === 'cod'
-    ? `<strong style="color:red;font-size:12px">COD: ₹${shipment.codAmount || 0}</strong>`
-    : `<strong style="color:green;font-size:12px">PREPAID</strong>`;
+  // Bug 2 — COD / Prepaid / Wallet footer
+  let paymentFooter = `<strong style="color:green;font-size:12px">PREPAID</strong>`;
+  if ((shipment.paymentMode || '').toLowerCase() === 'cod') {
+    paymentFooter = `<strong style="color:red;font-size:12px">COD: ₹${shipment.codAmount || 0}</strong>`;
+  } else if ((shipment.paymentMode || '').toLowerCase() === 'wallet') {
+    paymentFooter = `<strong style="color:#6b21a8;font-size:12px">PAID VIA WALLET</strong>`;
+  }
 
   // Bug 1 — QR code section (embedded as img from backend data URL)
   const qrSection = qrDataURL ? `
@@ -529,7 +557,7 @@ th { font-weight: bold; padding: 4px; border-bottom: 1px solid #000; }
 <div class="footer">
   <div style="font-size:10px;color:#888">Powered by FastFare Logistics</div>
   <div style="text-align:right;font-size:10px;color:#888">
-    ${codFooter}
+    ${paymentFooter}
   </div>
 </div>
 </div>

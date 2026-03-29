@@ -23,8 +23,7 @@ import {
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useWallet } from "@/contexts/WalletContext";
-import logo from "/logo.png";
-import logoIcon from "/logo-icon.png";
+import Logo from "@/components/Logo";
 import { authApi } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import {
@@ -142,13 +141,12 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
             </Button>
           )}
 
-          <Link
-            to={isAuthenticated ? "/dashboard" : "/"}
-            className="flex items-center shrink-0"
-            style={{ position: 'static', marginLeft: 0, marginRight: '8px' }}
-          >
-            <img src={logo} alt="FastFare" className="h-10 w-auto object-contain" />
-          </Link>
+          {/* Logo container - Hidden on desktop, visible on mobile */}
+          <div className="flex items-center lg:hidden pl-2">
+            <Link to="/dashboard" className="flex items-center gap-2">
+              <Logo size="sm" variant="full" />
+            </Link>
+          </div>
         </div>
 
         {isAuthenticated && !isHomepage ? (
@@ -396,7 +394,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               flexShrink: 0,
             }}>
               <Link to="/" onClick={closeMobileMenu} style={{ display: 'flex', alignItems: 'center' }}>
-                <img src={logo} alt="FastFare" style={{ height: '28px', width: 'auto' }} />
+                <Logo size="lg" variant="full" />
               </Link>
               <button
                 onClick={closeMobileMenu}

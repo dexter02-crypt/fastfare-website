@@ -11,7 +11,6 @@ import NotFound from "./pages/NotFound";
 
 // Auth
 import ForgotPassword from "./pages/auth/ForgotPassword";
-import ResetPassword from "./pages/auth/ResetPassword";
 import EmailVerification from "./pages/auth/EmailVerification";
 import OrganizationSetup from "./pages/auth/OrganizationSetup";
 import RegisterUser from "./pages/auth/RegisterUser";
@@ -108,6 +107,7 @@ import UserReports from "./pages/reports/UserReports";
 // Billing
 import BillingDashboard from "./pages/billing/BillingDashboard";
 import WalletRecharge from "./pages/billing/WalletRecharge";
+import RechargeStatus from "./pages/billing/RechargeStatus";
 import TransactionsPage from "./pages/billing/TransactionsPage";
 import InvoicesPage from "./pages/billing/InvoicesPage";
 
@@ -152,6 +152,12 @@ import DataRetentionPolicy from "./pages/legal/DataRetentionPolicy";
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import PartnerManagement from "./pages/admin/PartnerManagement";
+import PromoCodesManagement from "./pages/admin/PromoCodesManagement";
+
+// Account Deletion Flow
+import DeletionAcknowledgement from "./pages/account/DeletionAcknowledgement";
+import OtpVerification from "./pages/account/OtpVerification";
+import AccountDeletedConfirmation from "./pages/account/AccountDeletedConfirmation";
 
 // Settlement & Tier System
 import SettlementDashboard from "./pages/settlement/SettlementDashboard";
@@ -171,6 +177,8 @@ import WMSTrackingPage from "./pages/wms/WMSTrackingPage";
 
 // Carrier (Legacy CarrierDashboard and CarrierOrders will be merged or removed next)
 import AdminCarriers from "./pages/admin/AdminCarriers";
+import AdminWalletRecharges from "./pages/admin/AdminWalletRecharges";
+import AdminPaymentGatewaySettings from "./pages/admin/AdminPaymentGatewaySettings";
 
 const queryClient = new QueryClient();
 
@@ -209,7 +217,6 @@ const App = () => (
               <Route path="/register/user" element={<RegisterUser />} />
               <Route path="/register/partner" element={<RegisterPartner />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/verify-email" element={<EmailVerification />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/about" element={<AboutPage />} />
@@ -262,6 +269,11 @@ const App = () => (
               <Route path="/grievance-redressal" element={<GrievanceRedressalPolicy />} />
               <Route path="/data-retention" element={<DataRetentionPolicy />} />
 
+              {/* Account Deletion Flow */}
+              <Route path="/account/delete/acknowledge" element={<ProtectedRoute><DeletionAcknowledgement /></ProtectedRoute>} />
+              <Route path="/account/delete/verify-otp" element={<ProtectedRoute><OtpVerification /></ProtectedRoute>} />
+              <Route path="/account/deleted" element={<AccountDeletedConfirmation />} />
+
               {/* Driver App (Standalone) */}
               <Route path="/driver-app/login" element={<DriverLogin />} />
               <Route path="/driver-app/dashboard" element={<DriverPrivateRoute><DriverDashboard /></DriverPrivateRoute>} />
@@ -313,8 +325,8 @@ const App = () => (
               <Route path="/fleet" element={<PartnerRoute><FleetManagement /></PartnerRoute>} />
               <Route path="/partner/orders" element={<PartnerRoute><PartnerOrders /></PartnerRoute>} />
               <Route path="/partner/activity" element={<PartnerRoute><PartnerActivity /></PartnerRoute>} />
-              <Route path="/partner/team" element={<PartnerRoute><PartnerTeamManagement /></PartnerRoute>} />
-              <Route path="/partner/pricing" element={<PartnerRoute><PartnerPricingPage /></PartnerRoute>} />
+              <Route path="/partner/team" element={<PartnerTeamManagement />} />
+              <Route path="/partner/pricing" element={<PartnerPricingPage />} />
               <Route path="/my-orders" element={<ProtectedRoute><UserOrders /></ProtectedRoute>} />
               <Route path="/returns-rto" element={<ProtectedRoute><ReturnsRto /></ProtectedRoute>} />
               <Route path="/weight-disputes" element={<ProtectedRoute><WeightDisputes /></ProtectedRoute>} />
@@ -329,6 +341,7 @@ const App = () => (
               {/* Billing */}
               <Route path="/billing" element={<ProtectedRoute><BillingDashboard /></ProtectedRoute>} />
               <Route path="/billing/recharge" element={<ProtectedRoute><WalletRecharge /></ProtectedRoute>} />
+              <Route path="/billing/recharge/status" element={<ProtectedRoute><RechargeStatus /></ProtectedRoute>} />
               <Route path="/billing/transactions" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />
               <Route path="/billing/invoices" element={<ProtectedRoute><InvoicesPage /></ProtectedRoute>} />
 
@@ -347,10 +360,12 @@ const App = () => (
 
               {/* Admin */}
               <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-              <Route path="/admin/partners" element={<ProtectedRoute><PartnerManagement /></ProtectedRoute>} />
-              <Route path="/admin/carriers" element={<ProtectedRoute><AdminCarriers /></ProtectedRoute>} />
+              <Route path="/admin/partners" element={<ProtectedRoute adminOnly><PartnerManagement /></ProtectedRoute>} />
+              <Route path="/admin/carriers" element={<ProtectedRoute adminOnly><AdminCarriers /></ProtectedRoute>} />
+              <Route path="/admin/promo-codes" element={<ProtectedRoute adminOnly><PromoCodesManagement /></ProtectedRoute>} />
+              <Route path="/admin/recharges" element={<ProtectedRoute adminOnly><AdminWalletRecharges /></ProtectedRoute>} />
+              <Route path="/admin/payment-gateway" element={<ProtectedRoute adminOnly><AdminPaymentGatewaySettings /></ProtectedRoute>} />
 
-              {/* Carrier */}
               {/* Settlement & Tier System */}
               <Route path="/settlement" element={<PartnerRoute><SettlementDashboard /></PartnerRoute>} />
 

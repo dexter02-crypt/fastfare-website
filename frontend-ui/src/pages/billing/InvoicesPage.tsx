@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { API_BASE_URL } from "@/config";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
@@ -64,9 +65,27 @@ const InvoicesPage = () => {
         inv.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleDownloadInvoice = (inv: Invoice) => {
+    const fetchUserProfile = async () => {
+        let userData = JSON.parse(localStorage.getItem('user') || '{}');
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE_URL}/api/settings/organization`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const orgData = await res.json();
+                userData = { ...userData, ...orgData };
+            }
+        } catch (e) {
+            console.error("Failed to fetch organization details");
+        }
+        return userData;
+    };
+
+    const handleDownloadInvoice = async (inv: Invoice) => {
         setSelectedInvoice(inv);
-        // Convert billing invoice to shipment format for the generator
+        const userData = await fetchUserProfile();
+        
         const shipmentData = {
             awb: inv.id,
             shippingCost: parseInt(inv.amount.replace(/[₹,]/g, '')) || 0,
@@ -75,19 +94,44 @@ const InvoicesPage = () => {
             serviceType: 'Standard',
             carrier: 'FastFare',
         };
-        const userData = {
-            businessName: 'Business Customer',
-            email: '',
-        };
-        const win = window.open('', '_blank');
-        if (win) {
-            win.document.write(generateTaxInvoiceHTML(shipmentData, userData));
-            win.document.close();
+
+        try {
+            toast.info("Preparing invoice download...");
+            const htmlString = generateTaxInvoiceHTML(shipmentData as any, userData, false);
+            
+            const container = document.createElement('div');
+            container.style.position = 'fixed';
+            container.style.left = '-9999px';
+            container.style.opacity = '0';
+            container.innerHTML = htmlString;
+            document.body.appendChild(container);
+
+            const invoiceNode = (container.querySelector('.container') || container) as HTMLElement;
+            const html2pdf = (await import('html2pdf.js')).default;
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const opt = {
+                margin: 10,
+                filename: `Invoice_${inv.id}.pdf`,
+                image: { type: 'jpeg' as const, quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+            };
+
+            await html2pdf().set(opt).from(invoiceNode).save();
+            document.body.removeChild(container);
+            toast.success("Invoice downloaded successfully");
+        } catch (err) {
+            console.error("Download failed", err);
+            toast.error("Failed to download invoice");
         }
     };
 
-    const handlePrintInvoice = (inv: Invoice) => {
+    const handlePrintInvoice = async (inv: Invoice) => {
         setSelectedInvoice(inv);
+        const userData = await fetchUserProfile();
+        
         const shipmentData = {
             awb: inv.id,
             shippingCost: parseInt(inv.amount.replace(/[₹,]/g, '')) || 0,
@@ -96,15 +140,20 @@ const InvoicesPage = () => {
             serviceType: 'Standard',
             carrier: 'FastFare',
         };
-        const userData = {
-            businessName: 'Business Customer',
-            email: '',
-        };
-        const win = window.open('', '_blank');
-        if (win) {
-            win.document.write(generateTaxInvoiceHTML(shipmentData, userData));
-            win.document.close();
-            setTimeout(() => win.print(), 500);
+
+        try {
+            toast.info("Preparing invoice for printing...");
+            const htmlString = generateTaxInvoiceHTML(shipmentData as any, userData, false);
+            
+            const win = window.open('', '_blank', 'width=800,height=1000');
+            if (win) {
+                win.document.write(htmlString);
+                win.document.close();
+                setTimeout(() => win.print(), 500);
+            }
+        } catch (err) {
+            console.error("Print failed", err);
+            toast.error("Failed to print invoice");
         }
     };
 

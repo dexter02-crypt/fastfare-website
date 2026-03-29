@@ -7,7 +7,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { Mail, CheckCircle, RefreshCw, ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "@/config";
-import logo from "@/assets/logo.png";
+import Logo from "@/components/Logo";
 import authBg from "@/assets/auth-bg.png";
 
 const EmailVerification = () => {
@@ -163,7 +163,7 @@ const EmailVerification = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary/70 to-primary/90" />
         <div className="relative z-10 flex flex-col justify-between p-12 text-white">
-          <img src={logo} alt="FastFare" className="h-12 w-auto brightness-0 invert" />
+          <Logo size="lg" variant="full" />
           <div className="space-y-6">
             <h1 className="text-4xl font-bold">
               One last step to secure your account

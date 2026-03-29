@@ -143,6 +143,8 @@ const shipmentSchema = new mongoose.Schema({
         enum: ['Returning', 'In Transit', 'Delivered Back', null],
         default: null
     },
+    promoCode: { type: String, default: null },
+    discountApplied: { type: Number, default: 0 },
     createdAt: {
         type: Date,
         default: Date.now

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Parcel from '../models/Parcel.js';
 import { protect } from '../middleware/auth.js';
+import { EmailVerification } from '../models/EmailVerification.js';
 
 const router = express.Router();
 
@@ -61,14 +62,34 @@ router.post('/login', async (req, res) => {
 router.post('/register', async (req, res) => {
     try {
         const {
-            name, phone, email, password, businessName,
+            verifiedToken, name, phone, email, password, businessName,
             zone, address, city, state, aadhaar,
             gstin, panNumber, fleetDetails, serviceZones,
             supportedTypes, baseFare, perKgRate, webhookUrl, features
         } = req.body;
 
-        if (!phone || !password || !name) {
-            return res.status(400).json({ success: false, message: 'Name, phone, and password are required' });
+        if (!phone || !password || !name || !email) {
+            return res.status(400).json({ success: false, message: 'Name, email, phone, and password are required' });
+        }
+
+        if (!verifiedToken) {
+            return res.status(400).json({ success: false, message: 'Email verification is required before creating an account.' });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(verifiedToken, process.env.JWT_SECRET);
+        } catch (err) {
+            return res.status(401).json({ success: false, message: 'Email verification failed or expired. Please verify your email again.' });
+        }
+
+        if (decoded.purpose !== 'registration' || !decoded.verified || !decoded.email) {
+            return res.status(401).json({ success: false, message: 'Email verification failed or expired. Please verify your email again.' });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        if (decoded.email !== normalizedEmail) {
+            return res.status(401).json({ success: false, message: 'Email verification failed or expired. Please verify your email again.' });
         }
 
         // Check if phone or email already exists
@@ -103,6 +124,8 @@ router.post('/register', async (req, res) => {
                 status: 'pending_approval'
             }
         });
+
+        await EmailVerification.deleteMany({ email: normalizedEmail, purpose: 'registration' });
 
         const token = generateToken(user._id);
         const partner = await formatPartner(user);

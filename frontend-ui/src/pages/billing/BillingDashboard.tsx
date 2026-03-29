@@ -38,9 +38,12 @@ interface BillingSummary {
 }
 
 interface Transaction {
-  id: string;
+  _id: string;
   type: string;
   amount: number;
+  status: string;
+  description?: string;
+  balanceAfter?: number;
   createdAt: string;
 }
 
@@ -217,14 +220,28 @@ const BillingDashboard = () => {
             <CardContent>
               <div className="space-y-4">
                 {recentTxns.length > 0 ? recentTxns.map((txn: Transaction) => (
-                  <div key={txn.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div key={txn._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border gap-2">
                     <div>
-                      <p className="font-medium text-sm capitalize">{txn.type}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(txn.createdAt)}</p>
+                      <div className="flex items-center gap-2">
+                         <p className="font-medium text-sm capitalize">
+                           {txn.type.replace('_', ' ')}
+                         </p>
+                         <Badge variant="outline" className="text-[10px] h-5 capitalize bg-muted/50">
+                           {txn.status || 'completed'}
+                         </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 max-w-[250px] truncate" title={txn.description}>
+                        {txn.description || 'Wallet Transaction'} • {formatDate(txn.createdAt)}
+                      </p>
                     </div>
-                    <span className={`font-semibold ${txn.amount > 0 ? "text-green-500" : "text-foreground"}`}>
-                      {txn.amount > 0 ? "+" : ""}₹{Math.abs(txn.amount).toLocaleString()}
-                    </span>
+                    <div className="flex flex-col sm:items-end mt-1 sm:mt-0">
+                      <span className={`font-semibold text-sm ${txn.type === 'recharge' || txn.type === 'refund' || txn.amount > 0 && txn.type !== 'shipment_charge' && txn.type !== 'debit' ? "text-green-600" : "text-foreground"}`}>
+                        {txn.type === 'recharge' || txn.type === 'refund' || (txn.amount > 0 && txn.type !== 'shipment_charge' && txn.type !== 'debit') ? "+" : "-"}₹{Math.abs(txn.amount).toLocaleString('en-IN')}
+                      </span>
+                      {txn.balanceAfter !== undefined && txn.balanceAfter !== null && (
+                         <span className="text-[10px] text-muted-foreground">Bal: ₹{txn.balanceAfter.toLocaleString('en-IN')}</span>
+                      )}
+                    </div>
                   </div>
                 )) : (
                   <p className="text-center text-muted-foreground py-4">No recent transactions</p>

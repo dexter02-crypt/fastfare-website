@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "@/config";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, ArrowLeft, Truck, Mail, Phone, User, Shield, MapPin, CreditCard, Check, X, Loader2, Plus, Globe, Package, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
-import logo from "@/assets/logo.png";
+import Logo from "@/components/Logo";
 import authBg from "@/assets/auth-bg.png";
 
 const vehicleTypeOptions = [
@@ -33,6 +33,18 @@ const RegisterPartner = () => {
     const { toast } = useToast();
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showOtpScreen, setShowOtpScreen] = useState(false);
+    const [otp, setOtp] = useState("");
+    const [isVerifying, setIsVerifying] = useState(false);
+    const [countdown, setCountdown] = useState(0);
+
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if (countdown > 0 && showOtpScreen) {
+            timer = setInterval(() => setCountdown(prev => prev - 1), 1000);
+        }
+        return () => clearInterval(timer);
+    }, [countdown, showOtpScreen]);
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [gstinVerifying, setGstinVerifying] = useState(false);
     const [gstinVerified, setGstinVerified] = useState(false);
@@ -154,61 +166,88 @@ const RegisterPartner = () => {
         if (passwordStrength <= 2) return "Weak";
         if (passwordStrength <= 4) return "Medium";
         return "Strong";
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    };    const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (formData.phone.length !== 10 || !/^[6-9]\d{9}$/.test(formData.phone)) {
-            toast({
-                title: "Invalid Phone Number",
-                description: "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9",
-                variant: "destructive",
-            });
+            toast({ title: "Invalid Phone Number", description: "Please enter a valid 10-digit mobile number", variant: "destructive" });
             return;
         }
 
         if (formData.password !== formData.confirmPassword) {
-            toast({
-                title: "Password Mismatch",
-                description: "Passwords do not match",
-                variant: "destructive",
-            });
+            toast({ title: "Password Mismatch", description: "Passwords do not match", variant: "destructive" });
             return;
         }
 
         if (passwordStrength < 3) {
-            toast({
-                title: "Weak Password",
-                description: "Please create a stronger password",
-                variant: "destructive",
-            });
+            toast({ title: "Weak Password", description: "Please create a stronger password", variant: "destructive" });
             return;
         }
 
         if (!acceptTerms) {
-            toast({
-                title: "Terms Required",
-                description: "Please accept the terms and conditions",
-                variant: "destructive",
-            });
+            toast({ title: "Terms Required", description: "Please accept the terms and conditions", variant: "destructive" });
             return;
         }
 
-        // Generate a placeholder GSTIN if not provided
-        const gstin = formData.gstin || `99${formData.phone.slice(0, 5)}00000A1Z${Math.floor(Math.random() * 10)}`;
-
-        // ⚠️ TODO: RE-ENABLE email verification once domain email propagation is complete
-        // navigate("/verify-email", {
-        //     state: {
-        //         registrationData: { ... },
-        //     },
-        // });
-
-        // Direct registration without email verification (temporary)
         setIsLoading(true);
         try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/send-registration-otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: formData.email }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Failed to send OTP");
+
+            setShowOtpScreen(true);
+            setCountdown(60);
+            toast({ title: "Verification required", description: "A 6-digit code has been sent to your email." });
+            window.scrollTo(0, 0); // scroll to top to see OTP screen
+        } catch (err) {
+            toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to send OTP", variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        if (countdown > 0) return;
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/send-registration-otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: formData.email })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Verification failed");
+            
+            setCountdown(60);
+            toast({ title: "Code Resent", description: "A new verification code has been sent to your email." });
+        } catch (err) {
+            toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to resend OTP", variant: "destructive" });
+        }
+    };
+
+    const handleVerifyAndRegister = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (otp.length !== 6) return;
+
+        setIsVerifying(true);
+        try {
+            // 1. Verify OTP
+            const verifyRes = await fetch(`${API_BASE_URL}/api/auth/verify-registration-otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: formData.email, otp })
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(verifyData.error || "Verification failed");
+
+            // 2. Register
+            const gstin = formData.gstin || `99${formData.phone.slice(0, 5)}00000A1Z${Math.floor(Math.random() * 10)}`;
             const registrationData = {
+                verifiedToken: verifyData.verifiedToken,
+                name: formData.contactPerson, // partner endpoint expects "name" in some places and "contactPerson" in others
                 businessName: formData.businessName,
                 gstin: gstin,
                 businessType: "logistics",
@@ -240,7 +279,7 @@ const RegisterPartner = () => {
                 city: formData.city
             };
 
-            const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+            const response = await fetch(`${API_BASE_URL}/api/partner-auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(registrationData),
@@ -248,12 +287,12 @@ const RegisterPartner = () => {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || "Registration failed");
+                throw new Error(data.message || data.error || "Registration failed");
             }
 
             // Store token and user info
             localStorage.setItem("token", data.token);
-            localStorage.setItem("user", JSON.stringify(data.user));
+            localStorage.setItem("user", JSON.stringify(data.partner || data.user));
             localStorage.setItem("kycStatus", "pending");
             localStorage.setItem("kycSkippedAt", new Date().toISOString());
 
@@ -267,7 +306,7 @@ const RegisterPartner = () => {
             const msg = err instanceof Error ? err.message : "Registration failed";
             toast({ title: "Error", description: msg, variant: "destructive" });
         } finally {
-            setIsLoading(false);
+            setIsVerifying(false);
         }
     };
 
@@ -340,16 +379,18 @@ const RegisterPartner = () => {
                     {/* Mobile Logo */}
                     <div className="lg:hidden mb-6">
                         <Link to="/">
-                            <img src={logo} alt="FastFare" className="h-10 w-auto" />
+                            <Logo size="lg" variant="full" />
                         </Link>
                     </div>
 
-                    <h1 className="text-2xl font-bold mb-2">Become a Delivery Partner</h1>
-                    <p className="text-muted-foreground mb-6">
-                        Join FastFare's delivery network and start earning
-                    </p>
+                    {!showOtpScreen ? (
+                        <>
+                            <h1 className="text-2xl font-bold mb-2">Become a Delivery Partner</h1>
+                            <p className="text-muted-foreground mb-6">
+                                Join FastFare's delivery network and start earning
+                            </p>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                            <form onSubmit={handleSendOtp} className="space-y-4">
                         {/* Business Name */}
                         <div className="space-y-2">
                             <Label htmlFor="businessName">Business / Vehicle Owner Name</Label>
@@ -728,9 +769,77 @@ const RegisterPartner = () => {
                             size="lg"
                             disabled={isLoading}
                         >
-                            {isLoading ? "Creating Account..." : "Become a Partner"}
+                            {isLoading ? "Validating..." : "Become a Partner"}
                         </Button>
                     </form>
+                    </>
+                    ) : (
+                        <div className="space-y-6">
+                            <div className="text-center mb-6">
+                                <div className="mx-auto w-12 h-12 bg-primary/10 text-primary flex items-center justify-center rounded-full mb-4">
+                                    <Mail className="h-6 w-6" />
+                                </div>
+                                <h1 className="text-2xl font-bold mb-2">Verify your email</h1>
+                                <p className="text-muted-foreground">
+                                    We've sent a 6-digit verification code to
+                                    <br />
+                                    <span className="font-semibold text-foreground">{formData.email}</span>
+                                </p>
+                            </div>
+
+                            <form onSubmit={handleVerifyAndRegister} className="space-y-6">
+                                <div className="space-y-2">
+                                    <Label className="text-center block">Enter Verification Code</Label>
+                                    <Input
+                                        type="text"
+                                        maxLength={6}
+                                        value={otp}
+                                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                                        className="text-center text-3xl font-mono tracking-[0.5em] h-16 bg-muted/50 focus:bg-background"
+                                        placeholder="000000"
+                                        required
+                                        autoFocus
+                                    />
+                                    <p className="text-center text-xs text-muted-foreground mt-2">
+                                        Valid for 10 minutes
+                                    </p>
+                                </div>
+
+                                <Button
+                                    type="submit"
+                                    className="w-full h-12 text-lg gradient-primary text-primary-foreground hover:opacity-90"
+                                    disabled={otp.length !== 6 || isVerifying}
+                                >
+                                    {isVerifying ? (
+                                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Verifying...</>
+                                    ) : "Verify & Become Partner"}
+                                </Button>
+                                
+                                <div className="text-center space-y-4">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="text-sm"
+                                        onClick={handleResendOtp}
+                                        disabled={countdown > 0}
+                                    >
+                                        {countdown > 0 ? `Resend code in ${countdown}s` : "Resend Verification Code"}
+                                    </Button>
+                                    
+                                    <div>
+                                        <Button
+                                            type="button"
+                                            variant="link"
+                                            className="text-sm text-muted-foreground"
+                                            onClick={() => setShowOtpScreen(false)}
+                                        >
+                                            <ArrowLeft className="mr-2 h-4 w-4" /> Change Email Address
+                                        </Button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    )}
 
                     <p className="text-center text-sm text-muted-foreground mt-6">
                         Already have an account?{" "}

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Building2, MapPin, Package, CreditCard, Check, ArrowRight, ArrowLeft } from "lucide-react";
-import logo from "@/assets/logo.png";
+import Logo from "@/components/Logo";
 
 const steps = [
   { id: 1, title: "Business Info", icon: Building2 },
@@ -285,7 +285,7 @@ const OrganizationSetup = () => {
       <div className="container max-w-3xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <img src={logo} alt="FastFare" className="h-10 mx-auto mb-4" />
+          <Logo size="lg" variant="full" />
           <h1 className="text-2xl font-bold">Set up your organization</h1>
           <p className="text-muted-foreground">Complete these steps to start shipping</p>
         </div>

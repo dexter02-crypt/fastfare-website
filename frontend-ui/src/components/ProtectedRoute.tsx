@@ -3,6 +3,7 @@ import { authApi } from "@/lib/api";
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
+    adminOnly?: boolean;
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {

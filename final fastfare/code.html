@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FastFare — Logistics Management</title>
+<link href="{{DATA:IMAGE:IMAGE_7}}" rel="icon" type="image/png"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-dim": "#812c79",
+              "on-surface-variant": "#595c5e",
+              "on-tertiary-fixed-variant": "#701c6a",
+              "primary-container": "#809bff",
+              "on-background": "#2c2f31",
+              "primary-dim": "#0042c6",
+              "outline-variant": "#abadaf",
+              "surface-dim": "#d0d5d8",
+              "surface-container-low": "#eef1f3",
+              "on-primary-fixed": "#000000",
+              "secondary-dim": "#833b00",
+              "error-container": "#f74b6d",
+              "tertiary-fixed-dim": "#ee8cdf",
+              "surface-tint": "#004ce1",
+              "on-secondary-fixed": "#582600",
+              "on-tertiary-fixed": "#450042",
+              "secondary-fixed": "#ffc5a5",
+              "primary-fixed": "#809bff",
+              "inverse-surface": "#0b0f10",
+              "on-secondary-fixed-variant": "#843c00",
+              "error-dim": "#a70138",
+              "tertiary-fixed": "#fe99ed",
+              "tertiary-container": "#fe99ed",
+              "on-secondary": "#fff0e9",
+              "primary": "#004ce1",
+              "error": "#b41340",
+              "outline": "#747779",
+              "on-error-container": "#510017",
+              "on-error": "#ffefef",
+              "on-secondary-container": "#763500",
+              "surface-bright": "#f5f7f9",
+              "surface-container-highest": "#d9dde0",
+              "surface-container": "#e5e9eb",
+              "secondary": "#954400",
+              "on-surface": "#2c2f31",
+              "secondary-container": "#ffc5a5",
+              "surface-container-lowest": "#ffffff",
+              "on-tertiary-container": "#651060",
+              "on-primary-fixed-variant": "#002475",
+              "surface-container-high": "#dfe3e6",
+              "surface-variant": "#d9dde0",
+              "primary-fixed-dim": "#6b8cff",
+              "on-primary-container": "#001c60",
+              "inverse-primary": "#6789ff",
+              "on-tertiary": "#ffeef7",
+              "tertiary": "#8f3986",
+              "background": "#f5f7f9",
+              "surface": "#f5f7f9",
+              "secondary-fixed-dim": "#ffb285",
+              "on-primary": "#f2f2ff",
+              "inverse-on-surface": "#9a9d9f"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #EEF2F7; }
+        .glass { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Tooltip style */
+        [data-tooltip] { position: relative; }
+        [data-tooltip]::before {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%) translateX(10px);
+            background: #2c2f31;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+            z-index: 50;
+        }
+        [data-tooltip]:hover::before {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Toast notifications */
+        #toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 100;
+            display: flex;
+            flex-col: column;
+            gap: 8px;
+        }
+        .toast {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-left: 4px solid #004ce1;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="text-on-background selection:bg-primary-container selection:text-on-primary-container overflow-hidden">
+<div id="toast-container"></div>
+<!-- TopNavBar -->
+<header class="h-[56px] w-full sticky top-0 z-[45] bg-white/80 backdrop-blur-md flex items-center justify-between px-6 shadow-sm border-b border-surface-container">
+<div class="flex items-center gap-4 flex-1">
+<button class="p-2 hover:bg-surface-container-low rounded-lg transition-colors" data-tooltip="Go Back" onclick="window.history.back()">
+<span class="material-symbols-outlined text-on-surface-variant">arrow_back</span>
+</button>
+<button class="flex items-center gap-1 p-2 hover:bg-surface-container-low rounded-lg transition-colors group">
+<span class="text-sm font-semibold text-on-surface">Warehouse Alpha</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm group-hover:text-primary transition-colors">unfold_more</span>
+</button>
+</div>
+<div class="flex items-center justify-center flex-1">
+<img alt="FastFare Logo" class="h-8 object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0ugw8MUviUurJY1Lfwvixm0UuTIBBqaxN3_HkLnqXbfovh2KUJo642EuDJMVfGKj_pgAu80Wtxgo9_ecohRZmTMgyPB5-AHNrQVQj8fZFcHG3xQJ7pFI_w3KrxciHJRTwVdZTPS7z9gGxpImd6ILeHinIiascmOWfd8SeYX8joXU3fGPNADe-dmevCcoCrS9hx2YYsYtpbf7nSEWGZ3qoxcvxG7gg5XTBI3c_v4YMX97O_iWAzLFbpQ3LpDADhuauN-lo-H7d0IK"/>
+</div>
+<div class="flex items-center justify-end gap-4 flex-1">
+<div class="flex items-center bg-surface-container-low rounded-full p-1 border border-outline-variant/20" id="lang-toggle">
+<button class="px-3 py-1 bg-white text-primary text-xs font-bold rounded-full shadow-sm transition-all" id="btn-en" onclick="changeLang('en')">En</button>
+<button class="px-3 py-1 text-on-surface-variant text-xs font-medium rounded-full transition-all" id="btn-it" onclick="changeLang('it')">It</button>
+</div>
+<div class="relative">
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors cursor-pointer relative" id="notif-bell" onclick="toggleNotifications()">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+<span class="absolute top-2 right-2 w-2.5 h-2.5 bg-error rounded-full border-2 border-white"></span>
+</button>
+<!-- Notification Dropdown -->
+<div class="hidden absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-surface-container-high overflow-hidden z-50" id="notif-panel">
+<div class="p-4 border-b border-surface-container-high flex justify-between items-center bg-surface-container-lowest">
+<h4 class="font-bold text-sm">Notifications</h4>
+<button class="text-xs text-primary font-bold">Mark all read</button>
+</div>
+<div class="max-h-96 overflow-y-auto">
+<div class="p-4 border-b border-surface-container-low hover:bg-surface-bright cursor-pointer transition-colors">
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-sm">local_shipping</span>
+</div>
+<div>
+<p class="text-xs font-semibold">Shipment #HJn487 departed</p>
+<p class="text-[10px] text-on-surface-variant mt-1">2 mins ago • Los Angeles hub</p>
+</div>
+</div>
+</div>
+<div class="p-4 border-b border-surface-container-low hover:bg-surface-bright cursor-pointer transition-colors bg-primary/5">
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-secondary flex-shrink-0">
+<span class="material-symbols-outlined text-sm">warning</span>
+</div>
+<div>
+<p class="text-xs font-semibold">Weather delay alert</p>
+<p class="text-[10px] text-on-surface-variant mt-1">45 mins ago • Chicago route</p>
+</div>
+</div>
+</div>
+</div>
+<div class="p-3 text-center border-t border-surface-container-high">
+<button class="text-xs text-on-surface-variant font-medium hover:text-primary">View all alerts</button>
+</div>
+</div>
+</div>
+<div class="w-9 h-9 rounded-full overflow-hidden border-2 border-primary/20 bg-gradient-to-tr from-primary to-primary-container flex items-center justify-center">
+<img alt="User Profile" class="w-full h-full object-cover hidden" data-alt="Portrait of a male logistics manager" id="user-avatar" onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden')" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvLFpmTEpKhSNfmJbuyUC_0iibQZghELMcH-0z6SQ6njqRJ9Frr_VM4Lz7RIgDq_S2Jl1ju-xpqvmGVUt-4HFNgmm6f0ZpWZGRyMP9qQ_M7yGEi_GZl3aFD-WEXB1XaUFvOXdN8NVrZMtasN6iYT18R7ZQoxfCzTkTMNMOhvO1s4hdF0735ffa8EPbCXInHdb0mWRnD7CXhCTMYgpirdMjrIt92Okv6mfiQ81bVs1VO7KxKDk8LHgNcnE_L-0rc8xMxI0eEnlYBzs"/>
+<span class="text-white text-xs font-bold hidden">BM</span>
+</div>
+</div>
+</header>
+<div class="flex h-[calc(100vh-56px)]">
+<!-- SideNavBar -->
+<nav class="w-[68px] bg-white border-r border-surface-container flex flex-col items-center py-6 gap-6 z-40">
+<div class="mb-2">
+<img alt="FastFare Icon" class="w-8 h-8 object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0uiyyqHpV97eYQczX0cmxEXHM-2ZCQwTHg6Vxh9HZDDnTbSPWyyRUWNRKM2ehs8sED0H4vU__3znjc-mTelYA4FrrhdBKbVwCOsfoZnfULi2onMIXR4nb6JzrGwMNdvVCQy3DYiEEbO9v7S_TYzTGdIAcbpNXPnTFJFPM64hcv4sasQdHwKWhyDBUBnZ4kMX38biLDpy02yHKHPm9CRSG-nZL8sKfbYErYsdo98TZKZ3lijYjhPa8NI9x-qxR6xWl8xwBlgUOyvCjA"/>
+</div>
+<div class="flex flex-col gap-4">
+<button class="w-11 h-11 flex items-center justify-center bg-primary text-white rounded-xl shadow-lg shadow-primary/20 transition-all hover:scale-105" data-tooltip="Dashboard">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary-container/10 rounded-xl transition-all" data-tooltip="Shipments">
+<span class="material-symbols-outlined">inventory_2</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary-container/10 rounded-xl transition-all" data-tooltip="Returns">
+<span class="material-symbols-outlined">assignment_return</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary-container/10 rounded-xl transition-all" data-tooltip="Weight Tracking">
+<span class="material-symbols-outlined">monitor_weight</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary-container/10 rounded-xl transition-all" data-tooltip="Procurement">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary-container/10 rounded-xl transition-all" data-tooltip="Fleet Locations">
+<span class="material-symbols-outlined">location_on</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary-container/10 rounded-xl transition-all" data-tooltip="Calculators">
+<span class="material-symbols-outlined">calculate</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary-container/10 rounded-xl transition-all" data-tooltip="Payments">
+<span class="material-symbols-outlined">payments</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary-container/10 rounded-xl transition-all" data-tooltip="Analytics">
+<span class="material-symbols-outlined">analytics</span>
+</button>
+</div>
+<div class="mt-auto flex flex-col gap-4">
+<button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary-container/10 rounded-xl transition-all" data-tooltip="Settings">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary-container/10 rounded-xl transition-all" data-tooltip="Help Center">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="w-11 h-11 rounded-lg bg-surface-container flex items-center justify-center text-primary font-bold text-[10px] border border-surface-container-highest">
+                VM
+            </div>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="flex-1 p-8 overflow-y-auto bg-[#EEF2F7]">
+<!-- Metrics Row -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+<a class="bg-surface-container-lowest p-6 rounded-xl flex items-center gap-4 border-l-4 border-primary hover:shadow-lg transition-all transform hover:-translate-y-1" href="shipments.html?filter=all">
+<div class="w-12 h-12 bg-blue-50 text-primary rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined">local_shipping</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-medium">Total shipments</p>
+<h3 class="text-2xl font-bold font-headline">32</h3>
+</div>
+</a>
+<a class="bg-surface-container-lowest p-6 rounded-xl flex items-center gap-4 border-l-4 border-secondary hover:shadow-lg transition-all transform hover:-translate-y-1" href="shipments.html?status=pending_pickup">
+<div class="w-12 h-12 bg-orange-50 text-secondary rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined">package_2</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-medium">Pickup packages</p>
+<h3 class="text-2xl font-bold font-headline">24</h3>
+</div>
+</a>
+<a class="bg-surface-container-lowest p-6 rounded-xl flex items-center gap-4 border-l-4 border-outline-variant hover:shadow-lg transition-all transform hover:-translate-y-1" href="shipments.html?status=pending">
+<div class="w-12 h-12 bg-slate-50 text-on-surface-variant rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined">schedule</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-medium">Pending packages</p>
+<h3 class="text-2xl font-bold font-headline">8</h3>
+</div>
+</a>
+<a class="bg-surface-container-lowest p-6 rounded-xl flex items-center gap-4 border-l-4 border-primary-container hover:shadow-lg transition-all transform hover:-translate-y-1" href="shipments.html?status=delivered">
+<div class="w-12 h-12 bg-slate-50 text-on-surface-variant rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined">check_box</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-medium">Packages delivered</p>
+<h3 class="text-2xl font-bold font-headline">4</h3>
+</div>
+</a>
+</div>
+<!-- Interactive Delivery Section -->
+<div class="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 mb-8">
+<!-- Delivery List -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h2 class="font-headline font-bold text-xl">Ongoing Delivery</h2>
+<button class="text-primary text-sm font-semibold hover:underline">View all</button>
+</div>
+<div class="space-y-4" id="delivery-cards">
+<!-- Active Card -->
+<div class="delivery-card bg-surface-container-lowest p-5 rounded-xl border-2 border-primary ring-4 ring-primary/5 cursor-pointer transition-all" onclick="selectTrip(this, 'trip1')">
+<div class="flex justify-between items-start mb-4">
+<div>
+<span class="text-xs font-bold text-primary uppercase tracking-tighter">Current Trip</span>
+<h4 class="font-bold text-lg">#454EH1274</h4>
+</div>
+<span class="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-lg text-xs font-bold">Books</span>
+</div>
+<div class="flex items-center gap-3 mb-6 bg-surface-container-low p-3 rounded-lg">
+<div class="w-10 h-10 bg-white rounded flex items-center justify-center">
+<span class="font-extrabold text-red-600 text-sm italic tracking-tighter">DHL</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface leading-tight">DHL Express</p>
+<p class="text-[10px] text-on-surface-variant">Global Logistics Partner</p>
+</div>
+</div>
+<div class="relative h-24 mb-4 rounded-lg overflow-hidden">
+<img alt="Truck Illustration" class="w-full h-full object-cover grayscale opacity-30" data-alt="Logistics truck moving through a city" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKvt6NLRNuNhmpeCGxVn-lcphh7NJXVyZ4FVyIZqPn9SiiCrNI3VTRcM4xjLiEaUQukLke9_e1PEPRhOuz_f6tp0WRbvWba4ClOdCi3Y5_SCzJa2-MR_jvjT6DYRkHoZRGUni3ndM_qL_L-h9EIbb7yCk1WCZiEPRXcmwC-hNgX3fTbaImjuxdlB3o2wZ7rO4fGWx5zj1303CBRYdWE72ZpxjVHCId4BC_9RK2V9vO_K0syEcN1sgbpkdkozfyGAUXtER6LZkqcxQ"/>
+<div class="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
+<div class="absolute bottom-2 left-3 right-3 flex justify-between items-end">
+<div class="flex items-center gap-2">
+<div class="w-6 h-4 bg-primary/10 rounded flex items-center justify-center text-[8px] font-bold">🇺🇸</div>
+<span class="material-symbols-outlined text-sm text-primary">trending_flat</span>
+<div class="w-6 h-4 bg-primary/10 rounded flex items-center justify-center text-[8px] font-bold">🇬🇧</div>
+</div>
+<span class="text-primary text-sm font-black">IN TRANSIT</span>
+</div>
+</div>
+</div>
+<!-- Secondary Card -->
+<div class="delivery-card bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/10 hover:shadow-md transition-shadow cursor-pointer" onclick="selectTrip(this, 'trip2')">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-bold text-on-surface">#HJn487-aa1</h4>
+<span class="bg-primary-container/30 text-on-primary-container px-3 py-1 rounded-lg text-xs font-bold">Equipment</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 bg-surface-container-low rounded flex items-center justify-center">
+<span class="font-extrabold text-blue-700 text-[10px] italic">FedEx</span>
+</div>
+<span class="text-xs font-medium text-on-surface-variant">FedEx Priority</span>
+</div>
+<div class="flex items-center gap-1 text-secondary font-bold text-xs">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                                Pending
+                            </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Map Panel -->
+<div class="relative bg-surface-container-low rounded-xl overflow-hidden min-h-[500px] shadow-inner" id="map-container">
+<img alt="Springfield Map" class="w-full h-full object-cover transition-all duration-700" data-alt="Detailed map view of Springfield Illinois with satellite data" data-location="Springfield IL" id="main-map" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBteusXYPLlZreN5U_45DHFYK_RcNhPZ_f4wU0VPpPH40F38Kqm7f9hbfVV01A-ykTJT-9bLAnzlKdtacyMKOZ6q3bduvBK51cIlXb7hCRjfnWSTeNipZlMLoEwhpE1x8V8lMsWFWOb24ca8_rf2AzOce3Q60VX1o-Ao5DnLL8ndX00y8bzXldUpIc4fqv6H6u8dAdkXLKXLaroYboMltd-QZn083vWhsww66F_uMnpx-LF9BlCjJ73UgeYPX6MrKc5V356HABfZ-A"/>
+<!-- Map Overlays -->
+<div class="absolute top-4 right-4 flex flex-col gap-2">
+<button class="w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center text-on-surface hover:bg-surface-bright transition-colors" onclick="zoomMap(1.1)">
+<span class="material-symbols-outlined">add</span>
+</button>
+<button class="w-10 h-10 bg-white rounded-lg shadow-lg flex items-center justify-center text-on-surface hover:bg-surface-bright transition-colors" onclick="zoomMap(0.9)">
+<span class="material-symbols-outlined">remove</span>
+</button>
+</div>
+<!-- Map Markers (Simulated) -->
+<div class="absolute top-1/3 left-1/4 group cursor-pointer" onclick="showPopup('Chicago Distribution Center', 'Origin Hub')">
+<span class="material-symbols-outlined text-primary text-4xl drop-shadow-lg">location_on</span>
+<div class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white px-2 py-1 rounded shadow text-[10px] font-bold whitespace-nowrap">Chicago Hub</div>
+</div>
+<div class="absolute bottom-1/3 right-1/4 group cursor-pointer" onclick="showPopup('Springfield Residential', 'Target Destination')">
+<span class="material-symbols-outlined text-error text-4xl drop-shadow-lg">location_on</span>
+<div class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white px-2 py-1 rounded shadow text-[10px] font-bold whitespace-nowrap">Destination</div>
+</div>
+<!-- Map Popup -->
+<div class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-4 rounded-xl shadow-2xl border border-surface-container-high z-30 min-w-[200px]" id="map-popup">
+<div class="flex justify-between items-start mb-2">
+<h5 class="font-bold text-sm" id="popup-title">Location</h5>
+<button class="text-on-surface-variant hover:text-error" onclick="document.getElementById('map-popup').classList.add('hidden')"><span class="material-symbols-outlined text-sm">close</span></button>
+</div>
+<p class="text-xs text-on-surface-variant" id="popup-desc">Address details go here.</p>
+</div>
+<!-- Bottom Overlay Panel -->
+<div class="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-6 rounded-xl shadow-2xl border border-white/50">
+<div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-6">
+<div>
+<div class="flex items-center justify-between mb-4">
+<div>
+<h3 class="font-headline font-bold text-xl text-on-surface">Ben Millett</h3>
+<p class="text-sm text-on-surface-variant font-medium">Tracking ID: <button class="text-primary font-bold hover:underline" onclick="copyTracking('#454EH1274')">#454EH1274</button></p>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-right">
+<p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Weight</p>
+<p class="font-bold text-sm">9.1 kg</p>
+</div>
+<div class="text-right">
+<p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Price</p>
+<p class="font-bold text-sm text-primary">$169.00</p>
+</div>
+</div>
+</div>
+<!-- Delivery Timeline -->
+<div class="relative py-4">
+<div class="absolute top-1/2 left-0 w-full h-1 bg-surface-container-high -translate-y-1/2 rounded-full overflow-hidden">
+<div class="w-[65%] h-full bg-primary"></div>
+</div>
+<div class="relative flex justify-between">
+<div class="flex flex-col items-center">
+<div class="w-4 h-4 rounded-full bg-primary ring-4 ring-primary/20 border-2 border-white z-10"></div>
+<span class="mt-2 text-[10px] font-bold text-primary">Origin</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-4 h-4 rounded-full bg-primary ring-4 ring-primary/20 border-2 border-white z-10"></div>
+<span class="mt-2 text-[10px] font-bold text-primary">In Transit</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-4 h-4 rounded-full bg-surface-container-highest border-2 border-white z-10"></div>
+<span class="mt-2 text-[10px] font-bold text-on-surface-variant">Destination</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-center justify-center p-4 border-l border-outline-variant/20">
+<div class="w-20 h-20 bg-surface-container-low p-2 rounded-lg mb-2 cursor-pointer hover:bg-surface-container transition-colors" onclick="showToast('Tracking URL copied')">
+<img alt="Tracking QR Code" class="w-full h-full object-contain mix-blend-multiply" data-alt="QR Code for tracking number 454EH1274" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUHITfjSSGpx6gvEc2u6FHMBm6OvKF8ixIspl0UX7ojPTL2JKow0i4PIcPAB5MLOd2Mj5HYBs6HFeWgYNVzHbd1-xy2JaWpOSnzNCkR_i33xA4hke3L-A4pLjRofZp9WnA3w29E8sx550tx1CdGO8MwjgmRMmf2CWtbGl07kN5jHSfyPTeiTUCIe9NUhxdA4wl-E_UJvPHpkDwzq5CqP77OwU_VRwUmnYyjVp-X8pNV5POSjNvD4qQ-KvOmJwnynVJOByj5x9MmzE"/>
+</div>
+<span class="text-[8px] font-black text-on-surface-variant tracking-[0.2em] uppercase">Scan for details</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Track Order Table -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/10 overflow-hidden relative">
+<div class="px-8 py-6 border-b border-outline-variant/5 flex flex-wrap items-center justify-between gap-4">
+<h2 class="font-headline font-bold text-xl">Track Order</h2>
+<div class="flex items-center gap-3">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="pl-10 pr-12 py-2 bg-surface-container-low border-none rounded-lg text-sm w-64 focus:ring-2 focus:ring-primary/20 transition-all" id="search-input" placeholder="Search tracking..." type="text"/>
+<button class="absolute right-10 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-error hidden" id="search-clear" onclick="clearSearch()">
+<span class="material-symbols-outlined text-sm">close</span>
+</button>
+<span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-on-surface-variant border px-1.5 rounded bg-white">⌘F</span>
+</div>
+<div class="relative">
+<button class="bg-primary p-2 rounded-lg text-white hover:bg-primary-dim transition-colors flex items-center justify-center relative" onclick="toggleFilter()">
+<span class="material-symbols-outlined">filter_list</span>
+<span class="absolute -top-1 -right-1 w-4 h-4 bg-error text-[10px] rounded-full flex items-center justify-center font-bold" id="filter-badge">0</span>
+</button>
+<!-- Filter Panel -->
+<div class="hidden absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-surface-container-high z-50 p-6" id="filter-panel">
+<h4 class="font-bold mb-4">Filters</h4>
+<div class="space-y-4">
+<div>
+<label class="block text-[10px] font-black uppercase text-on-surface-variant mb-1">Status</label>
+<select class="w-full text-xs rounded-lg border-surface-container bg-surface-container-low">
+<option>All Statuses</option>
+<option>Shipping</option>
+<option>Pending</option>
+<option>Delivered</option>
+</select>
+</div>
+<div>
+<label class="block text-[10px] font-black uppercase text-on-surface-variant mb-1">Courier</label>
+<select class="w-full text-xs rounded-lg border-surface-container bg-surface-container-low">
+<option>All Couriers</option>
+<option>DHL</option>
+<option>FedEx</option>
+</select>
+</div>
+<div class="flex gap-2 pt-2">
+<button class="flex-1 bg-primary text-white text-xs font-bold py-2 rounded-lg" onclick="applyFilters()">Apply</button>
+<button class="flex-1 border border-surface-container text-xs font-bold py-2 rounded-lg" onclick="toggleFilter()">Cancel</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bulk Action Bar -->
+<div class="hidden absolute top-[80px] left-0 right-0 bg-primary/95 backdrop-blur py-3 px-8 z-20 flex items-center justify-between text-white" id="bulk-bar">
+<span class="text-sm font-bold" id="selected-count">2 items selected</span>
+<div class="flex gap-4">
+<button class="flex items-center gap-2 px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition-all" onclick="exportCSV()">
+<span class="material-symbols-outlined text-lg">download</span> Export CSV
+                    </button>
+<button class="px-4 py-1.5 hover:bg-white/10 rounded-lg text-sm font-bold transition-all" onclick="deselectAll()">Cancel</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="px-8 py-4"><input class="rounded border-outline-variant text-primary focus:ring-primary" onchange="toggleAllRows(this)" type="checkbox"/></th>
+<th class="px-4 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Tracking#</th>
+<th class="px-4 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Courier</th>
+<th class="px-4 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Category</th>
+<th class="px-4 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Shipper Date</th>
+<th class="px-4 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Destination</th>
+<th class="px-4 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Weight</th>
+<th class="px-4 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Payment</th>
+<th class="px-4 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<tr class="hover:bg-surface-bright transition-colors group">
+<td class="px-8 py-5"><input class="row-check rounded border-outline-variant text-primary focus:ring-primary" onchange="handleRowSelect()" type="checkbox"/></td>
+<td class="px-4 py-5">
+<div class="flex items-center gap-2">
+<a class="text-primary font-bold text-sm hover:underline" href="shipment-detail.html?id=HJn487" target="_blank">#HJn487-aa1</a>
+<span class="material-symbols-outlined text-on-surface-variant text-xs opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</div>
+</td>
+<td class="px-4 py-5">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 bg-blue-50 rounded flex items-center justify-center">
+<span class="text-[8px] font-black italic text-blue-700">FX</span>
+</div>
+<span class="text-sm font-medium">FedEx</span>
+</div>
+</td>
+<td class="px-4 py-5"><span class="bg-primary-container/20 text-on-primary-container px-2 py-0.5 rounded-full text-[10px] font-bold">Equipment</span></td>
+<td class="px-4 py-5 text-sm text-on-surface-variant font-medium">Oct 12, 2023</td>
+<td class="px-4 py-5 text-sm font-medium">Los Angeles, CA</td>
+<td class="px-4 py-5 text-sm font-bold">14.5 kg</td>
+<td class="px-4 py-5"><span class="text-primary font-black text-sm">$320.00</span></td>
+<td class="px-4 py-5">
+<div class="flex items-center gap-1.5 text-secondary font-bold text-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                                    Pending
+                                </div>
+</td>
+</tr>
+<tr class="bg-primary/5 hover:bg-primary/10 transition-colors group">
+<td class="px-8 py-5"><input checked="" class="row-check rounded border-outline-variant text-primary focus:ring-primary" onchange="handleRowSelect()" type="checkbox"/></td>
+<td class="px-4 py-5">
+<div class="flex items-center gap-2">
+<a class="text-primary font-bold text-sm hover:underline" href="shipment-detail.html?id=454EH" target="_blank">#454EH1274</a>
+<span class="material-symbols-outlined text-on-surface-variant text-xs opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</div>
+</td>
+<td class="px-4 py-5">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 bg-red-50 rounded flex items-center justify-center">
+<span class="text-[8px] font-black italic text-red-600">DHL</span>
+</div>
+<span class="text-sm font-medium">DHL Express</span>
+</div>
+</td>
+<td class="px-4 py-5"><span class="bg-tertiary-container/40 text-on-tertiary-container px-2 py-0.5 rounded-full text-[10px] font-bold">Books</span></td>
+<td class="px-4 py-5 text-sm text-on-surface-variant font-medium">Oct 14, 2023</td>
+<td class="px-4 py-5 text-sm font-medium">Springfield, IL</td>
+<td class="px-4 py-5 text-sm font-bold">9.1 kg</td>
+<td class="px-4 py-5"><span class="text-primary font-black text-sm">$169.00</span></td>
+<td class="px-4 py-5">
+<div class="flex items-center gap-1.5 text-primary font-bold text-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                    Shipping
+                                </div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-8 py-4 bg-surface-container-low/30 flex items-center justify-between">
+<span class="text-xs font-medium text-on-surface-variant">Showing 2 of 32 results</span>
+<div class="flex gap-2">
+<button class="px-3 py-1 bg-white border border-outline-variant/20 rounded-lg text-xs font-bold hover:bg-surface-bright transition-colors">Prev</button>
+<button class="px-3 py-1 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary-dim transition-colors">Next</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Contextual FAB -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 hover:rotate-90 active:scale-95 transition-all z-[46]" onclick="showToast('Create new shipment triggered')">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+<script>
+    // PART 2 & 3: Functional Scripts
+    
+    // Notifications toggle
+    function toggleNotifications() {
+        const panel = document.getElementById('notif-panel');
+        panel.classList.toggle('hidden');
+    }
+
+    // Language Toggle
+    function changeLang(lang) {
+        const btnEn = document.getElementById('btn-en');
+        const btnIt = document.getElementById('btn-it');
+        
+        if (lang === 'en') {
+            btnEn.className = "px-3 py-1 bg-white text-primary text-xs font-bold rounded-full shadow-sm";
+            btnIt.className = "px-3 py-1 text-on-surface-variant text-xs font-medium rounded-full";
+            showToast("Language set to English");
+        } else {
+            btnIt.className = "px-3 py-1 bg-white text-primary text-xs font-bold rounded-full shadow-sm";
+            btnEn.className = "px-3 py-1 text-on-surface-variant text-xs font-medium rounded-full";
+            showToast("Lingua impostata su Italiano");
+        }
+    }
+
+    // Search focus and clear
+    document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+            e.preventDefault();
+            document.getElementById('search-input').focus();
+        }
+        if (e.key === 'Escape') {
+            document.getElementById('notif-panel').classList.add('hidden');
+            document.getElementById('filter-panel').classList.add('hidden');
+            document.getElementById('map-popup').classList.add('hidden');
+        }
+    });
+
+    const searchInput = document.getElementById('search-input');
+    const searchClear = document.getElementById('search-clear');
+
+    searchInput.addEventListener('input', () => {
+        searchClear.classList.toggle('hidden', searchInput.value.length === 0);
+    });
+
+    function clearSearch() {
+        searchInput.value = '';
+        searchClear.classList.add('hidden');
+        searchInput.focus();
+    }
+
+    // Filter Toggle
+    function toggleFilter() {
+        document.getElementById('filter-panel').classList.toggle('hidden');
+    }
+
+    function applyFilters() {
+        document.getElementById('filter-badge').textContent = '2';
+        toggleFilter();
+        showToast("Filters applied successfully");
+    }
+
+    // Bulk Actions
+    function handleRowSelect() {
+        const checks = document.querySelectorAll('.row-check:checked');
+        const bulkBar = document.getElementById('bulk-bar');
+        const countText = document.getElementById('selected-count');
+        
+        if (checks.length > 0) {
+            bulkBar.classList.remove('hidden');
+            countText.textContent = `${checks.length} item${checks.length > 1 ? 's' : ''} selected`;
+        } else {
+            bulkBar.classList.add('hidden');
+        }
+    }
+
+    function toggleAllRows(master) {
+        document.querySelectorAll('.row-check').forEach(c => c.checked = master.checked);
+        handleRowSelect();
+    }
+
+    function deselectAll() {
+        document.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+        handleRowSelect();
+    }
+
+    function exportCSV() {
+        const data = "Tracking#,Courier,Category,Status\n#HJn487-aa1,FedEx,Equipment,Pending\n#454EH1274,DHL,Books,Shipping";
+        const blob = new Blob([data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('hidden', '');
+        a.setAttribute('href', url);
+        a.setAttribute('download', 'shipments_export.csv');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast("Exporting CSV file...");
+    }
+
+    // PART 4: Map & UX Refinements
+    function selectTrip(el, tripId) {
+        document.querySelectorAll('.delivery-card').forEach(c => {
+            c.classList.remove('border-2', 'border-primary', 'ring-4', 'ring-primary/5');
+            c.classList.add('border', 'border-outline-variant/10');
+        });
+        el.classList.remove('border', 'border-outline-variant/10');
+        el.classList.add('border-2', 'border-primary', 'ring-4', 'ring-primary/5');
+        
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        // Sim map update
+        const map = document.getElementById('main-map');
+        map.style.filter = "hue-rotate(" + (tripId === 'trip2' ? '45deg' : '0deg') + ")";
+        showToast(`Tracking shipment ${tripId === 'trip2' ? '#HJn487' : '#454EH'}`);
+    }
+
+    function zoomMap(scale) {
+        const map = document.getElementById('main-map');
+        const currentScale = map.dataset.scale || 1;
+        const newScale = currentScale * scale;
+        map.style.transform = `scale(${newScale})`;
+        map.dataset.scale = newScale;
+    }
+
+    function showPopup(title, desc) {
+        const popup = document.getElementById('map-popup');
+        document.getElementById('popup-title').textContent = title;
+        document.getElementById('popup-desc').textContent = desc;
+        popup.classList.remove('hidden');
+    }
+
+    function copyTracking(text) {
+        navigator.clipboard.writeText(text);
+        showToast("Tracking ID copied to clipboard");
+    }
+
+    function showToast(msg) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = msg;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Click outside to close panels
+    window.addEventListener('click', (e) => {
+        const notifPanel = document.getElementById('notif-panel');
+        const notifBell = document.getElementById('notif-bell');
+        if (!notifBell.contains(e.target) && !notifPanel.contains(e.target)) {
+            notifPanel.classList.add('hidden');
+        }
+
+        const filterPanel = document.getElementById('filter-panel');
+        const filterBtn = document.querySelector('button[onclick="toggleFilter()"]');
+        if (filterBtn && !filterBtn.contains(e.target) && !filterPanel.contains(e.target)) {
+            filterPanel.classList.add('hidden');
+        }
+    });
+</script>
+</body></html>

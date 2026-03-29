@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Package, Globe, ShoppingCart, Share2 } from "lucide-react";
-import logo from "@/assets/logo.png";
+import Logo from "@/components/Logo";
 
 const SellingChannels = () => {
   const navigate = useNavigate();
@@ -69,7 +69,7 @@ const SellingChannels = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <img src={logo} alt="FastFare" className="h-10 mx-auto mb-8" />
+          <Logo size="lg" variant="full" />
           <h1 className="text-2xl md:text-3xl font-bold mb-2">
             Let's get your shipping journey started!
           </h1>

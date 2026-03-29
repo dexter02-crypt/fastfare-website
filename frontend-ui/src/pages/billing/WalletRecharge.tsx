@@ -8,37 +8,29 @@ import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Wallet, CreditCard, Zap, Shield, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { paymentApi } from "@/lib/api";
 import { useWallet } from "@/contexts/WalletContext";
+import { API_BASE_URL } from "@/config";
 
 declare global {
     interface Window {
-        Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
+        Cashfree: any;
     }
 }
 
-interface RazorpayResponse {
-    razorpay_order_id: string;
-    razorpay_payment_id: string;
-    razorpay_signature: string;
-}
-
-interface RazorpayOptions {
-    key: string;
-    amount: number;
-    currency: string;
-    name: string;
-    description: string;
-    order_id: string;
-    handler: (response: RazorpayResponse) => void;
-    prefill: { name: string; email: string };
-    theme: { color: string };
-    modal: { ondismiss: () => void };
-}
-
-interface RazorpayInstance {
-    open: () => void;
-}
+const loadCashfreeScript = () => {
+    return new Promise((resolve, reject) => {
+        if (window.Cashfree) {
+            resolve(window.Cashfree);
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+        script.async = true;
+        script.onload = () => resolve(window.Cashfree);
+        script.onerror = reject;
+        document.body.appendChild(script);
+    });
+};
 
 const quickAmounts = [500, 1000, 2000, 5000, 10000, 25000];
 
@@ -47,6 +39,7 @@ const WalletRecharge = () => {
     const [amount, setAmount] = useState<number>(1000);
     const [customAmount, setCustomAmount] = useState<string>("");
     const [isProcessing, setIsProcessing] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>("");
     const [showSuccess, setShowSuccess] = useState(false);
     const [successAmount, setSuccessAmount] = useState<number>(0);
     const { refreshBalance } = useWallet();
@@ -66,8 +59,10 @@ const WalletRecharge = () => {
     };
 
     const handlePayment = async () => {
-        if (amount < 1) {
-            toast.error("Please enter a valid amount");
+        setErrorMessage("");
+        if (amount < 500) {
+            setErrorMessage("Minimum recharge amount is ₹500");
+            toast.error("Minimum recharge amount is ₹500");
             return;
         }
 
@@ -81,64 +76,64 @@ const WalletRecharge = () => {
         setIsProcessing(true);
 
         try {
-            // Create order
-            const orderData = await paymentApi.createOrder(amount);
+            // 1. Initialize Recharger API Call
+            const res = await fetch(`${API_BASE_URL}/api/wallet/recharge/initiate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ amount })
+            });
 
-            // Initialize Razorpay
-            const options = {
-                key: orderData.keyId,
-                amount: orderData.amount,
-                currency: orderData.currency,
-                name: "FastFare Logistics",
-                description: `Wallet Recharge - ₹${amount}`,
-                order_id: orderData.orderId,
-                handler: async function (response: RazorpayResponse) {
-                    try {
-                        // Verify payment
-                        const result = await paymentApi.verifyPayment({
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature,
-                        });
+            const data = await res.json();
+            
+            console.log("Backend Cashfree Initiate Response:", data);
 
-                        if (result.success) {
-                            toast.success(`₹${amount} added to wallet successfully!`);
-                            setSuccessAmount(amount);
-                            setShowSuccess(true);
-                            await refreshBalance();
-                            setIsProcessing(false);
-                            setTimeout(() => setShowSuccess(false), 3000);
-                            navigate("/billing");
-                        } else {
-                            toast.error("Payment verification failed");
-                            setIsProcessing(false);
-                        }
-                    } catch (error) {
-                        toast.error("Payment verification failed");
-                    }
-                },
-                prefill: {
-                    name: localStorage.getItem("userName") || "",
-                    email: localStorage.getItem("userEmail") || "",
-                },
-                theme: {
-                    color: "#6366f1", // Primary color
-                },
-                modal: {
-                    ondismiss: function () {
-                        setIsProcessing(false);
-                        toast.info("Payment cancelled");
-                    },
-                },
-            };
+            if (!res.ok) {
+                const errorText = data.message || "Payment initiation failed. Please try again.";
+                setErrorMessage(errorText);
+                toast.error(errorText);
+                setIsProcessing(false);
+                return;
+            }
+            
+            if (!data.payment_session_id) {
+                setErrorMessage("Payment initiation failed. Please try again.");
+                setIsProcessing(false);
+                return;
+            }
 
-            const razorpay = new window.Razorpay(options);
-            razorpay.open();
+            // 2. Load Cashfree SDK dynamically
+            let CashfreeLib: any;
+            try {
+                CashfreeLib = await loadCashfreeScript();
+            } catch (err) {
+                setErrorMessage("Unable to load payment gateway. Please check your internet connection and try again.");
+                toast.error("Unable to load payment gateway.");
+                setIsProcessing(false);
+                return;
+            }
+            
+            // Initialization
+            const cashfree = CashfreeLib({
+                mode: data.cashfree_env === 'production' ? 'production' : 'sandbox'
+            });
+            
+            // 3. Store Order ID Reference properly before redirect
+            sessionStorage.setItem('ff_recharge_order_id', data.order_id);
+            sessionStorage.setItem('ff_recharge_amount', data.amount.toString());
+
+            // 4. Redirect to Cashfree Hosted Page via SDK
+            cashfree.checkout({
+                paymentSessionId: data.payment_session_id,
+                redirectTarget: "_self"
+            });
+
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to initiate payment';
             console.error("Payment error:", error);
-            toast.error(errorMessage);
-        } finally {
+            setErrorMessage("Failed to initiate Cashfree payment. Please try again.");
+            toast.error("Failed to initiate Cashfree payment.");
             setIsProcessing(false);
         }
     };
@@ -197,9 +192,10 @@ const WalletRecharge = () => {
 
                             {/* Custom Amount */}
                             <div>
-                                <label className="text-sm font-medium mb-2 block">
+                                <label className="text-sm font-medium mb-1 block">
                                     Or Enter Custom Amount
                                 </label>
+                                <p className="text-xs text-muted-foreground mb-3">Minimum recharge amount: ₹500</p>
                                 <div className="relative">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-medium text-muted-foreground">
                                         ₹
@@ -210,9 +206,12 @@ const WalletRecharge = () => {
                                         className="pl-8 h-14 text-lg"
                                         value={customAmount}
                                         onChange={handleCustomAmountChange}
-                                        min={1}
+                                        min={500}
                                     />
                                 </div>
+                                {amount > 0 && amount < 500 && (
+                                    <p className="text-destructive text-sm mt-2">Minimum recharge amount is ₹500. Please enter ₹500 or more.</p>
+                                )}
                             </div>
 
                             {/* Amount Summary */}
@@ -249,14 +248,24 @@ const WalletRecharge = () => {
                                 </div>
                             </div>
 
+                            {/* Error Message */}
+                            {errorMessage && (
+                                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                                    <span>{errorMessage}</span>
+                                </div>
+                            )}
+
                             {/* Pay Button */}
                             <Button
-                                className="w-full h-14 text-lg font-semibold gradient-primary gap-2"
+                                className="w-full h-14 text-lg font-semibold gradient-primary gap-2 disabled:opacity-50"
                                 onClick={handlePayment}
-                                disabled={isProcessing || amount < 1}
+                                disabled={isProcessing || amount < 500}
                             >
                                 {isProcessing ? (
-                                    <>Processing...</>
+                                    <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Initiating Payment...</>
+                                ) : amount > 0 && amount < 500 ? (
+                                    <>Minimum ₹500 Required</>
                                 ) : (
                                     <>
                                         <CreditCard className="h-5 w-5" />

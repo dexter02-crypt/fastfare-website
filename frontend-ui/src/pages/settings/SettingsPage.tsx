@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ import {
   Settings, Bell, Shield, Key, Globe, Building2, Users,
   CreditCard, Package, Truck, Save, RefreshCw, Smartphone,
   Lock, Monitor, Laptop, AlertTriangle, CheckCircle, X, Loader2,
-  Download, LogOut
+  Download, LogOut, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/config";
@@ -41,6 +42,7 @@ const mockSessions = [
 ];
 
 const SettingsPage = () => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState({
     emailShipment: true,
     emailBilling: true,
@@ -54,6 +56,19 @@ const SettingsPage = () => {
     defaultPackage: "box",
     insurance: true
   });
+
+  const [organization, setOrganization] = useState({
+    businessName: "",
+    gstin: "",
+    pan: "",
+    address: "",
+    city: "",
+    state: "",
+    stateCode: "",
+    pinCode: "",
+    phone: ""
+  });
+  const [savingOrg, setSavingOrg] = useState(false);
 
   const [carrierOptions, setCarrierOptions] = useState<{ _id: string; businessName: string }[]>([]);
 
@@ -78,6 +93,11 @@ const SettingsPage = () => {
 
   const [sessionsDialog, setSessionsDialog] = useState(false);
   const [sessions, setSessions] = useState(mockSessions);
+
+  // Deletion state
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleSave = () => {
     toast.success("Settings saved successfully");
@@ -117,6 +137,48 @@ const SettingsPage = () => {
     };
     fetchCarriers();
   }, []);
+
+  useEffect(() => {
+    const fetchOrg = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/api/settings/organization`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setOrganization(prev => ({ ...prev, ...data }));
+        }
+      } catch (err) {
+        console.error('Org fetch error:', err);
+      }
+    };
+    fetchOrg();
+  }, []);
+
+  const handleSaveOrganization = async () => {
+    setSavingOrg(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/settings/organization`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(organization)
+      });
+      if (res.ok) {
+        toast.success("Organization details updated successfully");
+      } else {
+        toast.error("Failed to update organization details");
+      }
+    } catch (err) {
+      toast.error("An error occurred while saving organization details");
+    } finally {
+      setSavingOrg(false);
+    }
+  };
 
   const regenerateKey = async (type: 'production' | 'test') => {
     try {
@@ -222,6 +284,34 @@ const SettingsPage = () => {
     setTimeout(() => {
       window.location.href = "/login";
     }, 1000);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") return;
+    setDeleteLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/account/delete`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDeleteDialog(false);
+        localStorage.clear();
+        sessionStorage.clear();
+        toast.success("Your account has been permanently deleted.");
+        setTimeout(() => {
+          window.location.href = "https://fastfare.in/";
+        }, 1500);
+      } else {
+        toast.error(data.message || "Failed to delete account. Please contact support@fastfare.in");
+        setDeleteLoading(false);
+      }
+    } catch (err) {
+      toast.error("Failed to delete account. Please contact support@fastfare.in");
+      setDeleteLoading(false);
+    }
   };
 
   return (
@@ -348,34 +438,48 @@ const SettingsPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Company Name</label>
-                    <Input defaultValue="Acme Corp" />
+                    <Input value={organization.businessName} onChange={e => setOrganization({ ...organization, businessName: e.target.value })} placeholder="Acme Corp" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">GSTIN</label>
-                    <Input defaultValue="22AAAAA0000A1Z5" />
+                    <Input value={organization.gstin} onChange={e => setOrganization({ ...organization, gstin: e.target.value })} placeholder="22AAAAA0000A1Z5" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">PAN</label>
+                    <Input value={organization.pan} onChange={e => setOrganization({ ...organization, pan: e.target.value })} placeholder="ABCDE1234F" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Phone Number</label>
+                    <Input value={organization.phone} onChange={e => setOrganization({ ...organization, phone: e.target.value })} placeholder="+91 9876543210" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Address</label>
-                  <Input defaultValue="123 Business Park, Mumbai 400001" />
+                  <Input value={organization.address} onChange={e => setOrganization({ ...organization, address: e.target.value })} placeholder="123 Business Park, Mumbai 400001" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">City</label>
-                    <Input defaultValue="Mumbai" />
+                    <Input value={organization.city} onChange={e => setOrganization({ ...organization, city: e.target.value })} placeholder="Mumbai" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">State</label>
-                    <Input defaultValue="Maharashtra" />
+                    <Input value={organization.state} onChange={e => setOrganization({ ...organization, state: e.target.value })} placeholder="Maharashtra" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">State Code</label>
+                    <Input value={organization.stateCode} onChange={e => setOrganization({ ...organization, stateCode: e.target.value })} placeholder="27" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">PIN Code</label>
-                    <Input defaultValue="400001" />
+                    <Input value={organization.pinCode} onChange={e => setOrganization({ ...organization, pinCode: e.target.value })} placeholder="400001" />
                   </div>
                 </div>
-                <Button className="gap-2 gradient-primary" onClick={handleSave}>
-                  <Save className="h-4 w-4" />
-                  Update Organization
+                <Button className="gap-2 gradient-primary" onClick={handleSaveOrganization} disabled={savingOrg}>
+                  {savingOrg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {savingOrg ? "Updating..." : "Update Organization"}
                 </Button>
               </CardContent>
             </Card>
@@ -566,6 +670,32 @@ const SettingsPage = () => {
                       </div>
                     </div>
                     <Button variant="outline" onClick={() => setSessionsDialog(true)}>Manage</Button>
+                  </div>
+
+                  {/* Danger Zone */}
+                  <div className="mt-8 border border-[#EF4444] rounded-lg p-6 bg-[#FFF5F5] dark:bg-red-950/20">
+                    <div className="flex items-center gap-2 mb-4">
+                      <AlertTriangle className="h-5 w-5 text-[#EF4444]" />
+                      <div>
+                        <h3 className="font-bold text-[#EF4444] text-[16px]">Danger Zone</h3>
+                        <p className="text-[13px] text-[#888]">Irreversible and destructive actions</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+                      <div>
+                        <h4 className="font-[600] text-[15px] text-[#1A1A2E] dark:text-slate-100">Delete Account</h4>
+                        <p className="text-[13px] text-[#666] mt-1 max-w-xl">
+                          Permanently delete your account, all associated data, shipments, billing records, and API keys. This action cannot be undone.
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="mt-4 md:mt-0 border-2 border-[#EF4444] text-[#EF4444] bg-white hover:bg-[#EF4444] hover:text-white transition-colors duration-200 font-[600] px-5 py-2.5 rounded-lg whitespace-nowrap"
+                        onClick={() => navigate('/account/delete/acknowledge')}
+                      >
+                        Delete My Account
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -819,6 +949,65 @@ const SettingsPage = () => {
             <Button variant="outline" onClick={() => setPasswordDialog(false)}>Cancel</Button>
             <Button onClick={handleChangePassword}>Change Password</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Dialog */}
+      <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+        <DialogContent className="max-w-[440px] rounded-xl p-0 overflow-hidden border-0 shadow-[0_20px_60px_rgba(0,0,0,0.15)]">
+          <div className="p-6">
+            <div className="mx-auto w-14 h-14 bg-[#EF4444] rounded-full flex items-center justify-center mb-5">
+              <Trash2 className="h-6 w-6 text-white" />
+            </div>
+            
+            <DialogTitle className="text-center text-[20px] font-[700] text-[#1A1A2E] mb-3">
+              Delete Your Account?
+            </DialogTitle>
+            
+            <div className="text-center text-[#555] text-[14px] leading-[1.6] space-y-4 mb-6">
+              <p>
+                This will permanently delete your FastFare account and all associated data including:
+              </p>
+              <ul className="text-left max-w-[280px] mx-auto space-y-1 list-disc pl-4 marker:text-gray-400">
+                <li>All shipment history and records</li>
+                <li>Billing information and invoices</li>
+                <li>API keys and integrations</li>
+                <li>Organization profile and settings</li>
+                <li>Partner/driver associations</li>
+              </ul>
+              <p>
+                Your email address will be freed and can be used to create a new FastFare account.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 mb-6">
+              <label className="text-[13px] font-[500] text-[#444] block">Type "DELETE" to confirm</label>
+              <Input
+                placeholder="Type DELETE here"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full border-1.5 border-[#E0E0E0] rounded-lg px-3.5 py-2.5"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                className="flex-1 bg-white border-[#E0E0E0] text-[#444] rounded-lg h-12"
+                onClick={() => setDeleteDialog(false)}
+                disabled={deleteLoading}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className={`flex-1 bg-[#EF4444] hover:bg-[#dc2626] text-white font-[600] rounded-lg h-12 transition-opacity ${deleteConfirmText !== "DELETE" ? "opacity-40 cursor-not-allowed" : "opacity-100 cursor-pointer"}`}
+                disabled={deleteConfirmText !== "DELETE" || deleteLoading}
+                onClick={handleDeleteAccount}
+              >
+                {deleteLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Permanently Delete Account"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
