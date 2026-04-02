@@ -175,8 +175,14 @@ router.post('/register/initiate-digilocker', async (req, res) => {
         });
 
         const state = crypto.randomBytes(32).toString('hex');
+        
+        // PKCE: Generate code_verifier and code_challenge
+        const codeVerifier = crypto.randomBytes(32).toString('base64url');
+        const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
+
         req.session.digilocker_oauth_state = state;
         req.session.digilocker_pending_reg_id = pendingReg._id.toString();
+        req.session.digilocker_code_verifier = codeVerifier;
 
         const clientId = process.env.DIGILOCKER_CLIENT_ID;
         const redirectUri = process.env.DIGILOCKER_REDIRECT_URI;
@@ -191,6 +197,8 @@ router.post('/register/initiate-digilocker', async (req, res) => {
              authUrl.searchParams.append('client_id', clientId);
              authUrl.searchParams.append('redirect_uri', redirectUri);
              authUrl.searchParams.append('state', state);
+             authUrl.searchParams.append('code_challenge', codeChallenge);
+             authUrl.searchParams.append('code_challenge_method', 'S256');
              
              res.json({ auth_url: authUrl.toString(), pending_id: pendingReg._id.toString() });
         });

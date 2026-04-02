@@ -6,13 +6,25 @@ import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Route: GET /auth/digilocker/init
+// PKCE Helper: Generate code_verifier and code_challenge
+function generatePKCE() {
+    const codeVerifier = crypto.randomBytes(32).toString('base64url');
+    const codeChallenge = crypto
+        .createHash('sha256')
+        .update(codeVerifier)
+        .digest('base64url');
+    return { codeVerifier, codeChallenge };
+}
+
+// Route: GET /auth/digilocker/init (Settings KYC flow — requires auth)
 router.get('/init', protect, (req, res) => {
     try {
         const state = crypto.randomBytes(32).toString('hex');
+        const { codeVerifier, codeChallenge } = generatePKCE();
         
         req.session.digilocker_oauth_state = state;
         req.session.digilocker_user_id = req.user._id.toString();
+        req.session.digilocker_code_verifier = codeVerifier;
 
         const clientId = process.env.DIGILOCKER_CLIENT_ID;
         const redirectUri = process.env.DIGILOCKER_REDIRECT_URI;
@@ -22,7 +34,6 @@ router.get('/init', protect, (req, res) => {
             return res.status(500).json({ error: 'DigiLocker configuration missing' });
         }
 
-        // Save session explicitly before sending response
         req.session.save((err) => {
              if (err) {
                  console.error('Session save error:', err);
@@ -34,6 +45,8 @@ router.get('/init', protect, (req, res) => {
              authUrl.searchParams.append('client_id', clientId);
              authUrl.searchParams.append('redirect_uri', redirectUri);
              authUrl.searchParams.append('state', state);
+             authUrl.searchParams.append('code_challenge', codeChallenge);
+             authUrl.searchParams.append('code_challenge_method', 'S256');
              
              res.json({ auth_url: authUrl.toString() });
         });
@@ -46,13 +59,18 @@ router.get('/init', protect, (req, res) => {
 // Route: GET /auth/digilocker/callback
 router.get('/callback', async (req, res) => {
     const baseUrl = process.env.APP_BASE_URL || 'http://localhost:8080';
-    // Fallback error UI based on flow: either settings or register user
     const errorBase = req.session.digilocker_pending_reg_id 
         ? `${baseUrl}/register/user` 
         : `${baseUrl}/settings`;
 
     try {
-        const { state, code } = req.query;
+        const { state, code, error: dlError, error_description } = req.query;
+
+        // Handle DigiLocker error responses (user denied, invalid request, etc.)
+        if (dlError) {
+            console.warn('DigiLocker returned error:', dlError, error_description);
+            return res.redirect(`${errorBase}?kyc_error=${encodeURIComponent(dlError)}`);
+        }
         
         // Step A — Validate State
         const savedState = req.session.digilocker_oauth_state;
@@ -61,8 +79,12 @@ router.get('/callback', async (req, res) => {
             return res.redirect(`${errorBase}?kyc_error=invalid_state`);
         }
         
+        // Retrieve code_verifier for PKCE token exchange
+        const codeVerifier = req.session.digilocker_code_verifier;
+
         // Immediately clear state for security
         delete req.session.digilocker_oauth_state;
+        delete req.session.digilocker_code_verifier;
         req.session.save();
 
         // Step B — Validate Code
@@ -71,7 +93,7 @@ router.get('/callback', async (req, res) => {
             return res.redirect(`${errorBase}?kyc_error=no_code_received`);
         }
 
-        // Step C — Exchange Code for Token
+        // Step C — Exchange Code for Token (with PKCE code_verifier)
         const clientId = process.env.DIGILOCKER_CLIENT_ID;
         const clientSecret = process.env.DIGILOCKER_CLIENT_SECRET;
         const redirectUri = process.env.DIGILOCKER_REDIRECT_URI;
@@ -82,6 +104,9 @@ router.get('/callback', async (req, res) => {
         tokenBody.append('client_id', clientId);
         tokenBody.append('client_secret', clientSecret);
         tokenBody.append('redirect_uri', redirectUri);
+        if (codeVerifier) {
+            tokenBody.append('code_verifier', codeVerifier);
+        }
 
         let tokenResponse;
         try {
@@ -143,7 +168,6 @@ router.get('/callback', async (req, res) => {
                 return res.redirect(`${baseUrl}/register/user?kyc_error=session_expired`);
             }
             
-            // Update the pending registration record
             pendingReg.digilocker_verified = true;
             pendingReg.digilocker_verified_at = new Date();
             pendingReg.digilocker_id = digilockerId;
@@ -153,11 +177,8 @@ router.get('/callback', async (req, res) => {
             pendingReg.status = "digilocker_verified";
             await pendingReg.save();
 
-            // Store verification signals in session for UI API fetches if needed
             req.session.digilocker_verified_name = kycName;
             req.session.digilocker_signup_verified = true;
-            
-            // Clean up tracking session
             delete req.session.digilocker_pending_reg_id;
 
             req.session.save((err) => {
