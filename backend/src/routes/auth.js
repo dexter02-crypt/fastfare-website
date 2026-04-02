@@ -191,7 +191,6 @@ router.post('/register/initiate-digilocker', async (req, res) => {
              authUrl.searchParams.append('client_id', clientId);
              authUrl.searchParams.append('redirect_uri', redirectUri);
              authUrl.searchParams.append('state', state);
-             authUrl.searchParams.append('scope', 'openid profile');
              
              res.json({ auth_url: authUrl.toString(), pending_id: pendingReg._id.toString() });
         });
