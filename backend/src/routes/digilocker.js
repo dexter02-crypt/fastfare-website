@@ -59,6 +59,17 @@ router.get('/init', protect, (req, res) => {
 // Route: GET /auth/digilocker/callback
 router.get('/callback', async (req, res) => {
     const baseUrl = process.env.APP_BASE_URL || 'http://localhost:8080';
+
+    console.log('--- DigiLocker Callback Hit ---');
+    console.log('Query:', JSON.stringify(req.query));
+    console.log('Session ID:', req.sessionID);
+    console.log('Session data:', JSON.stringify({
+        has_state: !!req.session.digilocker_oauth_state,
+        has_user_id: !!req.session.digilocker_user_id,
+        has_pending_reg: !!req.session.digilocker_pending_reg_id,
+        has_code_verifier: !!req.session.digilocker_code_verifier
+    }));
+
     const errorBase = req.session.digilocker_pending_reg_id 
         ? `${baseUrl}/register/user` 
         : `${baseUrl}/settings`;

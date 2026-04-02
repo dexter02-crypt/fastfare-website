@@ -137,15 +137,21 @@ app.use(express.json({
   }
 }));
 
+// Trust Nginx proxy (required for secure cookies behind reverse proxy)
+app.set('trust proxy', 1);
+
 // Global Session for OAuth persistence across subdomains/paths
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
     secret: process.env.JWT_SECRET || 'fastfare_oauth_secret',
     resave: false,
     saveUninitialized: true,
     cookie: { 
-        secure: false, // Ensure this works on localhost and staging without HTTPS initially
+        secure: isProduction,
         path: '/', 
-        maxAge: 3600000 // 1 hour 
+        maxAge: 3600000, // 1 hour
+        sameSite: 'lax',
+        httpOnly: true
     }
 }));
 
