@@ -8,6 +8,7 @@ import Organization from '../models/Organization.js';
 import PartnerTeam from '../models/PartnerTeam.js';
 import AccountDeletionLog from '../models/AccountDeletionLog.js';
 import WalletRechargeOrder from '../models/WalletRechargeOrder.js';
+import KycAttempt from '../models/KycAttempt.js';
 import { Resend } from 'resend';
 
 
@@ -58,6 +59,23 @@ router.get('/users', protect, admin, async (req, res) => {
     } catch (error) {
         console.error('Admin Fetch Users error:', error);
         res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+/**
+ * @route   GET /api/admin/users/:id/kyc-attempts
+ * @desc    Get complete DigiLocker/KYC verification attempt history for a user
+ * @access  Admin only
+ */
+router.get('/users/:id/kyc-attempts', protect, admin, async (req, res) => {
+    try {
+        const attempts = await KycAttempt.find({ user_id: req.params.id })
+            .sort({ started_at: -1 });
+
+        res.json({ success: true, count: attempts.length, attempts });
+    } catch (error) {
+        console.error(`Admin Fetch KYC Attempts error for User ${req.params.id}:`, error);
+        res.status(500).json({ success: false, message: 'Server Error fetching KYC attempts' });
     }
 });
 

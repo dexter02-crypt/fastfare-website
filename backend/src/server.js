@@ -163,7 +163,7 @@ app.use('/uploads', express.static('uploads'));
 app.use('/downloads', express.static('public/downloads'));
 
 // ─── Digilocker Direct Public Auth Route ───
-app.use('/auth/digilocker', digilockerRoutes);
+app.use('/api/auth/digilocker', digilockerRoutes);
 
 // ─── Existing Website Routes ───
 app.use('/api/auth', authRoutes);

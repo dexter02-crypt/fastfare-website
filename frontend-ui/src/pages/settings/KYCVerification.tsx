@@ -20,17 +20,12 @@ const KYCVerification = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const [kycType, setKycType] = useState<"aadhaar" | "pan" | "gst" | "digilocker">("digilocker");
-  const [step, setStep] = useState<"select" | "verify" | "otp" | "processing" | "complete">("select");
-  const [gstin, setGstin] = useState("");
-  const [panNumber, setPanNumber] = useState("");
-  const [aadhaarNumber, setAadhaarNumber] = useState("");
-  const [otp, setOtp] = useState("");
+  const [kycType, setKycType] = useState<"digilocker">("digilocker");
+  const [step, setStep] = useState<"select" | "verify" | "processing" | "complete" | "failed">("select");
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [kycStatus, setKycStatus] = useState<KYCStatus | null>(null);
-  const [sessionUrl, setSessionUrl] = useState<string | null>(null);
-  const [verificationDetails, setVerificationDetails] = useState<VerificationDetails | null>(null);
+  const [kycErrorMsg, setKycErrorMsg] = useState<string | null>(null);
 
   interface KYCStatus {
     status: string;
@@ -69,7 +64,8 @@ const KYCVerification = () => {
         'profile_fetch_failed': "DigiLocker failed to return your profile details."
       };
       const errorMsg = errorMap[kycError] || "DigiLocker verification failed. Please try again.";
-      toast({ title: "Verification Failed", description: errorMsg, variant: "destructive" });
+      setKycErrorMsg(errorMsg);
+      setStep("failed");
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
@@ -94,155 +90,16 @@ const KYCVerification = () => {
       if (response.ok) {
         const data = await response.json();
         setKycStatus(data.kyc);
-        setVerificationDetails(data.kyc.details);
+        setKycStatus(data.kyc);
 
         // If already verified, show complete step
         if (data.kyc.status === "verified" || data.kyc?.digilocker?.status === "verified") {
           setStep("complete");
-        } else if (data.kyc.status === "in_progress" && data.kyc.sessionUrl) {
-          setSessionUrl(data.kyc.sessionUrl);
-          setStep("processing");
         }
       }
     } catch (error) {
       console.error("Error fetching KYC status:", error);
     }
-  };
-
-  const mockAadhaarVerification = async () => {
-    setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const mockResponse = {
-      success: true,
-      details: {
-        aadhaarNumber: "XXXXXXXX" + aadhaarNumber.slice(-4),
-        name: "Demo User",
-        dob: "1990-01-01",
-        gender: "M",
-        address: "123 Demo Street, Demo City - 110001"
-      }
-    };
-
-    setVerificationDetails(mockResponse.details);
-    setStep("otp");
-    setIsLoading(false);
-    toast({
-      title: "OTP Sent",
-      description: "OTP sent to your Aadhaar-linked mobile number",
-    });
-  };
-
-  const mockPanVerification = async () => {
-    setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const panRegex = /[A-Z]{5}[0-9]{4}[A-Z]{1}/;
-    if (!panRegex.test(panNumber)) {
-      setIsLoading(false);
-      toast({
-        title: "Invalid PAN",
-        description: "Please enter a valid PAN number (e.g., ABCDE1234F)",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const mockResponse = {
-      success: true,
-      details: {
-        panNumber: panNumber.toUpperCase(),
-        name: "Demo User",
-        status: "Active",
-        category: "Individual"
-      }
-    };
-
-    setVerificationDetails(mockResponse.details);
-    await mockCompleteVerification(mockResponse.details, "pan");
-  };
-
-  const mockOtpVerification = async () => {
-    setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    if (otp !== "123456") {
-      setIsLoading(false);
-      toast({
-        title: "Invalid OTP",
-        description: "For demo, use OTP: 123456",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    await mockCompleteVerification(verificationDetails, "aadhaar");
-  };
-
-  const mockCompleteVerification = async (details: VerificationDetails | null, type: string) => {
-    setStep("processing");
-
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    try {
-      const token = localStorage.getItem("token");
-      if (token) {
-        await fetch(`${API_BASE_URL}/api/kyc/update-status`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            status: "verified",
-            aadhaarVerified: type === "aadhaar",
-            gstVerified: type === "gst"
-          })
-        });
-      }
-    } catch (err) {
-      console.error("Failed to update status on backend:", err);
-    }
-
-    const mockResponse = {
-      success: true,
-      kyc: {
-        status: "verified",
-        verificationType: type,
-        details: details,
-        verifiedAt: new Date().toISOString()
-      }
-    };
-
-    setKycStatus(mockResponse.kyc);
-    localStorage.setItem("kycStatus", "verified");
-    localStorage.removeItem("kycSkippedAt");
-
-    // Update local user object as well
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      try {
-        const userObj = JSON.parse(userStr);
-        if (!userObj.kyc) userObj.kyc = {};
-        userObj.kyc.status = "verified";
-        localStorage.setItem("user", JSON.stringify(userObj));
-      } catch (e) {
-        console.error("Could not update user item in localStorage", e);
-      }
-    }
-
-    setIsLoading(false);
-    setShowSuccessDialog(true);
-    setStep("complete");
-
-    toast({
-      title: "KYC Verified",
-      description: "Your KYC has been successfully verified",
-    });
-  };
-
-  const handleProceedToVerify = () => {
-    setStep("verify");
   };
 
   const handleStartVerification = async () => {
@@ -254,90 +111,30 @@ const KYCVerification = () => {
           navigate("/login");
           return;
         }
-        const response = await fetch(`${API_BASE_URL}/auth/digilocker/init`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (response.ok && data.auth_url) {
-          window.location.href = data.auth_url;
-        } else {
-          throw new Error("Failed to get DigiLocker auth URL");
-        }
-      } catch (err) {
-        setIsLoading(false);
-        toast({ title: "Verification Failed", description: "Could not connect to DigiLocker", variant: "destructive" });
-      }
-      return;
-    } else if (kycType === "aadhaar") {
-      if (aadhaarNumber.length !== 12 || !/^\d{12}$/.test(aadhaarNumber)) {
-        toast({
-          title: "Invalid Aadhaar",
-          description: "Please enter a valid 12-digit Aadhaar number",
-          variant: "destructive",
-        });
-        return;
-      }
-      await mockAadhaarVerification();
-    } else if (kycType === "pan") {
-      await mockPanVerification();
-    } else if (kycType === "gst") {
-      if (gstin.length !== 15) {
-        toast({
-          title: "Invalid Input",
-          description: "Please enter a valid 15-character GSTIN",
-          variant: "destructive",
-        });
-        return;
-      }
 
-      setIsLoading(true);
-
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          navigate("/login");
-          return;
-        }
-
-        // Create verification session with Didit
-        const response = await fetch(`${API_BASE_URL}/api/kyc/create-session`, {
-          method: "POST",
+        const response = await fetch(`${API_BASE_URL}/api/auth/digilocker/init`, {
+          method: "GET",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            verificationType: kycType,
-            verificationId: gstin,
-          }),
         });
-
-        const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || "Failed to create verification session");
+           const errData = await response.json().catch(()=>({}));
+           throw new Error(errData.error || "Failed to initialize verification");
         }
 
-        // Store session URL and move to processing step
-        setSessionUrl(data.verificationUrl);
-        setStep("processing");
-
-        toast({
-          title: "Verification Started",
-          description: "Complete the verification in the new window.",
-        });
-
-        // Open verification URL in new window
-        if (data.verificationUrl) {
-          window.open(data.verificationUrl, "_blank", "width=600,height=700");
+        const data = await response.json();
+        if (data.auth_url) {
+          setStep("processing");
+          window.location.href = data.auth_url;
+        } else {
+          throw new Error("Invalid DigiLocker endpoint response");
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Verification failed';
-        toast({
-          title: "Verification Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
+        const errorMessage = error instanceof Error ? error.message : "Verification failed";
+        setKycErrorMsg(errorMessage);
+        setStep("failed");
       } finally {
         setIsLoading(false);
       }
@@ -349,14 +146,8 @@ const KYCVerification = () => {
     await fetchKycStatus();
     setIsLoading(false);
 
-    if (kycStatus?.status === "verified") {
+    if (kycStatus?.status === "verified" || kycStatus?.digilocker?.status === "verified") {
       setShowSuccessDialog(true);
-    }
-  };
-
-  const handleOpenVerificationUrl = () => {
-    if (sessionUrl) {
-      window.open(sessionUrl, "_blank", "width=600,height=700");
     }
   };
 
@@ -367,15 +158,13 @@ const KYCVerification = () => {
       className="space-y-6"
     >
       <div>
-        <h2 className="text-xl font-semibold mb-2">Choose Verification Method</h2>
-        <p className="text-muted-foreground">KYC helps ensure secure and verified deliveries</p>
+        <h2 className="text-xl font-semibold mb-2">Verified Identity</h2>
+        <p className="text-muted-foreground">KYC helps ensure secure and verified operations</p>
       </div>
 
-      <RadioGroup value={kycType} onValueChange={(v) => setKycType(v as "aadhaar" | "pan" | "gst" | "digilocker")}>
+      <RadioGroup value={kycType} onValueChange={(v) => setKycType(v as any)}>
         <div
-          className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${kycType === "digilocker" ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
-            }`}
-          onClick={() => setKycType("digilocker")}
+          className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all border-primary ring-2 ring-primary/20`}
         >
           <RadioGroupItem value="digilocker" id="digilocker" className="mt-1" />
           <div className="flex-1">
@@ -383,67 +172,16 @@ const KYCVerification = () => {
               <Label htmlFor="digilocker" className="font-semibold cursor-pointer">
                 Verify with DigiLocker
               </Label>
-              <Badge className="bg-green-500 hover:bg-green-600">NEW & FAST</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Verify instantly using government-issued DigiLocker documents via OAuth
-            </p>
-          </div>
-        </div>
-
-        <div
-          className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${kycType === "aadhaar" ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
-            }`}
-          onClick={() => setKycType("aadhaar")}
-        >
-          <RadioGroupItem value="aadhaar" id="aadhaar" className="mt-1" />
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="aadhaar" className="font-semibold cursor-pointer">
-                Verify with Aadhaar
-              </Label>
               <Badge className="bg-green-500 hover:bg-green-600">RECOMMENDED</Badge>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              Verify instantly using UIDAI Aadhaar verification with OTP
-            </p>
-          </div>
-        </div>
-
-        <div
-          className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${kycType === "pan" ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
-            }`}
-          onClick={() => setKycType("pan")}
-        >
-          <RadioGroupItem value="pan" id="pan" className="mt-1" />
-          <div className="flex-1">
-            <Label htmlFor="pan" className="font-semibold cursor-pointer">
-              Verify with PAN
-            </Label>
-            <p className="text-sm text-muted-foreground mt-1">
-              Verify using your PAN card number
-            </p>
-          </div>
-        </div>
-
-        <div
-          className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${kycType === "gst" ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
-            }`}
-          onClick={() => setKycType("gst")}
-        >
-          <RadioGroupItem value="gst" id="gst" className="mt-1" />
-          <div className="flex-1">
-            <Label htmlFor="gst" className="font-semibold cursor-pointer">
-              Verify with GST Number
-            </Label>
-            <p className="text-sm text-muted-foreground mt-1">
-              For registered businesses with valid GSTIN
+              Verify instantly using government-issued identities via OAuth
             </p>
           </div>
         </div>
       </RadioGroup>
 
-      <Button onClick={handleProceedToVerify} className="w-full gradient-primary">
+      <Button onClick={() => setStep("verify")} className="w-full gradient-primary" disabled={kycType !== 'digilocker'}>
         Proceed
       </Button>
     </motion.div>
@@ -460,215 +198,29 @@ const KYCVerification = () => {
         Back
       </Button>
 
-      {kycType === "digilocker" ? (
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-semibold mb-2">DigiLocker Verification</h2>
-            <p className="text-muted-foreground">
-              You will be redirected to DigiLocker to securely share your official e-Aadhaar and identity documents.
-            </p>
-          </div>
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-            <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Secure Process
-            </h4>
-            <ul className="list-disc list-inside text-sm text-blue-700 dark:text-blue-400 space-y-1">
-              <li>End-to-end encrypted connection to Government servers</li>
-              <li>We only access verified name, DOB, gender, and masked Aadhaar</li>
-            </ul>
-          </div>
-          <Button onClick={handleStartVerification} disabled={isLoading} className="w-full gradient-primary">
-            {isLoading ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Redirecting...</>
-            ) : "Continue to DigiLocker"}
-          </Button>
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold mb-2">DigiLocker Verification</h2>
+          <p className="text-muted-foreground">
+            You will be redirected to DigiLocker to securely share your official identity details.
+          </p>
         </div>
-      ) : kycType === "aadhaar" ? (
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Secure Aadhaar Verification</h2>
-            <p className="text-muted-foreground">
-              Enter your 12-digit Aadhaar number to receive OTP verification
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="aadhaar">Aadhaar Number</Label>
-            <Input
-              id="aadhaar"
-              type="text"
-              placeholder="1234 5678 9012"
-              value={aadhaarNumber.replace(/(\d{4})(?=\d)/g, '$1 ')}
-              onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
-              maxLength={14}
-              className="font-mono text-lg"
-            />
-            <p className="text-xs text-muted-foreground">
-              12-digit Aadhaar number
-            </p>
-          </div>
-
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-            <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Secure Process
-            </h4>
-            <ul className="list-disc list-inside text-sm text-blue-700 dark:text-blue-400 space-y-1">
-              <li>Official UIDAI verification</li>
-              <li>OTP sent to Aadhaar-linked mobile</li>
-              <li>For demo use OTP: 123456</li>
-            </ul>
-          </div>
-
-          <Button
-            onClick={handleStartVerification}
-            disabled={aadhaarNumber.length !== 12 || isLoading}
-            className="w-full gradient-primary"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending OTP...
-              </>
-            ) : (
-              "Send OTP"
-            )}
-          </Button>
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+          <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Secure Process
+          </h4>
+          <ul className="list-disc list-inside text-sm text-blue-700 dark:text-blue-400 space-y-1">
+            <li>End-to-end encrypted connection to Central Government servers.</li>
+            <li>We only receive and parse your verified name, DOB, gender, and masked generic identification keys securely.</li>
+          </ul>
         </div>
-      ) : kycType === "pan" ? (
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Enter Your PAN</h2>
-            <p className="text-muted-foreground">We'll verify your identity using PAN records</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="pan">PAN Number</Label>
-            <Input
-              id="pan"
-              placeholder="ABCDE1234F"
-              value={panNumber.toUpperCase()}
-              onChange={(e) => setPanNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
-              maxLength={10}
-              className="font-mono text-lg uppercase"
-            />
-            <p className="text-xs text-muted-foreground">
-              10-character PAN (e.g., ABCDE1234F)
-            </p>
-          </div>
-
-          <Button
-            onClick={handleStartVerification}
-            disabled={panNumber.length !== 10 || isLoading}
-            className="w-full gradient-primary"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Verifying...
-              </>
-            ) : (
-              "Verify PAN"
-            )}
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Enter Your GSTIN</h2>
-            <p className="text-muted-foreground">We'll verify your business using GST records</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="gstin">GSTIN Number</Label>
-            <Input
-              id="gstin"
-              placeholder="22AAAAA0000A1Z5"
-              value={gstin}
-              onChange={(e) => setGstin(e.target.value.toUpperCase())}
-              maxLength={15}
-              className="font-mono text-lg"
-            />
-            <p className="text-xs text-muted-foreground">
-              15-character alphanumeric GSTIN
-            </p>
-          </div>
-
-          <Button
-            onClick={handleStartVerification}
-            disabled={gstin.length !== 15 || isLoading}
-            className="w-full gradient-primary"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Starting Verification...
-              </>
-            ) : (
-              "Verify GSTIN"
-            )}
-          </Button>
-        </div>
-      )}
-    </motion.div>
-  );
-
-  const renderOtpStep = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
-      <Button variant="ghost" className="gap-2 -ml-2" onClick={() => setStep("verify")}>
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </Button>
-
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Enter OTP</h2>
-        <p className="text-muted-foreground">
-          Enter the 6-digit OTP sent to your Aadhaar-linked mobile number
-        </p>
+        <Button onClick={handleStartVerification} disabled={isLoading} className="w-full gradient-primary">
+          {isLoading ? (
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Redirecting...</>
+          ) : "Continue to DigiLocker"}
+        </Button>
       </div>
-
-      {verificationDetails && (
-        <div className="bg-gray-50 dark:bg-gray-900/30 p-4 rounded-lg border">
-          <p className="text-sm font-medium mb-1">Aadhaar Number</p>
-          <p className="font-mono">{verificationDetails.aadhaarNumber}</p>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <Label htmlFor="otp">OTP</Label>
-        <Input
-          id="otp"
-          type="text"
-          placeholder="123456"
-          value={otp}
-          onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-          maxLength={6}
-          className="font-mono text-2xl text-center tracking-widest"
-        />
-        <p className="text-xs text-center text-muted-foreground">
-          For demo, use OTP: 123456
-        </p>
-      </div>
-
-      <Button
-        onClick={mockOtpVerification}
-        disabled={otp.length !== 6 || isLoading}
-        className="w-full gradient-primary"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Verifying...
-          </>
-        ) : (
-          "Verify OTP"
-        )}
-      </Button>
     </motion.div>
   );
 
@@ -690,17 +242,6 @@ const KYCVerification = () => {
       </div>
 
       <div className="space-y-3">
-        {sessionUrl && (
-          <Button
-            variant="outline"
-            onClick={handleOpenVerificationUrl}
-            className="w-full gap-2"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open Verification Page
-          </Button>
-        )}
-
         <Button
           onClick={handleCheckStatus}
           disabled={isLoading}
@@ -771,6 +312,41 @@ const KYCVerification = () => {
     </motion.div>
   );
 
+  const renderFailedStep = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 text-center"
+    >
+      <div className="mx-auto h-20 w-20 rounded-full bg-red-100 flex items-center justify-center">
+        <AlertCircle className="h-10 w-10 text-red-500" />
+      </div>
+
+      <div>
+        <h2 className="text-xl font-semibold mb-2">Verification Failed</h2>
+        <p className="text-muted-foreground">
+          We couldn't confirm your identity.
+        </p>
+      </div>
+
+      <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <div className="text-sm font-medium text-red-800 dark:text-red-300">
+          {kycErrorMsg || "An unknown error occurred. Please try again."}
+        </div>
+      </div>
+
+      <Button
+        onClick={() => {
+           setKycErrorMsg(null);
+           setStep("select");
+        }}
+        className="w-full gradient-primary"
+      >
+        Retry Verification
+      </Button>
+    </motion.div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -824,9 +400,9 @@ const KYCVerification = () => {
             <AnimatePresence mode="wait">
               {step === "select" && renderSelectStep()}
               {step === "verify" && renderVerifyStep()}
-              {step === "otp" && renderOtpStep()}
               {step === "processing" && renderProcessingStep()}
               {step === "complete" && renderCompleteStep()}
+              {step === "failed" && renderFailedStep()}
             </AnimatePresence>
           </CardContent>
         </Card>
