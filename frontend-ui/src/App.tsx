@@ -162,6 +162,11 @@ import AccountDeletedConfirmation from "./pages/account/AccountDeletedConfirmati
 // Settlement & Tier System
 import SettlementDashboard from "./pages/settlement/SettlementDashboard";
 
+// Partner Wallet & Financials
+import PartnerWalletDashboard from "./pages/carrier/PartnerWalletDashboard";
+import PartnerTransactions from "./pages/carrier/PartnerTransactions";
+import PartnerWithdrawal from "./pages/carrier/PartnerWithdrawal";
+
 // Onboarding
 import BusinessStage from "./pages/onboarding/BusinessStage";
 import SellingChannels from "./pages/onboarding/SellingChannels";
@@ -326,6 +331,9 @@ const App = () => (
               <Route path="/partner/activity" element={<PartnerRoute><PartnerActivity /></PartnerRoute>} />
               <Route path="/partner/team" element={<PartnerTeamManagement />} />
               <Route path="/partner/pricing" element={<PartnerPricingPage />} />
+              <Route path="/partner/wallet" element={<PartnerRoute><PartnerWalletDashboard /></PartnerRoute>} />
+              <Route path="/partner/transactions" element={<PartnerRoute><PartnerTransactions /></PartnerRoute>} />
+              <Route path="/partner/withdraw" element={<PartnerRoute><PartnerWithdrawal /></PartnerRoute>} />
               <Route path="/my-orders" element={<ProtectedRoute><UserOrders /></ProtectedRoute>} />
               <Route path="/returns-rto" element={<ProtectedRoute><ReturnsRto /></ProtectedRoute>} />
               <Route path="/weight-disputes" element={<ProtectedRoute><WeightDisputes /></ProtectedRoute>} />

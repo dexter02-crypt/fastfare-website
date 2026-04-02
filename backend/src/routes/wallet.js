@@ -2,10 +2,11 @@ import express from 'express';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import rateLimit from 'express-rate-limit';
-import { protect } from '../middleware/auth.js';
+import { protect, admin } from '../middleware/auth.js';
 import User from '../models/User.js';
 import WalletRechargeOrder from '../models/WalletRechargeOrder.js';
 import Transaction from '../models/Transaction.js';
+import PaymentWebhookLog from '../models/PaymentWebhookLog.js';
 
 const router = express.Router();
 
@@ -145,6 +146,16 @@ const webhookLimiter = rateLimit({
 });
 
 router.post('/recharge/webhook', webhookLimiter, async (req, res) => {
+    const webhookLog = new PaymentWebhookLog({
+        event_type: 'payment_webhook',
+        raw_headers: {
+            signature: req.headers['x-webhook-signature'] ? '[PRESENT]' : '[MISSING]',
+            timestamp: req.headers['x-webhook-timestamp']
+        },
+        raw_payload: req.body,
+        source_ip: req.ip
+    });
+
     try {
         const signature = req.headers['x-webhook-signature'];
         const timestamp = req.headers['x-webhook-timestamp'];
@@ -171,8 +182,15 @@ router.post('/recharge/webhook', webhookLimiter, async (req, res) => {
 
         if (computedSignature !== signature) {
             console.warn('[Wallet] CF Webhook Invalid Signature from IP:', req.ip);
+            webhookLog.signature_valid = false;
+            webhookLog.processing_status = 'failed';
+            webhookLog.error_reason = 'invalid_signature';
+            webhookLog.processed_at = new Date();
+            await webhookLog.save().catch(e => console.error('[WebhookLog] Save error:', e));
             return res.status(400).send('Invalid signature');
         }
+
+        webhookLog.signature_valid = true;
 
         // Payload is genuine. Parse Data.
         const payload = req.body;
@@ -281,10 +299,24 @@ router.post('/recharge/webhook', webhookLimiter, async (req, res) => {
             await rechargeOrder.save();
         }
 
+        // Log the webhook processing result
+        webhookLog.order_id = internalOrderId;
+        webhookLog.cf_payment_id = cfPayment.cf_payment_id;
+        webhookLog.payment_status = paymentStatus;
+        webhookLog.order_status = orderStatus;
+        webhookLog.amount = paymentAmount;
+        webhookLog.processing_status = 'processed';
+        webhookLog.processed_at = new Date();
+        await webhookLog.save().catch(e => console.error('[WebhookLog] Save error:', e));
+
         res.status(200).send('OK'); // Always return 200
 
     } catch (error) {
         console.error('[Wallet] Webhook Crash:', error);
+        webhookLog.processing_status = 'failed';
+        webhookLog.error_reason = error.message;
+        webhookLog.processed_at = new Date();
+        await webhookLog.save().catch(e => console.error('[WebhookLog] Save error:', e));
         res.status(200).send('OK'); // Do not let CF retry indefinitely
     }
 });
@@ -408,6 +440,147 @@ router.get('/recharge/status', protect, statusLimiter, async (req, res) => {
     } catch (error) {
         console.error('[Wallet] Status Verify Exception:', error);
         res.status(500).json({ status: 'network_error', message: 'Server error during status check' });
+    }
+});
+
+// ==========================================
+// WALLET BALANCE & TRANSACTION HISTORY
+// ==========================================
+
+router.get('/balance', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('walletBalance');
+        res.json({ success: true, balance: user?.walletBalance || 0 });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch balance' });
+    }
+});
+
+router.get('/transactions', protect, async (req, res) => {
+    try {
+        const { page = 1, limit = 30, type } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const query = { userId: req.user._id };
+        if (type) query.type = type;
+
+        const [transactions, total] = await Promise.all([
+            Transaction.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit))
+                .populate('shipmentId', 'awb carrier'),
+            Transaction.countDocuments(query)
+        ]);
+
+        res.json({
+            success: true,
+            transactions,
+            pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) }
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch transactions' });
+    }
+});
+
+// ==========================================
+// ADMIN RECONCILIATION
+// ==========================================
+
+router.post('/recharge/reconcile', protect, admin, async (req, res) => {
+    try {
+        const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+        // Find stale orders
+        const staleOrders = await WalletRechargeOrder.find({
+            status: { $in: ['initiated', 'pending'] },
+            created_at: { $lte: fifteenMinAgo },
+            wallet_credited: false
+        }).limit(50);
+
+        const results = [];
+
+        for (const order of staleOrders) {
+            try {
+                const cfRes = await fetch(`${getCashfreeBaseUrl()}/orders/${order.order_id}`, {
+                    method: 'GET',
+                    headers: {
+                        'x-api-version': '2023-08-01',
+                        'x-client-id': process.env.CASHFREE_APP_ID,
+                        'x-client-secret': process.env.CASHFREE_SECRET_KEY
+                    }
+                });
+
+                if (!cfRes.ok) {
+                    results.push({ order_id: order.order_id, action: 'skip', reason: 'gateway_error' });
+                    continue;
+                }
+
+                const cfDetails = await cfRes.json();
+                const cfStatus = cfDetails.order_status;
+
+                if (cfStatus === 'PAID' && !order.wallet_credited) {
+                    // Auto-credit
+                    const session = await mongoose.startSession();
+                    session.startTransaction();
+                    try {
+                        const lockedOrder = await WalletRechargeOrder.findOne({
+                            _id: order._id, wallet_credited: false
+                        }).session(session);
+
+                        if (lockedOrder) {
+                            const user = await User.findById(order.user_id).session(session);
+                            const balanceBefore = user.walletBalance || 0;
+                            const balanceAfter = balanceBefore + order.amount;
+
+                            user.walletBalance = balanceAfter;
+                            await user.save({ session });
+
+                            await Transaction.create([{
+                                userId: user._id,
+                                type: 'recharge',
+                                amount: order.amount,
+                                status: 'completed',
+                                balanceBefore,
+                                balanceAfter,
+                                cashfreeOrderId: order.order_id,
+                                description: `Wallet Recharge via Reconciliation (Order: ${order.order_id})`
+                            }], { session });
+
+                            lockedOrder.status = 'paid';
+                            lockedOrder.wallet_credited = true;
+                            lockedOrder.wallet_credited_at = new Date();
+                            await lockedOrder.save({ session });
+
+                            await session.commitTransaction();
+                            results.push({ order_id: order.order_id, action: 'credited', amount: order.amount });
+                        } else {
+                            await session.abortTransaction();
+                            results.push({ order_id: order.order_id, action: 'skip', reason: 'already_processed' });
+                        }
+                        session.endSession();
+                    } catch (txErr) {
+                        await session.abortTransaction();
+                        session.endSession();
+                        results.push({ order_id: order.order_id, action: 'error', reason: txErr.message });
+                    }
+                } else if (['EXPIRED', 'TERMINATED'].includes(cfStatus)) {
+                    order.status = 'failed';
+                    order.failure_reason = `Reconciled as ${cfStatus}`;
+                    await order.save();
+                    results.push({ order_id: order.order_id, action: 'failed', reason: cfStatus });
+                } else {
+                    results.push({ order_id: order.order_id, action: 'skip', reason: `status_is_${cfStatus}` });
+                }
+            } catch (innerErr) {
+                results.push({ order_id: order.order_id, action: 'error', reason: innerErr.message });
+            }
+        }
+
+        res.json({ success: true, reconciled: results.length, results });
+    } catch (error) {
+        console.error('[Wallet] Reconcile Error:', error);
+        res.status(500).json({ error: 'Reconciliation failed' });
     }
 });
 

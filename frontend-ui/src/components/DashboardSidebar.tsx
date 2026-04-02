@@ -227,10 +227,13 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
 
                         // Admin can see everything except "My Reports" (handled above)
                         return true;
-                    }).map((item) => (
+                    }).map((item) => {
+                        // Partners get their own wallet page
+                        const href = (item.label === 'Wallet' && user?.role === 'shipment_partner') ? '/partner/wallet' : item.href;
+                        return (
                         <Link
                             key={item.href}
-                            to={item.href}
+                            to={href}
                             onClick={handleLinkClick}
                             className={cn(
                                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
@@ -252,7 +255,7 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                                 </span>
                             )}
                         </Link>
-                    ))}
+                    );})}
                 </nav>
 
                 {/* Secondary Navigation */}

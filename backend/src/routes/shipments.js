@@ -9,6 +9,7 @@ import PromoUsage from '../models/PromoUsage.js';
 import mongoose from 'mongoose';
 import Transaction from '../models/Transaction.js';
 import User from '../models/User.js';
+import PartnerLedger from '../models/PartnerLedger.js';
 
 const router = express.Router();
 
@@ -111,15 +112,53 @@ router.post('/', protect, async (req, res) => {
             if (!user || user.walletBalance < totalPayable) {
                 throw new Error('Insufficient wallet balance');
             }
+            const balanceBefore = user.walletBalance;
             user.walletBalance -= totalPayable;
+            const balanceAfter = user.walletBalance;
             await user.save({ session });
+
             await Transaction.create([{
-                user: req.user._id,
+                userId: req.user._id,
                 amount: totalPayable,
-                type: 'debit',
-                description: 'Shipment payment',
-                shipment: createdShipment._id
+                type: 'shipment_charge',
+                status: 'completed',
+                description: `Shipment payment for ${createdShipment.awb || createdShipment._id}`,
+                shipmentId: createdShipment._id,
+                balanceBefore,
+                balanceAfter
             }], { session });
+
+            // ── Partner Crediting: credit the assigned carrier/partner instantly ──
+            if (carrierId) {
+                const partnerFeePercent = 5; // Platform fee %
+                const partnerEarning = Math.round(createdShipment.shippingCost * (1 - partnerFeePercent / 100) * 100) / 100;
+                const platformFeeAmount = Math.round(createdShipment.shippingCost * (partnerFeePercent / 100) * 100) / 100;
+
+                const lastPartnerEntry = await PartnerLedger.findOne({ partnerId: carrierId }).sort({ createdAt: -1 }).session(session);
+                const partnerBalanceBefore = lastPartnerEntry ? lastPartnerEntry.balanceAfter : 0;
+                const partnerBalanceAfter = partnerBalanceBefore + partnerEarning;
+
+                await PartnerLedger.create([{
+                    partnerId: carrierId,
+                    orderId: createdShipment._id,
+                    type: 'earning',
+                    amount: partnerEarning,
+                    description: `Earning for shipment ${createdShipment.awb} — ₹${createdShipment.shippingCost} shipping - ₹${platformFeeAmount} platform fee`,
+                    balanceBefore: partnerBalanceBefore,
+                    balanceAfter: partnerBalanceAfter,
+                    metadata: {
+                        awb: createdShipment.awb,
+                        shippingCost: createdShipment.shippingCost,
+                        platformFeePercent: partnerFeePercent,
+                        platformFeeAmount,
+                        totalPayable,
+                        payerUserId: req.user._id.toString()
+                    }
+                }], { session });
+
+                createdShipment.sellerEarning = partnerEarning;
+                createdShipment.platformFee = platformFeeAmount;
+            }
         }
 
         createdShipment.gstAmount = gstAmount;
@@ -147,7 +186,15 @@ router.post('/', protect, async (req, res) => {
         if (carrierId) {
             fireWebhook(carrierId, 'shipment.assigned', createdShipment).catch(err => console.error(err));
             const io = req.app.get('io');
-            if (io) io.to(`carrier_${carrierId}`).emit('new_shipment', createdShipment);
+            if (io) {
+                io.to(`carrier_${carrierId}`).emit('new_shipment', createdShipment);
+                io.emit('partner_earning_received', {
+                    partnerId: carrierId,
+                    amount: createdShipment.sellerEarning,
+                    awb: createdShipment.awb,
+                    shipmentId: createdShipment._id
+                });
+            }
         }
 
         triggerShipmentEmail('order_placed', createdShipment);
@@ -258,9 +305,42 @@ router.post('/create', protect, async (req, res) => {
                 type: 'shipment_charge',
                 status: 'completed',
                 description: `Shipment payment for ${createdShipment.awb || createdShipment._id}`,
+                shipmentId: createdShipment._id,
                 balanceBefore,
                 balanceAfter
             }], { session });
+
+            // ── Partner Crediting: credit the assigned carrier/partner instantly ──
+            if (carrierId) {
+                const partnerFeePercent = 5; // Platform fee %
+                const partnerEarning = Math.round(createdShipment.shippingCost * (1 - partnerFeePercent / 100) * 100) / 100;
+                const platformFeeAmount = Math.round(createdShipment.shippingCost * (partnerFeePercent / 100) * 100) / 100;
+
+                const lastPartnerEntry = await PartnerLedger.findOne({ partnerId: carrierId }).sort({ createdAt: -1 }).session(session);
+                const partnerBalanceBefore = lastPartnerEntry ? lastPartnerEntry.balanceAfter : 0;
+                const partnerBalanceAfter = partnerBalanceBefore + partnerEarning;
+
+                await PartnerLedger.create([{
+                    partnerId: carrierId,
+                    orderId: createdShipment._id,
+                    type: 'earning',
+                    amount: partnerEarning,
+                    description: `Earning for shipment ${createdShipment.awb} — ₹${createdShipment.shippingCost} shipping - ₹${platformFeeAmount} platform fee`,
+                    balanceBefore: partnerBalanceBefore,
+                    balanceAfter: partnerBalanceAfter,
+                    metadata: {
+                        awb: createdShipment.awb,
+                        shippingCost: createdShipment.shippingCost,
+                        platformFeePercent: partnerFeePercent,
+                        platformFeeAmount,
+                        totalPayable,
+                        payerUserId: req.user._id.toString()
+                    }
+                }], { session });
+
+                createdShipment.sellerEarning = partnerEarning;
+                createdShipment.platformFee = platformFeeAmount;
+            }
         }
 
         createdShipment.gstAmount = gstAmount;
@@ -288,7 +368,8 @@ router.post('/create', protect, async (req, res) => {
         if (carrierId) {
             fireWebhook(carrierId, 'shipment.assigned', createdShipment).catch(err => console.error(err));
             const io = req.app.get('io');
-            if (io) io.to(`carrier_${carrierId}`).emit('new_shipment', {
+            if (io) {
+                io.to(`carrier_${carrierId}`).emit('new_shipment', {
                     shipmentId: createdShipment._id,
                     awb: createdShipment.awb,
                     pickup: createdShipment.pickup,
@@ -296,7 +377,14 @@ router.post('/create', protect, async (req, res) => {
                     serviceType: createdShipment.serviceType,
                     shippingCost: createdShipment.shippingCost,
                     createdAt: createdShipment.createdAt
-            });
+                });
+                io.emit('partner_earning_received', {
+                    partnerId: carrierId,
+                    amount: createdShipment.sellerEarning,
+                    awb: createdShipment.awb,
+                    shipmentId: createdShipment._id
+                });
+            }
         }
 
         triggerShipmentEmail('order_placed', createdShipment);

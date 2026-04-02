@@ -7,6 +7,97 @@ import Shipment from '../models/Shipment.js';
 const router = express.Router();
 
 // ══════════════════════════════════════════════════
+// GET /api/partner/wallet-summary
+// Complete financial overview for the partner dashboard
+// Enforces 2-day withdrawal hold on earnings
+// ══════════════════════════════════════════════════
+router.get('/wallet-summary', protect, async (req, res) => {
+    try {
+        if (req.user.role !== 'shipment_partner' && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Partner access only' });
+        }
+
+        const partnerId = req.user._id;
+        const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+        // Get current total balance from the most recent ledger entry
+        const lastEntry = await PartnerLedger.findOne({ partnerId }).sort({ createdAt: -1 });
+        const totalBalance = lastEntry ? lastEntry.balanceAfter : 0;
+
+        // Calculate withdrawable balance: only earnings older than 2 days
+        // Sum of all credits older than 2 days minus all debits
+        const [totalCreditsOlderThan2Days] = await PartnerLedger.aggregate([
+            {
+                $match: {
+                    partnerId: partnerId,
+                    type: { $in: ['earning', 'bonus', 'cod_collection'] },
+                    createdAt: { $lte: twoDaysAgo }
+                }
+            },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]);
+
+        const [totalDebits] = await PartnerLedger.aggregate([
+            {
+                $match: {
+                    partnerId: partnerId,
+                    type: { $in: ['payout', 'deduction', 'penalty', 'cod_remittance'] }
+                }
+            },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]);
+
+        const maturedCredits = totalCreditsOlderThan2Days?.total || 0;
+        const totalDebitsAmount = totalDebits?.total || 0;
+        const withdrawableBalance = Math.max(0, maturedCredits - totalDebitsAmount);
+
+        // Pending withdrawal amount
+        const pendingWithdrawal = await WithdrawalRequest.findOne({
+            partnerId,
+            status: { $in: ['pending', 'approved', 'processing'] }
+        });
+        const pendingWithdrawalAmount = pendingWithdrawal?.amount || 0;
+
+        // Totals
+        const [earningsTotals] = await PartnerLedger.aggregate([
+            { $match: { partnerId, type: 'earning' } },
+            { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
+        ]);
+
+        const [payoutTotals] = await PartnerLedger.aggregate([
+            { $match: { partnerId, type: 'payout' } },
+            { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
+        ]);
+
+        // Recent transactions (last 10)
+        const recentTransactions = await PartnerLedger.find({ partnerId })
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .populate('orderId', 'awb carrier delivery.city');
+
+        res.json({
+            success: true,
+            wallet: {
+                totalBalance,
+                withdrawableBalance,
+                heldBalance: totalBalance - withdrawableBalance,
+                pendingWithdrawalAmount,
+                availableForWithdrawal: Math.max(0, withdrawableBalance - pendingWithdrawalAmount),
+                totalEarned: earningsTotals?.total || 0,
+                totalOrders: earningsTotals?.count || 0,
+                totalWithdrawn: payoutTotals?.total || 0,
+                totalWithdrawals: payoutTotals?.count || 0,
+                holdPeriodDays: 2
+            },
+            recentTransactions
+        });
+    } catch (error) {
+        console.error('Partner wallet-summary error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ══════════════════════════════════════════════════
 // GET /api/partner/ledger
 // Partner's financial ledger with pagination
 // ══════════════════════════════════════════════════
@@ -244,14 +335,42 @@ router.post('/withdraw', protect, async (req, res) => {
             return res.status(400).json({ error: 'Invalid withdrawal amount' });
         }
 
-        // Get current balance
-        const lastEntry = await PartnerLedger.findOne({ partnerId: req.user._id }).sort({ createdAt: -1 });
+        // Calculate withdrawable balance (2-day hold enforcement)
+        const partnerId = req.user._id;
+        const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+        const lastEntry = await PartnerLedger.findOne({ partnerId }).sort({ createdAt: -1 });
         const currentBalance = lastEntry ? lastEntry.balanceAfter : 0;
 
-        if (amount > currentBalance) {
+        // Only earnings older than 2 days are withdrawable
+        const [maturedCreditsResult] = await PartnerLedger.aggregate([
+            {
+                $match: {
+                    partnerId: partnerId,
+                    type: { $in: ['earning', 'bonus', 'cod_collection'] },
+                    createdAt: { $lte: twoDaysAgo }
+                }
+            },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]);
+
+        const [totalDebitsResult] = await PartnerLedger.aggregate([
+            {
+                $match: {
+                    partnerId: partnerId,
+                    type: { $in: ['payout', 'deduction', 'penalty', 'cod_remittance'] }
+                }
+            },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]);
+
+        const withdrawableBalance = Math.max(0, (maturedCreditsResult?.total || 0) - (totalDebitsResult?.total || 0));
+
+        if (amount > withdrawableBalance) {
             return res.status(400).json({
-                error: 'Insufficient balance',
+                error: 'Amount exceeds withdrawable balance. Earnings need a 2-day hold period before withdrawal.',
                 currentBalance,
+                withdrawableBalance,
                 requested: amount
             });
         }

@@ -9,6 +9,8 @@ import PartnerTeam from '../models/PartnerTeam.js';
 import AccountDeletionLog from '../models/AccountDeletionLog.js';
 import WalletRechargeOrder from '../models/WalletRechargeOrder.js';
 import KycAttempt from '../models/KycAttempt.js';
+import PaymentWebhookLog from '../models/PaymentWebhookLog.js';
+import Transaction from '../models/Transaction.js';
 import { Resend } from 'resend';
 
 
@@ -339,6 +341,98 @@ router.get('/payment-gateway-config', protect, admin, async (req, res) => {
         });
     } catch(err) {
         res.status(500).json({message: 'Server Error'});
+    }
+});
+
+// ══════════════════════════════════════════════════
+// GET /api/admin/webhook-logs
+// Financial webhook audit trail
+// ══════════════════════════════════════════════════
+router.get('/webhook-logs', protect, admin, async (req, res) => {
+    try {
+        const { page = 1, limit = 30, status, order_id } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const query = {};
+        if (status) query.processing_status = status;
+        if (order_id) query.order_id = { $regex: order_id, $options: 'i' };
+
+        const [logs, total] = await Promise.all([
+            PaymentWebhookLog.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit))
+                .select('-raw_payload -raw_headers'),
+            PaymentWebhookLog.countDocuments(query)
+        ]);
+
+        const statusCounts = await PaymentWebhookLog.aggregate([
+            { $group: { _id: '$processing_status', count: { $sum: 1 } } }
+        ]);
+
+        res.json({
+            success: true,
+            logs,
+            summary: Object.fromEntries(statusCounts.map(s => [s._id, s.count])),
+            pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ══════════════════════════════════════════════════
+// GET /api/admin/webhook-logs/:id
+// Full webhook log detail (with raw payload)
+// ══════════════════════════════════════════════════
+router.get('/webhook-logs/:id', protect, admin, async (req, res) => {
+    try {
+        const log = await PaymentWebhookLog.findById(req.params.id);
+        if (!log) return res.status(404).json({ error: 'Log not found' });
+        res.json({ success: true, log });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ══════════════════════════════════════════════════
+// GET /api/admin/financial-summary
+// Platform-wide financial overview
+// ══════════════════════════════════════════════════
+router.get('/financial-summary', protect, admin, async (req, res) => {
+    try {
+        const [totalRecharges, totalShipmentCharges, totalRefunds, totalUsers, totalPartners] = await Promise.all([
+            Transaction.aggregate([
+                { $match: { type: 'recharge', status: 'completed' } },
+                { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
+            ]),
+            Transaction.aggregate([
+                { $match: { type: 'shipment_charge', status: 'completed' } },
+                { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
+            ]),
+            Transaction.aggregate([
+                { $match: { type: 'refund', status: 'completed' } },
+                { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
+            ]),
+            User.countDocuments({ role: 'user' }),
+            User.countDocuments({ role: 'shipment_partner' })
+        ]);
+
+        res.json({
+            success: true,
+            financials: {
+                totalRechargeAmount: totalRecharges[0]?.total || 0,
+                totalRechargeCount: totalRecharges[0]?.count || 0,
+                totalShipmentChargeAmount: totalShipmentCharges[0]?.total || 0,
+                totalShipmentChargeCount: totalShipmentCharges[0]?.count || 0,
+                totalRefundAmount: totalRefunds[0]?.total || 0,
+                totalRefundCount: totalRefunds[0]?.count || 0,
+                totalUsers,
+                totalPartners
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
