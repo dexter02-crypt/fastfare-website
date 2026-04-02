@@ -254,7 +254,7 @@ const KYCVerification = () => {
           navigate("/login");
           return;
         }
-        const response = await fetch(`${API_BASE_URL}/auth/digilocker/init`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/digilocker/init`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await response.json();
