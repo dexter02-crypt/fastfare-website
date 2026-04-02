@@ -10,9 +10,41 @@ import AccountDeletionLog from '../models/AccountDeletionLog.js';
 import WalletRechargeOrder from '../models/WalletRechargeOrder.js';
 import { Resend } from 'resend';
 
+
+
 const router = express.Router();
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'FastFare <support@fastfare.in>';
+
+/**
+ * @route   GET /api/admin/stats
+ * @desc    Get dashboard statistics including DigiLocker verified users count
+ * @access  Admin only
+ */
+router.get('/stats', protect, admin, async (req, res) => {
+    try {
+        const totalOrgs = await Organization.countDocuments();
+        const activeUsersCount = await User.countDocuments();
+        const activeCarriers = await User.countDocuments({ role: 'shipment_partner' });
+        const shipmentsToday = await Shipment.countDocuments({
+            createdAt: { $gte: new Date(new Date().setHours(0,0,0,0)) }
+        });
+        const digilockerVerifiedCount = await User.countDocuments({
+            'kyc.digilocker.status': 'verified'
+        });
+
+        res.json({
+            organizations: totalOrgs,
+            activeUsers: activeUsersCount,
+            shipmentsToday: shipmentsToday,
+            activeCarriers: activeCarriers,
+            digilockerVerified: digilockerVerifiedCount
+        });
+    } catch (error) {
+        console.error('Admin Stats Fetch error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
 
 /**
  * @route   GET /api/admin/users

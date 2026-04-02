@@ -4,6 +4,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import http from 'http';
 import { Server } from 'socket.io';
+import session from 'express-session';
 
 // Existing website routes
 import authRoutes from './routes/auth.js';
@@ -20,6 +21,7 @@ import reportsRoutes from './routes/reports.js';
 import alertsRoutes from './routes/alerts.js';
 import promoRoutes from './routes/promo.js';
 import walletRoutes from './routes/wallet.js';
+import digilockerRoutes from './routes/digilocker.js';
 
 // WMS routes (from PC software)
 import wmsVehicleRoutes from './routes/wms-vehicles.js';
@@ -86,6 +88,13 @@ const app = express();
 const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
+// DigiLocker Startup Check
+console.log('--- DigiLocker Configuration Check ---');
+console.log(`DIGILOCKER_CLIENT_ID: ${process.env.DIGILOCKER_CLIENT_ID ? 'Configured' : 'Missing'}`);
+console.log(`DIGILOCKER_CLIENT_SECRET: ${process.env.DIGILOCKER_CLIENT_SECRET ? 'Configured' : 'Missing'}`);
+console.log(`DIGILOCKER_REDIRECT_URI: ${process.env.DIGILOCKER_REDIRECT_URI ? 'Configured (' + process.env.DIGILOCKER_REDIRECT_URI + ')' : 'Missing'}`);
+console.log('------------------------------------');
+
 // Socket.io setup with CORS
 const WEB_ORIGINS = ['http://localhost:8080', 'http://localhost:5173', 'https://fastfare.in', 'https://www.fastfare.in', 'https://fastfare.org', 'https://www.fastfare.org'];
 
@@ -128,11 +137,27 @@ app.use(express.json({
   }
 }));
 
+// Global Session for OAuth persistence across subdomains/paths
+app.use(session({
+    secret: process.env.JWT_SECRET || 'fastfare_oauth_secret',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { 
+        secure: false, // Ensure this works on localhost and staging without HTTPS initially
+        path: '/', 
+        maxAge: 3600000 // 1 hour 
+    }
+}));
+
+
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
 
 // Serve downloadable files (APKs etc.)
 app.use('/downloads', express.static('public/downloads'));
+
+// ─── Digilocker Direct Public Auth Route ───
+app.use('/auth/digilocker', digilockerRoutes);
 
 // ─── Existing Website Routes ───
 app.use('/api/auth', authRoutes);

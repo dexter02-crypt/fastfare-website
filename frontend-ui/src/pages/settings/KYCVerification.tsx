@@ -1,6 +1,6 @@
 import { API_BASE_URL } from "@/config";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,8 +18,9 @@ import {
 
 const KYCVerification = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
-  const [kycType, setKycType] = useState<"aadhaar" | "pan" | "gst">("aadhaar");
+  const [kycType, setKycType] = useState<"aadhaar" | "pan" | "gst" | "digilocker">("digilocker");
   const [step, setStep] = useState<"select" | "verify" | "otp" | "processing" | "complete">("select");
   const [gstin, setGstin] = useState("");
   const [panNumber, setPanNumber] = useState("");
@@ -36,6 +37,11 @@ const KYCVerification = () => {
     verificationType?: string;
     details?: VerificationDetails;
     verifiedAt?: string;
+    digilocker?: {
+      status: string;
+      verifiedAt: string;
+      aadhaarLastFour: string;
+    };
   }
 
   interface VerificationDetails {
@@ -46,9 +52,30 @@ const KYCVerification = () => {
 
   // Fetch KYC status on mount
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const kycSuccess = params.get("kyc_success");
+    const kycError = params.get("kyc_error");
+
+    if (kycSuccess === "true") {
+      toast({ title: "DigiLocker Verified", description: "Successfully verified your identity with DigiLocker.", variant: "default" });
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setStep("complete");
+    } else if (kycError) {
+      const errorMap: Record<string, string> = {
+        'invalid_state': "Verification failed due to a security check. Please try again.",
+        'token_exchange_failed': "Could not connect to DigiLocker. Please try again later.",
+        'session_expired': "Your session expired. Please log in again and retry.",
+        'no_code_received': "DigiLocker did not return an authorization code.",
+        'profile_fetch_failed': "DigiLocker failed to return your profile details."
+      };
+      const errorMsg = errorMap[kycError] || "DigiLocker verification failed. Please try again.";
+      toast({ title: "Verification Failed", description: errorMsg, variant: "destructive" });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     fetchKycStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.search]);
 
   const fetchKycStatus = async () => {
     try {
@@ -70,7 +97,7 @@ const KYCVerification = () => {
         setVerificationDetails(data.kyc.details);
 
         // If already verified, show complete step
-        if (data.kyc.status === "verified") {
+        if (data.kyc.status === "verified" || data.kyc?.digilocker?.status === "verified") {
           setStep("complete");
         } else if (data.kyc.status === "in_progress" && data.kyc.sessionUrl) {
           setSessionUrl(data.kyc.sessionUrl);
@@ -219,7 +246,29 @@ const KYCVerification = () => {
   };
 
   const handleStartVerification = async () => {
-    if (kycType === "aadhaar") {
+    if (kycType === "digilocker") {
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+        const response = await fetch(`${API_BASE_URL}/auth/digilocker/init`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok && data.auth_url) {
+          window.location.href = data.auth_url;
+        } else {
+          throw new Error("Failed to get DigiLocker auth URL");
+        }
+      } catch (err) {
+        setIsLoading(false);
+        toast({ title: "Verification Failed", description: "Could not connect to DigiLocker", variant: "destructive" });
+      }
+      return;
+    } else if (kycType === "aadhaar") {
       if (aadhaarNumber.length !== 12 || !/^\d{12}$/.test(aadhaarNumber)) {
         toast({
           title: "Invalid Aadhaar",
@@ -322,7 +371,26 @@ const KYCVerification = () => {
         <p className="text-muted-foreground">KYC helps ensure secure and verified deliveries</p>
       </div>
 
-      <RadioGroup value={kycType} onValueChange={(v) => setKycType(v as "aadhaar" | "pan" | "gst")}>
+      <RadioGroup value={kycType} onValueChange={(v) => setKycType(v as "aadhaar" | "pan" | "gst" | "digilocker")}>
+        <div
+          className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${kycType === "digilocker" ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
+            }`}
+          onClick={() => setKycType("digilocker")}
+        >
+          <RadioGroupItem value="digilocker" id="digilocker" className="mt-1" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="digilocker" className="font-semibold cursor-pointer">
+                Verify with DigiLocker
+              </Label>
+              <Badge className="bg-green-500 hover:bg-green-600">NEW & FAST</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Verify instantly using government-issued DigiLocker documents via OAuth
+            </p>
+          </div>
+        </div>
+
         <div
           className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all ${kycType === "aadhaar" ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
             }`}
@@ -392,7 +460,31 @@ const KYCVerification = () => {
         Back
       </Button>
 
-      {kycType === "aadhaar" ? (
+      {kycType === "digilocker" ? (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold mb-2">DigiLocker Verification</h2>
+            <p className="text-muted-foreground">
+              You will be redirected to DigiLocker to securely share your official e-Aadhaar and identity documents.
+            </p>
+          </div>
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+            <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Secure Process
+            </h4>
+            <ul className="list-disc list-inside text-sm text-blue-700 dark:text-blue-400 space-y-1">
+              <li>End-to-end encrypted connection to Government servers</li>
+              <li>We only access verified name, DOB, gender, and masked Aadhaar</li>
+            </ul>
+          </div>
+          <Button onClick={handleStartVerification} disabled={isLoading} className="w-full gradient-primary">
+            {isLoading ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Redirecting...</>
+            ) : "Continue to DigiLocker"}
+          </Button>
+        </div>
+      ) : kycType === "aadhaar" ? (
         <div className="space-y-4">
           <div>
             <h2 className="text-xl font-semibold mb-2">Secure Aadhaar Verification</h2>
@@ -656,10 +748,16 @@ const KYCVerification = () => {
           <span className="text-muted-foreground">Verification Status</span>
           <Badge className="bg-green-500">Verified</Badge>
         </div>
-        {kycStatus?.verifiedAt && (
+        {(kycStatus?.verifiedAt || kycStatus?.digilocker?.verifiedAt) && (
           <div className="flex items-center justify-between text-sm mt-2">
             <span className="text-muted-foreground">Verified On</span>
-            <span>{new Date(kycStatus.verifiedAt).toLocaleDateString()}</span>
+            <span>{new Date(kycStatus.verifiedAt || kycStatus.digilocker?.verifiedAt || Date.now()).toLocaleDateString()}</span>
+          </div>
+        )}
+        {kycStatus?.digilocker?.status === 'verified' && (
+          <div className="flex items-center justify-between text-sm mt-2">
+            <span className="text-muted-foreground">Method</span>
+            <span className="font-medium text-green-600 flex items-center gap-1"><Shield className="h-4 w-4"/> DigiLocker</span>
           </div>
         )}
       </div>

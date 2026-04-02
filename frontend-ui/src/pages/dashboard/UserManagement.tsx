@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
 import Footer from "@/components/Footer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, MoreHorizontal, Mail, Shield, User as UserIcon, Trash2, Loader2, Wallet } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Mail, Shield, ShieldCheck, User as UserIcon, Trash2, Loader2, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/config";
 import {
@@ -166,6 +166,7 @@ const UserManagement = () => {
                                     <TableHead className="w-[250px]">User</TableHead>
                                     <TableHead>Role</TableHead>
                                     <TableHead>Wallet</TableHead>
+                                    <TableHead>KYC</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -214,6 +215,17 @@ const UserManagement = () => {
                                             >
                                                 <Wallet className="h-4 w-4 text-primary" />
                                             </Button>
+                                        </TableCell>
+                                        <TableCell>
+                                            {user.kyc?.digilocker?.status === 'verified' ? (
+                                                <Badge className="bg-green-500 hover:bg-green-600 flex w-fit items-center gap-1">
+                                                    <ShieldCheck className="h-3 w-3" /> DigiLocker
+                                                </Badge>
+                                            ) : user.kyc?.status === 'verified' ? (
+                                                <Badge variant="outline" className="border-green-500 text-green-600">Verified</Badge>
+                                            ) : (
+                                                <Badge variant="secondary">Pending</Badge>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={user.isActive !== false ? 'default' : 'secondary'} className={user.isActive !== false ? 'bg-green-500 hover:bg-green-600' : ''}>

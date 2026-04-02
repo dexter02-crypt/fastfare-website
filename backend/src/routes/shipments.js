@@ -71,8 +71,12 @@ router.post('/', protect, async (req, res) => {
         }
 
         const deliveryFare = createdShipment.shippingCost;
-        let gstAmount = Math.round(deliveryFare * 0.18 * 100) / 100;
-        let totalPayable = Math.round((deliveryFare + gstAmount) * 100) / 100;
+        const isCOD = paymentMode === 'cod';
+        const codFee = isCOD ? 50 : 0;
+
+        const totalTaxableAmount = deliveryFare + codFee;
+        let gstAmount = Math.round(totalTaxableAmount * 0.18 * 100) / 100;
+        let totalPayable = Math.round((totalTaxableAmount + gstAmount) * 100) / 100;
 
         let discountApplied = 0;
         let appliedPromoCode = null;
@@ -119,6 +123,7 @@ router.post('/', protect, async (req, res) => {
         }
 
         createdShipment.gstAmount = gstAmount;
+        createdShipment.codFee = codFee;
         createdShipment.totalPayable = totalPayable;
         createdShipment.promoCode = appliedPromoCode;
         createdShipment.discountApplied = discountApplied;

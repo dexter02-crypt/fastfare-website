@@ -126,8 +126,22 @@ const userSchema = new mongoose.Schema({
         verificationData: {
             type: Object,
             default: {}
+        },
+        digilocker: {
+            status: { type: String, enum: ['pending', 'verified', 'failed'], default: 'pending' },
+            verifiedAt: Date,
+            aadhaarLastFour: String,
+            dob: String,
+            gender: String
         }
     },
+    kyc_status: { type: String, default: 'pending' },
+    digilocker_verified: { type: Boolean, default: false },
+    digilocker_verified_at: Date,
+    digilocker_id: String,
+    kyc_name: String,
+    kyc_dob: String,
+    kyc_gender: String,
     tier: {
         type: String,
         enum: ['bronze', 'silver', 'gold'],

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import {
-  Mail, Phone, MapPin, Clock, MessageSquare, Headphones,
+  Mail, MapPin, Clock, MessageSquare,
   Building2, Send, CheckCircle
 } from "lucide-react";
 
@@ -22,25 +22,11 @@ const contactMethods = [
     action: "mailto:support@fastfare.in",
   },
   {
-    icon: Phone,
-    title: "Call Us",
-    description: "Mon-Sat, 9 AM - 6 PM IST",
-    value: "+91 1800-123-4567",
-    action: "tel:+911800123457",
-  },
-  {
     icon: MessageSquare,
     title: "Live Chat",
-    description: "Chat with our support team",
+    description: "Chat with our support team in real-time",
     value: "Start a conversation",
     action: "#chat",
-  },
-  {
-    icon: Headphones,
-    title: "Help Center",
-    description: "Browse FAQs and guides",
-    value: "Visit Help Center",
-    action: "/help",
   },
 ];
 
@@ -48,17 +34,14 @@ const offices = [
   {
     city: "Mumbai (HQ)",
     address: "WeWork, Oberoi Commerz II, Goregaon East, Mumbai 400063",
-    phone: "+91 22 6789 0123",
   },
   {
     city: "Bangalore",
     address: "91springboard, JP Nagar, Bangalore 560078",
-    phone: "+91 80 6789 0124",
   },
   {
     city: "Delhi NCR",
     address: "Innov8, Connaught Place, New Delhi 110001",
-    phone: "+91 11 6789 0125",
   },
 ];
 
@@ -99,7 +82,7 @@ const ContactPage = () => {
 
         {/* Contact Methods */}
         <section className="py-12 container">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
             {contactMethods.map((method, index) => (
               <motion.a
                 key={method.title}
@@ -238,7 +221,6 @@ const ContactPage = () => {
                       <div>
                         <h3 className="font-semibold">{office.city}</h3>
                         <p className="text-sm text-muted-foreground mt-1">{office.address}</p>
-                        <p className="text-sm text-primary mt-2">{office.phone}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -272,10 +254,11 @@ const ContactPage = () => {
                 <p>Sunday & Public Holidays: Closed</p>
               </div>
               <p className="mt-4 text-sm">
-                For urgent shipment issues, our 24/7 support line is available at{" "}
-                <a href="tel:+911800123457" className="text-primary font-medium">
-                  +91 1800-123-4567
-                </a>
+                For urgent shipment issues, email us at{" "}
+                <a href="mailto:support@fastfare.in" className="text-primary font-medium">
+                  support@fastfare.in
+                </a>{" "}
+                or use our <a href="#chat" className="text-primary font-medium">Live Chat</a>.
               </p>
             </div>
           </div>

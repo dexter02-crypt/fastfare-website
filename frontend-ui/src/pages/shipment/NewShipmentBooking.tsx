@@ -59,7 +59,7 @@ const initialPackageData = {
   ],
   contentType: "",
   description: "",
-  paymentMode: "cod",
+  paymentMode: "",
   codAmount: 0,
   insurance: false,
 };

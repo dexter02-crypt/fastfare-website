@@ -218,7 +218,6 @@ const App = () => (
               <Route path="/register/partner" element={<RegisterPartner />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/verify-email" element={<EmailVerification />} />
-              <Route path="/pricing" element={<PricingPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/services" element={<ServicesPage />} />

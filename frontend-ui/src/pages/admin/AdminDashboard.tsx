@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,14 +11,16 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import {
   LayoutDashboard, Building2, Users, Package, Truck, Settings,
-  TrendingUp, AlertTriangle, Search, Eye, Edit, Ban
+  TrendingUp, AlertTriangle, Search, Eye, Edit, Ban, ShieldCheck
 } from "lucide-react";
 
-const stats = [
+import { API_BASE_URL } from "@/config";
+
+const defaultStats = [
   { label: "Total Organizations", value: "0", change: "+0", icon: Building2 },
   { label: "Active Users", value: "0", change: "+0", icon: Users },
+  { label: "DigiLocker Verified", value: "0", change: "+0", icon: ShieldCheck },
   { label: "Shipments Today", value: "0", change: "+0", icon: Package },
-  { label: "Active Carriers", value: "0", change: "+0", icon: Truck },
 ];
 
 const organizations: { id: number; name: string; plan: string; shipments: number; status: string; joined: string }[] = [];
@@ -28,6 +30,30 @@ const recentAlerts: { type: string; message: string; time: string }[] = [];
 const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const [stats, setStats] = useState(defaultStats);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE_URL}/api/admin/stats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStats([
+            { label: "Total Organizations", value: data.organizations?.toString() || "0", change: "Live", icon: Building2 },
+            { label: "Active Users", value: data.activeUsers?.toString() || "0", change: "Live", icon: Users },
+            { label: "DigiLocker Verified", value: data.digilockerVerified?.toString() || "0", change: "Live", icon: ShieldCheck },
+            { label: "Shipments Today", value: data.shipmentsToday?.toString() || "0", change: "Live", icon: Package },
+          ]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch admin stats", err);
+      }
+    };
+    fetchStats();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">

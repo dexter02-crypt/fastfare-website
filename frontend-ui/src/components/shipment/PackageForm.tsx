@@ -330,7 +330,7 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
         />
       </div>
 
-      {/* Payment Mode - TEMPORARILY HIDDEN (Only COD active) 
+      {/* Payment Mode Selection */}
       <div className="space-y-3">
         <Label className="text-base font-semibold">Payment Mode</Label>
         <RadioGroup
@@ -338,28 +338,6 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
           onValueChange={(value) => handleChange("paymentMode", value)}
           className="grid grid-cols-1 gap-4"
         >
-          {/* TEMPORARILY HIDDEN 
-          <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'razorpay' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
-            <RadioGroupItem value="razorpay" id="razorpay" />
-            <Label htmlFor="razorpay" className="cursor-pointer">
-              <span className="font-medium">Pay Online (Razorpay)</span>
-              <span className="text-sm text-muted-foreground block">
-                Pay securely via UPI, Credit/Debit Card, or Netbanking
-              </span>
-            </Label>
-          </div>
-
-          <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'wallet' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
-            <RadioGroupItem value="wallet" id="wallet" />
-            <Label htmlFor="wallet" className="cursor-pointer">
-              <span className="font-medium">FastFare Wallet</span>
-              <span className="text-sm text-muted-foreground block">
-                Deduct the amount directly from your wallet balance
-              </span>
-            </Label>
-          </div>
-          * /}
-
           <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'cod' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
             <RadioGroupItem value="cod" id="cod" />
             <Label htmlFor="cod" className="cursor-pointer w-full">
@@ -369,15 +347,31 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
                   <span className="text-sm text-muted-foreground block">
                     Collect payment from customer upon delivery
                   </span>
+                  <span className="text-xs text-orange-600 font-medium mt-1 block">
+                    ₹50 COD handling fee applies
+                  </span>
+                </div>
+              </div>
+            </Label>
+          </div>
+
+          <div className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-colors ${data.paymentMode === 'prepaid' ? 'border-primary bg-primary/5' : 'hover:border-primary'}`}>
+            <RadioGroupItem value="prepaid" id="prepaid" />
+            <Label htmlFor="prepaid" className="cursor-pointer w-full">
+              <div className="flex justify-between items-center w-full">
+                <div>
+                  <span className="font-medium">Prepaid</span>
+                  <span className="text-sm text-muted-foreground block">
+                    Customer has already paid — no COD collection needed
+                  </span>
+                  <span className="text-xs text-green-600 font-medium mt-1 block">
+                    No COD handling fee
+                  </span>
                 </div>
               </div>
             </Label>
           </div>
         </RadioGroup>
-      */}
-
-      {/* Show COD Amount Input immediately if COD is the default (which it is) */}
-      <div className="space-y-3">
 
         {data.paymentMode === 'cod' && (
           <div className="mt-4 p-4 border rounded-lg bg-orange-50 border-orange-200">
@@ -397,8 +391,8 @@ const PackageForm = ({ data, onChange }: PackageFormProps) => {
               </p>
             )}
             <div className="flex items-center gap-2 mt-2">
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
-                ✅ No extra charges for COD
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-medium">
+                💵 ₹50 COD handling fee will be added to your shipment cost
               </span>
             </div>
           </div>

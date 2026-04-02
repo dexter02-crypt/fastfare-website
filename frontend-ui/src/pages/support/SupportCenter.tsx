@@ -18,7 +18,7 @@ import {
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import {
-  HelpCircle, MessageSquare, Phone, Mail, Search, Plus,
+  HelpCircle, MessageSquare, Mail, Search, Plus,
   Clock, CheckCircle, AlertCircle, FileText, Video, BookOpen,
   Send, X, Headphones
 } from "lucide-react";
@@ -112,18 +112,10 @@ const SupportCenter = () => {
     setActiveTab("tickets");
   };
 
-  const phoneNumber = "+91 1800-123-4567";
   const emailAddress = "support@fastfare.in";
 
   const handleStartChat = () => {
     setChatOpen(true);
-  };
-
-  const handleCallNow = () => {
-    // Format phone number for tel: link (remove spaces and special chars)
-    const formattedPhone = phoneNumber.replace(/\s+/g, '').replace(/-/g, '');
-    window.location.href = `tel:${formattedPhone}`;
-    toast.info("Opening phone dialer...");
   };
 
   const handleSendEmail = () => {
@@ -180,18 +172,10 @@ const SupportCenter = () => {
     {
       icon: MessageSquare,
       title: "Live Chat",
-      description: "Chat with our support team",
+      description: "Chat with our support team in real-time",
       action: "Start Chat",
       color: "bg-blue-500",
       onClick: handleStartChat
-    },
-    {
-      icon: Phone,
-      title: "Call Us",
-      description: phoneNumber,
-      action: "Call Now",
-      color: "bg-green-500",
-      onClick: handleCallNow
     },
     {
       icon: Mail,
@@ -234,7 +218,7 @@ const SupportCenter = () => {
         </Card>
 
         {/* Contact Options */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 max-w-2xl mx-auto">
           {contactOptions.map((option) => (
             <Card key={option.title} className="hover:border-primary transition-colors">
               <CardContent className="pt-6">

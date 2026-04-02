@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
 import { Otp } from '../models/Otp.js';
+import { PendingRegistration } from '../models/PendingRegistration.js';
 import { generateOTP } from '../utils/otpGenerator.js';
 import { sendPasswordResetEmail, sendPasswordChangedEmail } from '../utils/emailSender.js';
 
@@ -159,10 +160,54 @@ router.post('/verify-registration-otp', async (req, res) => {
 
 
 // Register
+router.post('/register/initiate-digilocker', async (req, res) => {
+    try {
+        const { email, businessName, businessType, contactPerson, phone, gstin } = req.body;
+        
+        if (!email || !phone) return res.status(400).json({ error: 'Email and phone are required.' });
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) return res.status(409).json({ error: 'An account with this email already exists. Please sign in.' });
+
+        const pendingReg = await PendingRegistration.create({
+            email, businessName, businessType, contactPerson, phone, gstin,
+            status: "pending_digilocker"
+        });
+
+        const state = crypto.randomBytes(32).toString('hex');
+        req.session.digilocker_oauth_state = state;
+        req.session.digilocker_pending_reg_id = pendingReg._id.toString();
+
+        const clientId = process.env.DIGILOCKER_CLIENT_ID;
+        const redirectUri = process.env.DIGILOCKER_REDIRECT_URI;
+        
+        if (!clientId || !redirectUri) return res.status(500).json({ error: 'DigiLocker config missing' });
+
+        req.session.save((err) => {
+             if (err) return res.status(500).json({ error: 'Failed to initialize sign up session' });
+             
+             const authUrl = new URL('https://api.digitallocker.gov.in/public/oauth2/1/authorize');
+             authUrl.searchParams.append('response_type', 'code');
+             authUrl.searchParams.append('client_id', clientId);
+             authUrl.searchParams.append('redirect_uri', redirectUri);
+             authUrl.searchParams.append('state', state);
+             authUrl.searchParams.append('scope', 'openid profile');
+             
+             res.json({ auth_url: authUrl.toString(), pending_id: pendingReg._id.toString() });
+        });
+    } catch (error) {
+        console.error('Initiate error:', error);
+        res.status(500).json({ error: 'Failed to initiate DigiLocker verification.' });
+    }
+});
+
 router.post('/register', async (req, res) => {
     // Note: email must be verified via /send-registration-otp + /verify-registration-otp before registering
     try {
-        const { verifiedToken, businessName, gstin, businessType, contactPerson, email, phone, password, role } = req.body;
+        const { 
+            verifiedToken, businessName, gstin, businessType, contactPerson, email, phone, password, role,
+            digilocker_verified, digilocker_id, kyc_name, kyc_dob, kyc_gender, pending_registration_id
+        } = req.body;
 
         if (!verifiedToken) {
             return res.status(400).json({ error: 'Email verification is required before creating an account.' });
@@ -225,6 +270,29 @@ router.post('/register', async (req, res) => {
             emailVerified: true,
         };
 
+        if (digilocker_verified) {
+            userData.kyc_status = "verified";
+            userData.digilocker_verified = true;
+            userData.digilocker_verified_at = new Date();
+            userData.digilocker_id = digilocker_id;
+            userData.kyc_name = kyc_name;
+            userData.kyc_dob = kyc_dob;
+            userData.kyc_gender = kyc_gender;
+            userData.kyc = {
+                status: 'verified',
+                verifiedAt: new Date(),
+                digilocker: {
+                    status: 'verified',
+                    verifiedAt: new Date(),
+                    dob: kyc_dob || '',
+                    gender: kyc_gender || ''
+                }
+            };
+        } else {
+            userData.kyc_status = "pending";
+            userData.digilocker_verified = false;
+        }
+
         if (userRole === 'shipment_partner') {
             const { fleetDetails, serviceZones, supportedTypes, baseFare, perKgRate, webhookUrl, features, eta, zone, city, aadhaar, address, state } = req.body;
             userData.partnerDetails = {
@@ -249,6 +317,10 @@ router.post('/register', async (req, res) => {
 
         // Clean up the OTP from collection
         await EmailVerification.deleteMany({ email: normalizedEmail, purpose: 'registration' });
+        
+        if (pending_registration_id) {
+            await PendingRegistration.findByIdAndDelete(pending_registration_id);
+        }
 
         const token = generateToken(user._id);
 

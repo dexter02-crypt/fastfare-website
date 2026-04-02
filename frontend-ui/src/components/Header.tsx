@@ -63,13 +63,12 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
     setLocalMobileMenuOpen(false);
   };
 
-  const navLinks = [
-    { label: "Solutions", href: "#solutions", dropdown: true },
-    { label: "Products", href: "#products", dropdown: true },
-    { label: "Pricing", href: "/pricing" },
-    { label: "Integrations", href: "#integrations" },
-    { label: "Resources", href: "#resources", dropdown: true },
-  ];
+    const navLinks = [
+      { label: "Solutions", href: "#solutions", dropdown: true },
+      { label: "Products", href: "#products", dropdown: true },
+      { label: "Integrations", href: "#integrations" },
+      { label: "Resources", href: "#resources", dropdown: true },
+    ];
 
   const solutionsItems = [
     { label: "Courier Services", href: "/solutions/courier", icon: Truck },
@@ -418,7 +417,6 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {[
                 { label: 'Home', href: '/' },
-                { label: 'Pricing', href: '/pricing' },
                 { label: 'Track Shipment', href: '/track' },
                 { label: 'Integrations', href: '#integrations' },
                 { label: 'Courier Services', href: '/solutions/courier' },
