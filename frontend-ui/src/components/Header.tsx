@@ -19,8 +19,18 @@ import {
   FileText,
   Truck,
   Settings,
+  Globe,
+  BarChart3,
+  Users,
+  CreditCard,
+  Code,
+  BookOpen,
+  MessageSquare,
+  History,
+  ShoppingCart,
+  Building2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useWallet } from "@/contexts/WalletContext";
 import Logo from "@/components/Logo";
@@ -44,49 +54,75 @@ interface HeaderProps {
   onMobileMenuToggle?: () => void;
 }
 
+// ── Dropdown item data with descriptions ──
+const solutionsItems = [
+  { label: "E-commerce Shipping", desc: "Seamless delivery for online stores", href: "/solutions/ecommerce", icon: ShoppingCart },
+  { label: "B2B Logistics", desc: "Enterprise supply chain solutions", href: "/solutions/b2b", icon: Building2 },
+  { label: "Hyperlocal Delivery", desc: "Same-day intra-city deliveries", href: "/solutions/hyperlocal", icon: Zap },
+  { label: "Fulfillment & Warehousing", desc: "End-to-end order fulfillment", href: "/solutions/fulfillment", icon: Package },
+  { label: "Cross-border Shipping", desc: "International logistics made simple", href: "/solutions/international", icon: Globe },
+];
+
+const productsItems = [
+  { label: "Shipment Dashboard", desc: "Track and manage all shipments", href: "/products/dashboard", icon: LayoutDashboard },
+  { label: "Fleet Tracking", desc: "Real-time vehicle monitoring", href: "/products/fleet", icon: Truck },
+  { label: "Partner Network", desc: "Connect with logistics partners", href: "/products/partners", icon: Users },
+  { label: "Analytics Suite", desc: "Data-driven logistics insights", href: "/products/analytics", icon: BarChart3 },
+  { label: "API Platform", desc: "Developer-friendly shipping APIs", href: "/products/api", icon: Code },
+  { label: "Wallet & Payments", desc: "Manage billing and settlements", href: "/products/wallet", icon: CreditCard },
+];
+
+const resourcesItems = [
+  { label: "Documentation", desc: "Guides and technical docs", href: "/documentation", icon: FileText },
+  { label: "Help Center", desc: "Find answers to common questions", href: "/help-center", icon: HelpCircle },
+  { label: "API Reference", desc: "Complete API documentation", href: "/api-reference", icon: Code },
+  { label: "Logistics Guide", desc: "Industry insights and best practices", href: "/logistics-guide", icon: BookOpen },
+  { label: "Community", desc: "Join the FastFare community", href: "/community", icon: MessageSquare },
+  { label: "Changelog", desc: "Latest updates and releases", href: "/changelog", icon: History },
+];
+
 const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: HeaderProps = {}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [localMobileMenuOpen, setLocalMobileMenuOpen] = useState(false);
   const isAuthenticated = authApi.isAuthenticated();
   const user = authApi.getCurrentUser();
-  const hasUnreadNotifications = false; // TODO: Hook up to real notifications state when implemented
+  const hasUnreadNotifications = false;
   const isHomepage = location.pathname === '/';
   const [searchQuery, setSearchQuery] = useState("");
   const { balance } = useWallet();
 
-  // Unified mobile menu state: use prop if provided (authenticated layout), else local
+  // Click-toggle dropdown state
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close dropdown on route change
+  useEffect(() => {
+    setOpenDropdown(null);
+  }, [location.pathname]);
+
+  const toggleDropdown = (label: string) => {
+    setOpenDropdown(prev => prev === label ? null : label);
+  };
+
+  // Unified mobile menu state
   const mobileMenuOpen = onMobileMenuToggle ? (propMobileMenuOpen ?? false) : localMobileMenuOpen;
   const toggleMobileMenu = onMobileMenuToggle || (() => setLocalMobileMenuOpen(prev => !prev));
   const closeMobileMenu = () => {
     if (onMobileMenuToggle && propMobileMenuOpen) onMobileMenuToggle();
     setLocalMobileMenuOpen(false);
   };
-
-    const navLinks = [
-      { label: "Solutions", href: "#solutions", dropdown: true },
-      { label: "Products", href: "#products", dropdown: true },
-      { label: "Integrations", href: "#integrations" },
-      { label: "Resources", href: "#resources", dropdown: true },
-    ];
-
-  const solutionsItems = [
-    { label: "Courier Services", href: "/services", icon: Truck },
-    { label: "Warehousing", href: "/services", icon: Grid },
-    { label: "Returns Management", href: "/services", icon: Package },
-  ];
-
-  const productsItems = [
-    { label: "Bulk Shipping", href: "/services", icon: Package },
-    { label: "Express Delivery", href: "/services", icon: Zap },
-    { label: "International", href: "/services", icon: Truck },
-  ];
-
-  const resourcesItems = [
-    { label: "Documentation", href: "/documentation", icon: FileText },
-    { label: "API", href: "/api-reference", icon: Package },
-    { label: "Support", href: "/support", icon: HelpCircle },
-  ];
 
   const handleLogout = () => {
     authApi.logout();
@@ -109,11 +145,42 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
       .slice(0, 2);
   };
 
+  // Render a single dropdown panel
+  const renderDropdownItems = (items: typeof solutionsItems) => (
+    <div
+      className="absolute top-full left-0 w-72 pt-2 z-50"
+      style={{ animation: 'fadeIn 0.15s ease-out' }}
+    >
+      <div className="bg-popover text-popover-foreground rounded-lg shadow-lg border border-border p-2">
+        {items.map((item, idx) => (
+          <Link
+            key={idx}
+            to={item.href}
+            onClick={() => setOpenDropdown(null)}
+            className="flex items-start gap-3 px-3 py-2.5 rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors group"
+          >
+            <item.icon className="h-4 w-4 mt-0.5 text-muted-foreground group-hover:text-foreground flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium leading-tight">{item.label}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{item.desc}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
       <div className="flex h-16 w-full items-center justify-between gap-4" style={{ paddingLeft: 0, paddingRight: '1rem' }}>
         <div className="flex items-center gap-2 shrink-0" style={{ paddingLeft: '16px' }}>
-          {/* Back Button — hidden on dashboard (root page), explicitly positioned first and flush left */}
+          {/* Back Button */}
           {location.pathname !== "/" && location.pathname !== "/dashboard" && (
             <Button
               variant="ghost"
@@ -127,7 +194,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
             </Button>
           )}
 
-          {/* Mobile Menu Button - for authenticated dashboard sidebar */}
+          {/* Mobile Menu Button */}
           {isAuthenticated && onMobileMenuToggle && (
             <Button
               variant="ghost"
@@ -149,9 +216,9 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
         </div>
 
         {isAuthenticated && !isHomepage ? (
-          /* Authenticated Header */
+          /* ══════ Authenticated Header ══════ */
           <>
-            {/* Search Bar - Center Left */}
+            {/* Search Bar */}
             <div className="flex-1 max-w-md hidden md:flex">
               <form onSubmit={handleSearch} className="relative w-full">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -167,7 +234,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
 
             {/* Right Actions */}
             <div className="flex items-center gap-3 md:gap-4 shrink-0">
-              {/* Wallet Balance */}
+              {/* Wallet Balance — hidden for partners */}
               {user?.role !== 'shipment_partner' && (
                 <div
                   className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/20 cursor-pointer hover:bg-primary/10 transition-colors"
@@ -178,7 +245,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                   <span className="text-sm font-semibold text-primary">₹{balance?.toLocaleString('en-IN') || '0'}</span>
                 </div>
               )}
-              {/* Track Order Link */}
+              {/* Track Order */}
               <div className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onClick={() => navigate('/track')}>
                 <MapPin className="h-4 w-4" />
                 <span className="hidden lg:inline">Track Order</span>
@@ -190,7 +257,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                 <span className="hidden lg:inline">Need Help</span>
               </div>
 
-              {/* APPS_SECTION_START — Hidden for Partner role. To restore: remove the role condition below */}
+              {/* Apps — hidden for partners */}
               {user?.role !== 'shipment_partner' && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -209,7 +276,6 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              {/* APPS_SECTION_END */}
 
               {/* Notifications */}
               <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
@@ -267,52 +333,52 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
             </div>
           </>
         ) : (
-          /* Public Header */
+          /* ══════ Public Header ══════ */
           <>
-            <nav className="hidden md:flex items-center gap-8">
-              {navLinks.map((link) => (
-                link.dropdown ? (
-                  <div key={link.label} className="relative group">
-                    <Link
-                      to={link.href}
-                      className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground py-4"
-                    >
-                      {link.label}
-                      <ChevronDown className="h-3 w-3 transition-transform group-hover:rotate-180" />
-                    </Link>
-                    <div className="absolute top-full left-0 w-56 pt-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                      <div className="bg-popover text-popover-foreground rounded-md shadow-md border border-border p-1">
-                        {link.label === "Solutions" && solutionsItems.map((item, idx) => (
-                          <Link key={idx} to={item.href} className="flex items-center gap-2 px-2 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                          </Link>
-                        ))}
-                        {link.label === "Products" && productsItems.map((item, idx) => (
-                          <Link key={idx} to={item.href} className="flex items-center gap-2 px-2 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                          </Link>
-                        ))}
-                        {link.label === "Resources" && resourcesItems.map((item, idx) => (
-                          <Link key={idx} to={item.href} className="flex items-center gap-2 px-2 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <Link
-                    key={link.label}
-                    to={link.href}
-                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                )
-              ))}
+            <nav className="hidden md:flex items-center gap-8" ref={dropdownRef}>
+              {/* Solutions — click toggle */}
+              <div className="relative">
+                <button
+                  onClick={() => toggleDropdown("Solutions")}
+                  className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground py-4 bg-transparent border-0 cursor-pointer"
+                >
+                  Solutions
+                  <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${openDropdown === "Solutions" ? "rotate-180" : ""}`} />
+                </button>
+                {openDropdown === "Solutions" && renderDropdownItems(solutionsItems)}
+              </div>
+
+              {/* Products — click toggle */}
+              <div className="relative">
+                <button
+                  onClick={() => toggleDropdown("Products")}
+                  className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground py-4 bg-transparent border-0 cursor-pointer"
+                >
+                  Products
+                  <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${openDropdown === "Products" ? "rotate-180" : ""}`} />
+                </button>
+                {openDropdown === "Products" && renderDropdownItems(productsItems)}
+              </div>
+
+              {/* Integrations — direct link */}
+              <Link
+                to="/integrations"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Integrations
+              </Link>
+
+              {/* Resources — click toggle */}
+              <div className="relative">
+                <button
+                  onClick={() => toggleDropdown("Resources")}
+                  className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground py-4 bg-transparent border-0 cursor-pointer"
+                >
+                  Resources
+                  <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${openDropdown === "Resources" ? "rotate-180" : ""}`} />
+                </button>
+                {openDropdown === "Resources" && renderDropdownItems(resourcesItems)}
+              </div>
             </nav>
 
             <div className="hidden md:flex items-center gap-4">
@@ -348,18 +414,15 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
         )}
       </div>
 
-      {/* Mobile Menu — rendered via Portal to escape stacking context */}
+      {/* Mobile Menu — rendered via Portal */}
       {mobileMenuOpen && createPortal(
         <>
-          {/* Backdrop overlay */}
+          {/* Backdrop */}
           <div
             onClick={closeMobileMenu}
             style={{
               position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              top: 0, left: 0, right: 0, bottom: 0,
               zIndex: 99998,
               backgroundColor: 'rgba(0,0,0,0.5)',
             }}
@@ -368,17 +431,14 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
           <div
             style={{
               position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              top: 0, left: 0, right: 0, bottom: 0,
               zIndex: 99999,
               backgroundColor: '#ffffff',
               overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
             }}
           >
-            {/* Header row — logo + close */}
+            {/* Header — logo + close */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -414,16 +474,22 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               {[
                 { label: 'Home', href: '/' },
                 { label: 'Track Shipment', href: '/track' },
-                { label: 'Integrations', href: '#integrations' },
-                { label: 'Courier Services', href: '/services' },
-                { label: 'Warehousing', href: '/services' },
-                { label: 'Returns Management', href: '/services' },
-                { label: 'Bulk Shipping', href: '/services' },
-                { label: 'Express Delivery', href: '/services' },
-                { label: 'International Shipping', href: '/services' },
+                { label: 'Integrations', href: '/integrations' },
+                // Solutions
+                { label: 'E-commerce Shipping', href: '/solutions/ecommerce' },
+                { label: 'B2B Logistics', href: '/solutions/b2b' },
+                { label: 'Hyperlocal Delivery', href: '/solutions/hyperlocal' },
+                { label: 'Fulfillment & Warehousing', href: '/solutions/fulfillment' },
+                { label: 'Cross-border Shipping', href: '/solutions/international' },
+                // Products
+                { label: 'Shipment Dashboard', href: '/products/dashboard' },
+                { label: 'Fleet Tracking', href: '/products/fleet' },
+                { label: 'API Platform', href: '/products/api' },
+                // Resources
                 { label: 'Documentation', href: '/documentation' },
-                { label: 'API', href: '/api-reference' },
-                { label: 'Support', href: '/support' },
+                { label: 'API Reference', href: '/api-reference' },
+                { label: 'Help Center', href: '/help-center' },
+                { label: 'Community', href: '/community' },
               ].map((item) => (
                 <Link
                   key={item.href + item.label}
@@ -509,4 +575,3 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
 };
 
 export default Header;
-

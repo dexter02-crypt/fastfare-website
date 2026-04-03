@@ -40,6 +40,7 @@ import CommunityPage from "./pages/public/CommunityPage";
 import CareersPage from "./pages/public/CareersPage";
 import PressPage from "./pages/public/PressPage";
 import CookiePolicyPage from "./pages/public/CookiePolicyPage";
+import ComingSoonPage from "./pages/public/ComingSoonPage";
 
 // Shipment Management
 import NewShipmentBooking from "./pages/shipment/NewShipmentBooking";
@@ -249,6 +250,10 @@ const App = () => (
               <Route path="/press" element={<PressPage />} />
               <Route path="/cookie-policy" element={<CookiePolicyPage />} />
               <Route path="/pickup/:qrToken" element={<PickupScan />} />
+
+              {/* Solutions & Products — placeholder pages */}
+              <Route path="/solutions/:slug" element={<ComingSoonPage />} />
+              <Route path="/products/:slug" element={<ComingSoonPage />} />
 
               {/* Legal — Seller/User Policies (Public) */}
               <Route path="/privacy" element={<PrivacyPolicy />} />

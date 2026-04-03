@@ -75,11 +75,18 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboard();
 
+    // Auto-refresh stats every 30 seconds for near real-time updates
+    const pollInterval = setInterval(() => {
+      fetchDashboard();
+    }, 30000);
+
     // Check KYC status
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     if (FEATURES.KYC_ENABLED && (!user.gstin || user.kyc?.status === "pending")) {
       setShowKycReminder(true);
     }
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   const getStatusBadge = (status: string) => {

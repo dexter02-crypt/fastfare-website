@@ -39,7 +39,7 @@ const Footer = () => {
           {/* Brand */}
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-3 h-[36px]">
-              <Logo size="sm" variant="full" imgClassName="dark:invert opacity-90" />
+              <Logo size="sm" variant="full" imgClassName="dark:brightness-0 dark:invert opacity-90" />
             </Link>
             <p className="text-sm text-muted-foreground mb-4 max-w-xs">
               Modern B2B logistics infrastructure for global businesses. Scale your operations with speed and precision.

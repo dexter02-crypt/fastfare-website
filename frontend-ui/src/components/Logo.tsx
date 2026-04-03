@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 
 // Using the public folder paths based on project usages
@@ -19,6 +19,7 @@ const Logo: React.FC<LogoProps> = ({
     imgClassName,
 }) => {
     const isFull = variant === "full";
+    const [imgError, setImgError] = useState(false);
 
     const ht = {
         sm: "32px",
@@ -33,11 +34,29 @@ const Logo: React.FC<LogoProps> = ({
         maxWidth: "160px"
     } : {};
 
+    // Text fallback when logo fails to load
+    if (imgError) {
+        return (
+            <div className={cn("flex items-center min-w-fit overflow-visible", className)}>
+                <span
+                    className={cn("font-bold text-primary whitespace-nowrap select-none", imgClassName)}
+                    style={{
+                        fontSize: size === "sm" ? "18px" : size === "md" ? "22px" : "28px",
+                        lineHeight: ht,
+                    }}
+                >
+                    {isFull ? "⚡ FastFare" : "⚡"}
+                </span>
+            </div>
+        );
+    }
+
     return (
         <div className={cn("flex items-center min-w-fit overflow-visible", className)}>
             <img
                 src={isFull ? LOGO_FULL : LOGO_ICON}
                 alt="FastFare Logo"
+                onError={() => setImgError(true)}
                 style={{
                     height: ht,
                     width: "auto",

@@ -167,13 +167,16 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
         >
             <div className="flex flex-col h-full">
                 {/* Logo Section */}
-                <div className={cn("flex items-center p-4 h-[64px]", collapsed ? "justify-center" : "justify-between border-b border-sidebar-border/50")}>
+                <div className={cn("flex items-center px-4 py-4 h-[64px] border-b border-sidebar-border/50", collapsed ? "justify-center" : "justify-between")}>
                     <Link to="/dashboard" onClick={handleLinkClick} className="flex items-center w-full h-full min-w-fit overflow-visible">
                         <Logo
                             size="md"
                             variant={collapsed ? "icon" : "full"}
-                            className={cn(!collapsed && "pl-3")}
-                            imgClassName={!collapsed ? "w-32 max-w-[130px] object-contain" : ""}
+                            className={cn(!collapsed && "pl-1")}
+                            imgClassName={cn(
+                                "object-contain",
+                                !collapsed ? "h-[34px] w-auto max-w-[140px]" : "h-[28px] w-auto"
+                            )}
                         />
                     </Link>
                 </div>

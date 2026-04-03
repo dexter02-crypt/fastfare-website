@@ -98,9 +98,13 @@ const PartnerWithdrawal = () => {
         setBankDetails(data.bankDetails);
       }
       
-      const onboardingData = await onboardingApi.getStatus();
-      if (onboardingData) {
-        setOnboardingStatus(onboardingData.status);
+      try {
+        const onboardingData = await onboardingApi.getStatus();
+        if (onboardingData?.status) {
+          setOnboardingStatus(onboardingData.status);
+        }
+      } catch {
+        // Onboarding status unavailable — keep default "draft"
       }
     } catch (error) {
       console.error("Fetch error:", error);
@@ -271,7 +275,7 @@ const PartnerWithdrawal = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-red-900">Withdrawals Locked</h3>
                     <p className="text-sm text-red-700 mt-1 max-w-sm mx-auto">
-                      Your identity verification is currently <span className="font-semibold uppercase">{onboardingStatus.replace('_', ' ')}</span>. 
+                      Your identity verification is currently <span className="font-semibold uppercase">{(onboardingStatus || 'draft').replace('_', ' ')}</span>. 
                       You must be fully approved to withdraw funds. Please check your Dashboard.
                     </p>
                   </div>
