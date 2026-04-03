@@ -1,5 +1,5 @@
 import express from 'express';
-import { protect, admin } from '../middleware/auth.js';
+import { protect, admin, requireApproved, requirePayoutEligible } from '../middleware/auth.js';
 import PartnerLedger from '../models/PartnerLedger.js';
 import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import Shipment from '../models/Shipment.js';
@@ -318,21 +318,97 @@ router.post('/record-earning', protect, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════
+//  BANK DETAILS & BENEFICIARIES
+// ══════════════════════════════════════════════════════════════
+router.get('/bank-details', protect, async (req, res) => {
+    try {
+        const { default: User } = await import('../models/User.js');
+        const user = await User.findById(req.user._id).select('bankDetails payoutEligible');
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        
+        res.json({ success: true, bankDetails: user.bankDetails || null, payoutEligible: user.payoutEligible });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/bank-details', protect, async (req, res) => {
+    try {
+        const { accountName, accountNumber, ifsc, bankName } = req.body;
+        
+        // Basic Validations
+        if (!accountName || !accountNumber || !ifsc) {
+            return res.status(400).json({ error: 'Account Name, Number, and IFSC are required.' });
+        }
+
+        const { default: User } = await import('../models/User.js');
+        const user = await User.findById(req.user._id);
+
+        if (user.bankDetails?.isVerified && user.bankDetails?.beneficiaryId) {
+            return res.status(400).json({ error: 'Bank details already verified and linked. Please contact support to change.' });
+        }
+
+        // Create Cashfree Beneficiary Identifier (Unique to our DB)
+        const beneficiaryId = `FF_BENE_${user._id.toString()}`;
+
+        // In a real Cashfree Payout integration, you'd call
+        // POST /payout/v1/addBeneficiary right here and wait for SUCCESS.
+        // Assuming success/Mock for now:
+        const isBeneficiaryAddedInGateway = true; // Replace with CF API Call
+
+        if (!isBeneficiaryAddedInGateway) {
+            return res.status(500).json({ error: 'Failed to register bank with Payout Gateway. Try again later.' });
+        }
+
+        user.bankDetails = {
+            accountName,
+            accountNumber,
+            ifsc: ifsc.toUpperCase(),
+            bankName: bankName || 'Unknown Bank',
+            beneficiaryId,
+            isVerified: true,  // Automatically set true upon successful gateway addition
+            addedAt: new Date()
+        };
+
+        // If they were previously blocked from payout because of lacking a bank, they might now be eligible.
+        // The admin typically controls payoutEligible, but we can set a flag.
+        await user.save();
+
+        res.json({
+            success: true,
+            message: 'Bank details securely saved and linked.',
+            bankDetails: user.bankDetails
+        });
+
+    } catch (error) {
+        console.error('Bank Details Error:', error);
+        res.status(500).json({ error: 'Failed to process bank details.' });
+    }
+});
+
+// ══════════════════════════════════════════════════════════════
 //  WITHDRAWAL SYSTEM
 //  Partner requests → Admin reviews → Payout processed
 // ══════════════════════════════════════════════════════════════
 
 // POST /api/partner/withdraw — Partner requests a withdrawal
-router.post('/withdraw', protect, async (req, res) => {
+router.post('/withdraw', protect, requireApproved, requirePayoutEligible, async (req, res) => {
     try {
         if (req.user.role !== 'shipment_partner') {
             return res.status(403).json({ error: 'Partner access only' });
         }
 
-        const { amount, bankDetails } = req.body;
+        const { amount } = req.body;
 
         if (!amount || amount <= 0) {
             return res.status(400).json({ error: 'Invalid withdrawal amount' });
+        }
+
+        const { default: User } = await import('../models/User.js');
+        const user = await User.findById(req.user._id).select('bankDetails pending_review payoutEligible');
+
+        if (!user.bankDetails || !user.bankDetails.isVerified || !user.bankDetails.beneficiaryId) {
+            return res.status(400).json({ error: 'Bank details missing or unverified. Please link your bank first.' });
         }
 
         // Calculate withdrawable balance (2-day hold enforcement)
@@ -389,10 +465,18 @@ router.post('/withdraw', protect, async (req, res) => {
             });
         }
 
+        // Save bank snapshot so if they change it later, request still goes to right place
+        const requestBankSnapshot = {
+            accountName: user.bankDetails.accountName,
+            accountNumber: user.bankDetails.accountNumber,
+            ifsc: user.bankDetails.ifsc,
+            beneficiaryId: user.bankDetails.beneficiaryId
+        };
+
         const withdrawal = await WithdrawalRequest.create({
             partnerId: req.user._id,
             amount,
-            bankDetails: bankDetails || {},
+            bankDetails: requestBankSnapshot,
             balanceAtRequest: currentBalance,
             status: 'pending'
         });
@@ -476,7 +560,7 @@ router.get('/admin/withdrawals', protect, admin, async (req, res) => {
 // PUT /api/partner/admin/withdrawals/:id/approve — Admin approves a withdrawal
 router.put('/admin/withdrawals/:id/approve', protect, admin, async (req, res) => {
     try {
-        const { transactionRef, adminNote } = req.body;
+        const { adminNote } = req.body;
 
         const withdrawal = await WithdrawalRequest.findById(req.params.id);
         if (!withdrawal) return res.status(404).json({ error: 'Withdrawal request not found' });
@@ -494,29 +578,48 @@ router.put('/admin/withdrawals/:id/approve', protect, admin, async (req, res) =>
             });
         }
 
-        // Create payout ledger entry (deducts from balance)
+        const beneficiaryId = withdrawal.bankDetails?.beneficiaryId;
+        if (!beneficiaryId) {
+             return res.status(400).json({ error: 'Cannot process payout: Beneficiary ID is missing in the request.' });
+        }
+
+        // Create payout reference id
+        const transferId = `FF_PAYOUT_${withdrawal._id}`;
+
+        // External Gateway Request (Cashfree Payout) Goes Here
+        // const payoutRes = await fetch('https://payout-api.cashfree.com/payout/v1/requestTransfer', { ... });
+        
+        // Simulating the Payout Request API success for now since we lack keys:
+        const payoutResponseSuccess = true; 
+
+        if (!payoutResponseSuccess) {
+            // If Cashfree fundamentally rejects it via HTTP 400 immediately
+            return res.status(500).json({ error: 'Payout Gateway rejected the transfer request.' });
+        }
+
+        // 1. Create payout ledger entry ONLY once the money is "in transit" (processing) or "completed"
+        // It's safer to deduct mathematically while it's processing so they can't withdraw again.
         await PartnerLedger.create({
             partnerId: withdrawal.partnerId,
             type: 'payout',
             amount: withdrawal.amount,
-            description: `Withdrawal payout — Request #${withdrawal._id}${transactionRef ? ` (Ref: ${transactionRef})` : ''}`,
+            description: `Withdrawal payout initiated — Payout Reference: ${transferId}`,
             balanceBefore: currentBalance,
-            balanceAfter: currentBalance - withdrawal.amount
+            balanceAfter: currentBalance - withdrawal.amount,
+            payoutReference: transferId
         });
 
-        // Update withdrawal request
-        withdrawal.status = 'completed';
+        // 2. Update withdrawal request to Processing (Waiting for Webhook callback from Cashfree)
+        withdrawal.status = 'processing';
         withdrawal.reviewedBy = req.user._id;
         withdrawal.reviewedAt = new Date();
         withdrawal.adminNote = adminNote || '';
-        withdrawal.transactionRef = transactionRef || '';
-        withdrawal.paidAt = new Date();
-        withdrawal.balanceAfterPayout = currentBalance - withdrawal.amount;
+        withdrawal.transactionRef = transferId;
         await withdrawal.save();
 
         res.json({
             success: true,
-            message: `Withdrawal of ₹${withdrawal.amount} approved and processed`,
+            message: `Withdrawal of ₹${withdrawal.amount} sent to Payout Gateway. Status is Processing.`,
             withdrawal
         });
     } catch (error) {
@@ -605,6 +708,58 @@ router.post('/shipments/:id/assign-driver', protect, async (req, res) => {
     } catch (error) {
         console.error('Assign driver error:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// ══════════════════════════════════════════════════════════════
+// POST /api/partner/payouts/webhook
+// Cashfree Payout Webhook Receiver (Phase 11: Verification)
+// ══════════════════════════════════════════════════════════════
+router.post('/payouts/webhook', async (req, res) => {
+    try {
+        // Secure it with Cashfree Payout Webhook Verification here using `x-webhook-signature`
+        const payload = req.body;
+        const eventType = payload.event;
+        const transferId = payload.data?.transferId;
+
+        if (!transferId) return res.status(200).send('OK');
+
+        const withdrawal = await WithdrawalRequest.findOne({ transactionRef: transferId });
+        if (!withdrawal || withdrawal.status !== 'processing') {
+            return res.status(200).send('OK');
+        }
+
+        if (eventType === 'TRANSFER_SUCCESS') {
+            const currentBalance = await PartnerLedger.findOne({ partnerId: withdrawal.partnerId }).sort({ createdAt: -1 });
+
+            withdrawal.status = 'completed';
+            withdrawal.paidAt = new Date();
+            withdrawal.balanceAfterPayout = currentBalance ? currentBalance.balanceAfter : 0;
+            await withdrawal.save();
+        } 
+        else if (eventType === 'TRANSFER_FAILED' || eventType === 'TRANSFER_REVERSED') {
+            // Restore funds to ledger
+            const currentBalance = await PartnerLedger.findOne({ partnerId: withdrawal.partnerId }).sort({ createdAt: -1 });
+            const before = currentBalance ? currentBalance.balanceAfter : 0;
+
+            await PartnerLedger.create({
+                partnerId: withdrawal.partnerId,
+                type: 'bonus', // or 'payout_failure_reversal' if added to enum
+                amount: withdrawal.amount,
+                description: `Payout Failed/Reversed. Funds returned to balance. Ref: ${transferId}`,
+                balanceBefore: before,
+                balanceAfter: before + withdrawal.amount
+            });
+
+            withdrawal.status = 'failed';
+            withdrawal.adminNote = (withdrawal.adminNote || '') + ` | Payout failed: ${payload.data?.reason || 'Unknown error'}`;
+            await withdrawal.save();
+        }
+
+        res.status(200).send('OK');
+    } catch (error) {
+        console.error('Payout Webhook Error:', error);
+        res.status(500).send('Internal Error');
     }
 });
 

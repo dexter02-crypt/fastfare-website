@@ -23,6 +23,8 @@ import {
   Lock, Monitor, Laptop, AlertTriangle, CheckCircle, X, Loader2,
   Download, LogOut, Trash2
 } from "lucide-react";
+import VerifiedBadge from "@/components/VerifiedBadge";
+import { onboardingApi } from "@/lib/api";
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/config";
 import { FEATURES } from "@/config/features";
@@ -137,6 +139,24 @@ const SettingsPage = () => {
       }
     };
     fetchCarriers();
+  }, []);
+
+  const [onboardingStatus, setOnboardingStatus] = useState("not_started");
+
+  useEffect(() => {
+    const fetchOnboarding = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const res = await onboardingApi.getStatus();
+        if (res.success && res.onboarding) {
+          setOnboardingStatus(res.onboarding.status);
+        }
+      } catch (err) {
+        console.error('Onboarding fetch error:', err);
+      }
+    };
+    fetchOnboarding();
   }, []);
 
   useEffect(() => {
@@ -435,9 +455,15 @@ const SettingsPage = () => {
 
           <TabsContent value="organization">
             <Card>
-              <CardHeader>
-                <CardTitle>Organization Details</CardTitle>
-                <CardDescription>Your company information</CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between">
+                <div>
+                  <CardTitle>Organization Details</CardTitle>
+                  <CardDescription>Your company information</CardDescription>
+                </div>
+                <VerifiedBadge 
+                  status={onboardingStatus === 'approved' ? 'verified' : (onboardingStatus === 'rejected' || onboardingStatus === 'suspended' ? 'failed' : (onboardingStatus === 'draft' ? 'not_started' : 'initiated'))} 
+                  source={onboardingStatus === 'approved' ? 'digilocker' : 'none'}
+                />
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

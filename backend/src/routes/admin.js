@@ -172,7 +172,6 @@ router.delete('/delete-account', protect, admin, async (req, res) => {
     }
 });
 
-import Transaction from '../models/Transaction.js';
 
 /**
  * @route   POST /api/admin/users/:id/wallet

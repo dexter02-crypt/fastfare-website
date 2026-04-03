@@ -13,8 +13,9 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, Shield, CheckCircle, AlertCircle, Loader2, ExternalLink, RefreshCw
+  ArrowLeft, Shield, CheckCircle, AlertCircle, Loader2, ExternalLink, RefreshCw, User
 } from "lucide-react";
+import { useDigilocker } from "@/contexts/DigilockerContext";
 
 const KYCVerification = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const KYCVerification = () => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [kycStatus, setKycStatus] = useState<KYCStatus | null>(null);
   const [kycErrorMsg, setKycErrorMsg] = useState<string | null>(null);
+  const { digilocker_verified, digilocker_verified_at, kyc_name, markVerified, refetch: refetchDigilocker } = useDigilocker();
 
   interface KYCStatus {
     status: string;
@@ -54,6 +56,8 @@ const KYCVerification = () => {
     if (kycSuccess === "true") {
       toast({ title: "DigiLocker Verified", description: "Successfully verified your identity with DigiLocker.", variant: "default" });
       window.history.replaceState({}, document.title, window.location.pathname);
+      markVerified();
+      refetchDigilocker();
       setStep("complete");
     } else if (kycError) {
       const errorMap: Record<string, string> = {
@@ -69,9 +73,14 @@ const KYCVerification = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
+    // If already verified via context, jump straight to complete
+    if (digilocker_verified) {
+      setStep("complete");
+    }
+
     fetchKycStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search]);
+  }, [location.search, digilocker_verified]);
 
   const fetchKycStatus = async () => {
     try {
@@ -267,7 +276,15 @@ const KYCVerification = () => {
     </motion.div>
   );
 
-  const renderCompleteStep = () => (
+  const renderCompleteStep = () => {
+    // Use real database timestamp from context, fallback to legacy kycStatus
+    const verifiedDate = digilocker_verified_at
+      || kycStatus?.verifiedAt
+      || kycStatus?.digilocker?.verifiedAt
+      || null;
+    const verifiedName = kyc_name || null;
+
+    return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -284,23 +301,27 @@ const KYCVerification = () => {
         </p>
       </div>
 
-      <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+      <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4 space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Verification Status</span>
-          <Badge className="bg-green-500">Verified</Badge>
+          <Badge className="bg-green-500">DigiLocker Verified ✓</Badge>
         </div>
-        {(kycStatus?.verifiedAt || kycStatus?.digilocker?.verifiedAt) && (
-          <div className="flex items-center justify-between text-sm mt-2">
+        {verifiedDate && (
+          <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Verified On</span>
-            <span>{new Date(kycStatus.verifiedAt || kycStatus.digilocker?.verifiedAt || Date.now()).toLocaleDateString()}</span>
+            <span>{new Date(verifiedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </div>
         )}
-        {kycStatus?.digilocker?.status === 'verified' && (
-          <div className="flex items-center justify-between text-sm mt-2">
+        {verifiedName && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Verification Name</span>
+            <span className="font-medium flex items-center gap-1"><User className="h-3.5 w-3.5" /> {verifiedName}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Method</span>
             <span className="font-medium text-green-600 flex items-center gap-1"><Shield className="h-4 w-4"/> DigiLocker</span>
-          </div>
-        )}
+        </div>
       </div>
 
       <Button
@@ -310,7 +331,8 @@ const KYCVerification = () => {
         Go to Dashboard
       </Button>
     </motion.div>
-  );
+    );
+  };
 
   const renderFailedStep = () => (
     <motion.div

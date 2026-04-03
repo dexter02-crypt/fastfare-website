@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   ArrowLeft, Banknote, Clock, CheckCircle2, XCircle,
-  AlertTriangle, Loader2, IndianRupee, ShieldCheck, Building2
+  AlertTriangle, Loader2, IndianRupee, ShieldCheck, Building2, Lock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { onboardingApi } from "@/lib/api";
 
 interface WalletSummary {
   totalBalance: number;
@@ -51,16 +52,19 @@ const PartnerWithdrawal = () => {
   const navigate = useNavigate();
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [onboardingStatus, setOnboardingStatus] = useState<string>("draft");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   // Form state
   const [amount, setAmount] = useState("");
+  // Bank state
+  const [bankDetails, setBankDetails] = useState<any>(null);
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [ifsc, setIfsc] = useState("");
   const [bankName, setBankName] = useState("");
-  const [upiId, setUpiId] = useState("");
+  const [registeringBank, setRegisteringBank] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -69,11 +73,14 @@ const PartnerWithdrawal = () => {
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const [walletRes, withdrawalRes] = await Promise.all([
+      const [walletRes, withdrawalRes, bankRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/partner/wallet-summary`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
         fetch(`${API_BASE_URL}/api/partner/withdrawals`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE_URL}/api/partner/bank-details`, {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -86,10 +93,46 @@ const PartnerWithdrawal = () => {
         const data = await withdrawalRes.json();
         setWithdrawals(data.withdrawals || []);
       }
+      if (bankRes.ok) {
+        const data = await bankRes.json();
+        setBankDetails(data.bankDetails);
+      }
+      
+      const onboardingData = await onboardingApi.getStatus();
+      if (onboardingData) {
+        setOnboardingStatus(onboardingData.status);
+      }
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRegisterBank = async () => {
+    if (!accountName || !accountNumber || !ifsc || !bankName) {
+      toast({ title: "Details Required", description: "All fields are mandatory", variant: "destructive" });
+      return;
+    }
+    setRegisteringBank(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE_URL}/api/partner/bank-details`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ accountName, accountNumber, ifsc, bankName })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast({ title: "Bank Successfully Registered", description: "Your bank has been verified and linked for auto-payouts." });
+        setBankDetails(data.bankDetails);
+      } else {
+        toast({ title: "Registration Failed", description: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Network Error", description: "Failed to connect", variant: "destructive" });
+    } finally {
+      setRegisteringBank(false);
     }
   };
 
@@ -103,8 +146,8 @@ const PartnerWithdrawal = () => {
       toast({ title: "Insufficient Balance", description: "Amount exceeds your available withdrawal balance", variant: "destructive" });
       return;
     }
-    if (!accountNumber && !upiId) {
-      toast({ title: "Bank Details Required", description: "Please provide either bank account details or UPI ID", variant: "destructive" });
+    if (!bankDetails?.isVerified) {
+      toast({ title: "Bank Registration Required", description: "Please register your bank account first", variant: "destructive" });
       return;
     }
 
@@ -117,21 +160,12 @@ const PartnerWithdrawal = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          amount: amountNum,
-          bankDetails: {
-            accountName: accountName || undefined,
-            accountNumber: accountNumber || undefined,
-            ifsc: ifsc || undefined,
-            bankName: bankName || undefined,
-            upiId: upiId || undefined
-          }
-        })
+        body: JSON.stringify({ amount: amountNum })
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
-        toast({ title: "Withdrawal Requested", description: `₹${amountNum.toLocaleString('en-IN')} withdrawal submitted for approval.` });
+        toast({ title: "Withdrawal Requested", description: `₹${amountNum.toLocaleString('en-IN')} withdrawal submitted for processing.` });
         setAmount("");
         fetchData(); // Refresh
       } else {
@@ -228,6 +262,22 @@ const PartnerWithdrawal = () => {
                   </div>
                 </CardContent>
               </Card>
+            ) : onboardingStatus !== 'approved' ? (
+              <Card className="border-red-200 bg-red-50/50">
+                <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <Lock className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-red-900">Withdrawals Locked</h3>
+                    <p className="text-sm text-red-700 mt-1 max-w-sm mx-auto">
+                      Your identity verification is currently <span className="font-semibold uppercase">{onboardingStatus.replace('_', ' ')}</span>. 
+                      You must be fully approved to withdraw funds. Please check your Dashboard.
+                    </p>
+                  </div>
+                  <Button variant="outline" className="mt-2" onClick={() => navigate("/dashboard")}>Go to Dashboard</Button>
+                </CardContent>
+              </Card>
             ) : (
               <Card>
                 <CardHeader>
@@ -235,77 +285,93 @@ const PartnerWithdrawal = () => {
                     <Banknote className="h-5 w-5" />
                     Request Withdrawal
                   </CardTitle>
-                  <CardDescription>Funds will be transferred within 2 business days after approval</CardDescription>
+                  <CardDescription>Funds will be transferred directly to your registered bank account</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  {/* Amount */}
-                  <div className="space-y-2">
-                    <Label htmlFor="withdraw-amount">Amount (₹)</Label>
-                    <div className="relative">
-                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="withdraw-amount"
-                        type="number"
-                        placeholder="Enter amount"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="pl-9"
-                        max={wallet?.availableForWithdrawal || 0}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Max withdrawable: <span className="font-medium">{formatCurrency(wallet?.availableForWithdrawal || 0)}</span>
-                    </p>
-                    {amount && (
-                      <Button variant="link" className="p-0 h-auto text-xs" onClick={() => setAmount(String(wallet?.availableForWithdrawal || 0))}>
-                        Withdraw full available amount
+                  {!bankDetails?.isVerified ? (
+                    <div className="border border-blue-200 bg-blue-50/50 rounded-lg p-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Building2 className="h-5 w-5 text-blue-600" />
+                        <h4 className="font-semibold text-blue-900">Register Bank Account</h4>
+                      </div>
+                      <p className="text-sm text-blue-800 mb-4 max-w-[90%]">
+                        Before making withdrawals, you must securely link your bank account to FastFare's auto-payout gateway.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="account-name" className="text-xs">Account Holder Name</Label>
+                          <Input id="account-name" placeholder="Name on account" value={accountName} onChange={(e) => setAccountName(e.target.value)} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="bank-name" className="text-xs">Bank Name</Label>
+                          <Input id="bank-name" placeholder="e.g. State Bank of India" value={bankName} onChange={(e) => setBankName(e.target.value)} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="account-number" className="text-xs">Account Number</Label>
+                          <Input id="account-number" placeholder="Account number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="ifsc" className="text-xs">IFSC Code</Label>
+                          <Input id="ifsc" placeholder="e.g. SBIN0000001" value={ifsc} onChange={(e) => setIfsc(e.target.value.toUpperCase())} />
+                        </div>
+                      </div>
+                      <Button className="mt-5 w-full bg-blue-600 hover:bg-blue-700" onClick={handleRegisterBank} disabled={registeringBank}>
+                        {registeringBank ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                        {registeringBank ? "Registering..." : "Securely Link Bank Account"}
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Amount Input */}
+                      <div className="space-y-2">
+                        <Label htmlFor="withdraw-amount">Amount (₹)</Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="withdraw-amount"
+                            type="number"
+                            placeholder="Enter amount"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            className="pl-9"
+                            max={wallet?.availableForWithdrawal || 0}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Max withdrawable: <span className="font-medium">{formatCurrency(wallet?.availableForWithdrawal || 0)}</span>
+                        </p>
+                        {amount && (
+                          <Button variant="link" className="p-0 h-auto text-xs" onClick={() => setAmount(String(wallet?.availableForWithdrawal || 0))}>
+                            Withdraw full available amount
+                          </Button>
+                        )}
+                      </div>
 
-                  {/* Bank Details */}
-                  <div className="border rounded-lg p-4 space-y-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      <p className="font-medium text-sm">Bank Account Details</p>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="account-name" className="text-xs">Account Holder Name</Label>
-                        <Input id="account-name" placeholder="Name on account" value={accountName} onChange={(e) => setAccountName(e.target.value)} />
+                      {/* Verified Bank Box */}
+                      <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                         <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                              <p className="font-semibold text-sm text-emerald-900">Verified Payout Bank</p>
+                            </div>
+                            <p className="text-xs text-emerald-800">{bankDetails.bankName} — A/C ending in ••••{bankDetails.accountNumber?.slice(-4)}</p>
+                            <p className="text-[10px] opacity-70 mt-1 uppercase text-emerald-900 tracking-wider font-mono">BENE ID: {bankDetails.beneficiaryId || 'LINKED'}</p>
+                         </div>
+                         <div className="flex-shrink-0">
+                           <Badge variant="outline" className="border-emerald-300 text-emerald-700 bg-emerald-100/50">Auto-Debit Ready</Badge>
+                         </div>
                       </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="bank-name" className="text-xs">Bank Name</Label>
-                        <Input id="bank-name" placeholder="e.g. State Bank of India" value={bankName} onChange={(e) => setBankName(e.target.value)} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="account-number" className="text-xs">Account Number</Label>
-                        <Input id="account-number" placeholder="Account number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="ifsc" className="text-xs">IFSC Code</Label>
-                        <Input id="ifsc" placeholder="e.g. SBIN0000001" value={ifsc} onChange={(e) => setIfsc(e.target.value.toUpperCase())} />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 pt-2">
-                      <div className="h-px flex-1 bg-border" />
-                      <span className="text-xs text-muted-foreground">or</span>
-                      <div className="h-px flex-1 bg-border" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="upi" className="text-xs">UPI ID</Label>
-                      <Input id="upi" placeholder="e.g. partner@upi" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
-                    </div>
-                  </div>
 
-                  <Button
-                    className="w-full gradient-primary gap-2"
-                    onClick={handleWithdraw}
-                    disabled={submitting || !amount || parseFloat(amount) <= 0}
-                  >
-                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4 rotate-[-90deg]" />}
-                    {submitting ? "Submitting..." : `Request Withdrawal of ${amount ? formatCurrency(parseFloat(amount)) : '₹0'}`}
-                  </Button>
+                      <Button
+                        className="w-full gradient-primary gap-2"
+                        onClick={handleWithdraw}
+                        disabled={submitting || !amount || parseFloat(amount) <= 0}
+                      >
+                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4 rotate-[-90deg]" />}
+                        {submitting ? "Submitting..." : `Request Withdrawal of ${amount ? formatCurrency(parseFloat(amount)) : '₹0'}`}
+                      </Button>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}

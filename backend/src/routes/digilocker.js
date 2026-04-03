@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import User from '../models/User.js';
 import { PendingRegistration } from '../models/PendingRegistration.js';
 import KycAttempt from '../models/KycAttempt.js';
+import OnboardingEvent from '../models/OnboardingEvent.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -235,7 +236,54 @@ router.get('/callback', async (req, res) => {
                 return trackAndRedirect(`${baseUrl}/login?error=session_expired`, 'failed', 'user_not_found');
             }
 
-            // Sync Database
+            // ══════ Duplicate Identity Check ══════
+            const duplicateUser = await User.findOne({ 
+                'verifiedIdentity.digilockerId': digilockerId,
+                _id: { $ne: user._id }
+            });
+            const duplicateIdentityFlag = !!duplicateUser;
+            
+            // ══════ Name Mismatch Check ══════
+            let nameMismatchFlag = false;
+            let nameMismatchDetails = '';
+            
+            const expectedName = user.contactPerson || user.businessName || '';
+            if (expectedName && kycName) {
+                // simple comparison (can be enhanced with fuzzy matching)
+                if (expectedName.toLowerCase().trim() !== kycName.toLowerCase().trim()) {
+                    nameMismatchFlag = true;
+                    nameMismatchDetails = `Profile: '${expectedName}' vs DigiLocker: '${kycName}'`;
+                }
+            }
+
+            const attemptCount = (user.verifiedIdentity?.attemptCount || 0) + 1;
+
+            // Sync Database verifiedIdentity
+            user.verifiedIdentity = {
+                source: 'digilocker',
+                status: 'verified',
+                fullName: kycName,
+                dob: kycDob,
+                gender: kycGender,
+                digilockerId: digilockerId,
+                aadhaarLastFour: eaadhaar ? eaadhaar.slice(-4) : '',
+                verifiedAt: new Date(),
+                lastAttemptAt: new Date(),
+                attemptCount: attemptCount,
+                referenceId: kycAttempt ? kycAttempt._id.toString() : ''
+            };
+
+            user.nameMismatchFlag = nameMismatchFlag;
+            user.nameMismatchDetails = nameMismatchDetails;
+            user.duplicateIdentityFlag = duplicateIdentityFlag;
+            if (duplicateIdentityFlag && !user.reviewFlags.includes('duplicate_identity')) {
+                user.reviewFlags.push('duplicate_identity');
+            }
+            if (nameMismatchFlag && !user.reviewFlags.includes('name_mismatch')) {
+                user.reviewFlags.push('name_mismatch');
+            }
+
+            // Legacy sync for backward compatibility
             user.digilocker_verified = true;
             user.digilocker_verified_at = new Date();
             user.digilocker_id = digilockerId;
@@ -255,8 +303,49 @@ router.get('/callback', async (req, res) => {
                     gender: kycGender
                 }
             };
+
+            const previousStatus = user.onboardingStatus || 'draft';
+            let newStatus = 'digilocker_verified';
+            let eventType = 'digilocker_verified';
+            let eventReason = 'DigiLocker verification completed';
+
+            // ══════ Auto Approval Logic ══════
+            if (user.role === 'user' && !nameMismatchFlag && !duplicateIdentityFlag && attemptCount <= 3) {
+                newStatus = 'approved';
+                eventType = 'auto_approved';
+                eventReason = 'Auto-approved: DigiLocker verified, no flags, user role';
+                
+                user.onboardingStatus = newStatus;
+                user.onboardingApprovedAt = new Date();
+                user.payoutEligible = true;
+                user.operationallyActive = true;
+            } else {
+                // If it was already pending review, keep it pending review, else state machine advances
+                newStatus = ['submitted', 'pending_review', 'needs_more_info'].includes(previousStatus) 
+                            ? 'pending_review' : 'digilocker_verified';
+                user.onboardingStatus = newStatus;
+            }
+
             await user.save();
+            
             if (kycAttempt) kycAttempt.persistence_status = 'success';
+
+            // Log Onboarding Audit Event
+            await OnboardingEvent.create({
+                targetUserId: user._id,
+                targetRole: user.role,
+                eventType: eventType,
+                actorId: user._id,
+                actorRole: user.role === 'shipment_partner' ? 'partner' : 'user',
+                previousStatus,
+                newStatus,
+                reason: eventReason,
+                metadata: {
+                    duplicateIdentityFlag,
+                    nameMismatchFlag,
+                    nameMismatchDetails
+                }
+            });
 
             delete req.session.digilocker_user_id;
             return req.session.save((err) => {
@@ -269,6 +358,25 @@ router.get('/callback', async (req, res) => {
     } catch (error) {
         console.error(`[DigiLocker][${reqId}] Final Callback error block:`, error);
         return trackAndRedirect(`${errorBase}?kyc_error=unknown_error`, 'failed', 'unhandled_exception');
+    }
+});
+// Route: GET /api/auth/digilocker/status
+router.get('/status', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('digilocker_verified digilocker_verified_at kyc_name kyc_status');
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json({
+            digilocker_verified: !!user.digilocker_verified,
+            digilocker_verified_at: user.digilocker_verified_at ? user.digilocker_verified_at.toISOString() : null,
+            kyc_name: user.kyc_name || null,
+            kyc_status: user.digilocker_verified ? 'verified' : (user.kyc_status || 'not_started')
+        });
+    } catch (error) {
+        console.error('DigiLocker Status fetch error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

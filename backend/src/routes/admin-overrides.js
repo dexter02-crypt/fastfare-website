@@ -8,6 +8,14 @@ import SettlementSchedule from '../models/SettlementSchedule.js';
 import TierEvaluationLog from '../models/TierEvaluationLog.js';
 import PartnerLedger from '../models/PartnerLedger.js';
 import WithdrawalRequest from '../models/WithdrawalRequest.js';
+import OnboardingEvent from '../models/OnboardingEvent.js';
+import { 
+    sendOnboardingApprovedEmail, 
+    sendOnboardingRejectedEmail, 
+    sendOnboardingNeedsMoreInfoEmail,
+    sendOnboardingSuspendedEmail,
+    sendReverificationRequiredEmail
+} from '../utils/emailSender.js';
 
 const router = express.Router();
 
@@ -421,6 +429,240 @@ router.get('/overrides', protect, admin, async (req, res) => {
             overrides,
             pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) }
         });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ══════════════════════════════════════════════════
+// GET /api/admin/onboarding/queue
+// Get paginated queue of pending onboarding requests
+// ══════════════════════════════════════════════════
+router.get('/onboarding/queue', protect, admin, async (req, res) => {
+    try {
+        const { page = 1, limit = 20, status, role, hasFlags } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const query = {
+            onboardingStatus: { $in: ['submitted', 'pending_review', 'needs_more_info', 'reverification_required'] },
+            role: { $in: ['user', 'shipment_partner'] } 
+        };
+
+        if (status) query.onboardingStatus = status;
+        if (role) query.role = role;
+        if (hasFlags === 'true') {
+            query.$or = [
+                { nameMismatchFlag: true },
+                { duplicateIdentityFlag: true },
+                { 'reviewFlags.0': { $exists: true } }
+            ];
+        }
+
+        const [users, total] = await Promise.all([
+            User.find(query)
+                .select('businessName contactPerson email role onboardingStatus verifiedIdentity nameMismatchFlag duplicateIdentityFlag reviewFlags onboardingSubmittedAt createdAt')
+                .sort({ onboardingSubmittedAt: 1, createdAt: 1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            User.countDocuments(query)
+        ]);
+
+        res.json({
+            success: true,
+            queue: users,
+            pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ══════════════════════════════════════════════════
+// GET /api/admin/onboarding/:id
+// Get full onboarding details for a user
+// ══════════════════════════════════════════════════
+router.get('/onboarding/:id', protect, admin, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('-password');
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const events = await OnboardingEvent.find({ targetUserId: user._id })
+            .sort({ createdAt: -1 })
+            .populate('actorId', 'businessName email');
+
+        res.json({
+            success: true,
+            user,
+            events
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Helper for logging onboarding events from admin
+const logAdminOnboardingEvent = async (adminId, userId, userRole, actionType, prevStatus, newStatus, reason, notes) => {
+    await OnboardingEvent.create({
+        targetUserId: userId,
+        targetRole: userRole,
+        eventType: actionType,
+        actorId: adminId,
+        actorRole: 'admin',
+        previousStatus: prevStatus,
+        newStatus: newStatus,
+        reason,
+        note: notes
+    });
+};
+
+// ══════════════════════════════════════════════════
+// POST /api/admin/onboarding/:id/approve
+// Approve a user/partner
+// ══════════════════════════════════════════════════
+router.post('/onboarding/:id/approve', protect, admin, async (req, res) => {
+    try {
+        const { notes } = req.body;
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const previousStatus = user.onboardingStatus;
+        if (previousStatus === 'approved') return res.status(400).json({ error: 'Account is already approved' });
+
+        user.onboardingStatus = 'approved';
+        user.onboardingApprovedAt = new Date();
+        user.onboardingApprovedBy = req.user._id;
+        user.payoutEligible = true;
+        user.operationallyActive = true;
+        
+        await user.save();
+
+        await logAdminOnboardingEvent(req.user._id, user._id, user.role, 'admin_approved', previousStatus, 'approved', 'Admin reviewed and approved account', notes);
+        
+        // Send email
+        await sendOnboardingApprovedEmail(user.email, user.contactPerson || user.businessName, user.role);
+
+        res.json({ success: true, message: 'Account approved successfully', onboardingStatus: 'approved' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ══════════════════════════════════════════════════
+// POST /api/admin/onboarding/:id/reject
+// Reject a user/partner
+// ══════════════════════════════════════════════════
+router.post('/onboarding/:id/reject', protect, admin, async (req, res) => {
+    try {
+        const { reason, notes } = req.body;
+        if (!reason) return res.status(400).json({ error: 'Reason is required for rejection' });
+
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const previousStatus = user.onboardingStatus;
+        
+        user.onboardingStatus = 'rejected';
+        user.onboardingRejectedAt = new Date();
+        user.onboardingRejectionReason = reason;
+        user.onboardingReviewNotes = notes || '';
+        
+        await user.save();
+
+        await logAdminOnboardingEvent(req.user._id, user._id, user.role, 'admin_rejected', previousStatus, 'rejected', reason, notes);
+        
+        // Send email
+        await sendOnboardingRejectedEmail(user.email, user.contactPerson || user.businessName, reason, user.role);
+
+        res.json({ success: true, message: 'Account rejected', onboardingStatus: 'rejected' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ══════════════════════════════════════════════════
+// POST /api/admin/onboarding/:id/needs-more-info
+// Request more info from user/partner
+// ══════════════════════════════════════════════════
+router.post('/onboarding/:id/needs-more-info', protect, admin, async (req, res) => {
+    try {
+        const { notes } = req.body;
+        if (!notes) return res.status(400).json({ error: 'Notes describing what info is needed are required' });
+
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const previousStatus = user.onboardingStatus;
+        
+        user.onboardingStatus = 'needs_more_info';
+        user.onboardingReviewNotes = notes;
+        
+        await user.save();
+
+        await logAdminOnboardingEvent(req.user._id, user._id, user.role, 'needs_more_info', previousStatus, 'needs_more_info', 'Requested additional information', notes);
+        
+        // Send email
+        await sendOnboardingNeedsMoreInfoEmail(user.email, user.contactPerson || user.businessName, notes);
+
+        res.json({ success: true, message: 'Requested more info', onboardingStatus: 'needs_more_info' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ══════════════════════════════════════════════════
+// POST /api/admin/onboarding/:id/suspend
+// Suspend an account
+// ══════════════════════════════════════════════════
+router.post('/onboarding/:id/suspend', protect, admin, async (req, res) => {
+    try {
+        const { reason, notes } = req.body;
+        if (!reason) return res.status(400).json({ error: 'Reason required for suspension' });
+
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const previousStatus = user.onboardingStatus;
+        
+        user.onboardingStatus = 'suspended';
+        user.statusReason = reason;
+        
+        await user.save();
+
+        await logAdminOnboardingEvent(req.user._id, user._id, user.role, 'suspended', previousStatus, 'suspended', reason, notes);
+        
+        // Send email
+        await sendOnboardingSuspendedEmail(user.email, user.contactPerson || user.businessName, reason);
+
+        res.json({ success: true, message: 'Account suspended', onboardingStatus: 'suspended' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ══════════════════════════════════════════════════
+// POST /api/admin/onboarding/:id/request-reverification
+// Force user to redo DigiLocker verification
+// ══════════════════════════════════════════════════
+router.post('/onboarding/:id/request-reverification', protect, admin, async (req, res) => {
+    try {
+        const { reason, notes } = req.body;
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const previousStatus = user.onboardingStatus;
+        
+        user.onboardingStatus = 'reverification_required';
+        user.verifiedIdentity.status = 'failed';
+        user.verifiedIdentity.failureReason = reason || 'Admin requested reverification';
+        
+        await user.save();
+
+        await logAdminOnboardingEvent(req.user._id, user._id, user.role, 'reverification_requested', previousStatus, 'reverification_required', reason || 'Admin requested reverification', notes);
+        
+        // Send email
+        await sendReverificationRequiredEmail(user.email, user.contactPerson || user.businessName);
+
+        res.json({ success: true, message: 'Requested reverification', onboardingStatus: 'reverification_required' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

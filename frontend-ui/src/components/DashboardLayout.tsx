@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { FEATURES } from "@/config/features";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ import DashboardSidebar from "./DashboardSidebar";
 import Header from "./Header";
 import MobileBottomNav from "./MobileBottomNav";
 import { authApi } from "@/lib/api";
+import OnboardingStatusBanner from "./OnboardingStatusBanner";
+import { useDigilocker } from "@/contexts/DigilockerContext";
+import { toast } from "sonner";
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -25,19 +28,34 @@ interface DashboardLayoutProps {
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
     const [sidebarHovered, setSidebarHovered] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const user = authApi.getCurrentUser();
+    const { markVerified } = useDigilocker();
+
+    // ── Handle ?kyc_success=true callback from DigiLocker ──
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('kyc_success') === 'true') {
+            // Update global context immediately
+            markVerified();
+            // Clear dismissed flag so the banner doesn't interfere
+            sessionStorage.removeItem('digilocker_banner_dismissed');
+            // Show success toast
+            toast.success('DigiLocker verification successful! Your identity has been verified.');
+            // Clean URL
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, [location.pathname, markVerified]);
 
     // Check if KYC/GSTIN is incomplete
     const needsKyc = FEATURES.KYC_ENABLED && user && (!user.gstin || user.kyc?.status === 'pending');
 
     // Sidebar expands on hover, collapses when mouse leaves
     const effectiveCollapsed = sidebarCollapsed && !sidebarHovered;
-
-    // No body scroll lock needed for mobileMenuOpen here anymore
 
     const handleLogout = () => {
         authApi.logout();
@@ -105,6 +123,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                         </Link>
                     </div>
                 )}
+
+                {/* DigiLocker Onboarding Banner — context-driven */}
+                <div className="mx-4 lg:mx-6 mt-4">
+                    <OnboardingStatusBanner />
+                </div>
 
                 {/* Page Content */}
                 <main className="p-0 lg:p-6 pt-2 pb-[70px] md:pb-0 w-full max-w-full overflow-x-hidden">

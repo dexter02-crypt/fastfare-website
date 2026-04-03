@@ -53,3 +53,50 @@ export const admin = (req, res, next) => {
         res.status(403).json({ error: 'Not authorized as admin' });
     }
 };
+
+// Middleware: requireApproved — blocks unapproved partners from operational endpoints
+// NOTE: Wallet recharges are NOT gated — users can add funds without approval
+export const requireApproved = (req, res, next) => {
+    // Admins are always approved
+    if (req.user.role === 'admin') return next();
+
+    const blockedStatuses = ['suspended', 'rejected', 'draft', 'submitted', 'needs_more_info', 'reverification_required'];
+    const status = req.user.onboardingStatus;
+
+    // If no onboarding status set (legacy accounts), allow through
+    if (!status || status === 'approved') return next();
+
+    // For partners: block if not approved
+    if (req.user.role === 'shipment_partner' && blockedStatuses.includes(status)) {
+        return res.status(403).json({
+            error: 'Your account is not yet approved for this action. Please complete onboarding and wait for approval.',
+            onboardingStatus: status,
+            code: 'ONBOARDING_NOT_APPROVED'
+        });
+    }
+
+    // For regular users: only block if suspended
+    if (status === 'suspended') {
+        return res.status(403).json({
+            error: 'Your account has been suspended. Please contact support.',
+            onboardingStatus: status,
+            code: 'ACCOUNT_SUSPENDED'
+        });
+    }
+
+    next();
+};
+
+// Middleware: requirePayoutEligible — specifically for withdrawal/payout actions
+export const requirePayoutEligible = (req, res, next) => {
+    if (req.user.role === 'admin') return next();
+
+    if (!req.user.payoutEligible) {
+        return res.status(403).json({
+            error: 'Payouts are not yet enabled for your account. Complete verification and get admin approval first.',
+            code: 'PAYOUT_NOT_ELIGIBLE',
+            onboardingStatus: req.user.onboardingStatus || 'unknown'
+        });
+    }
+    next();
+};

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { settlementApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import VerifiedBadge from "@/components/VerifiedBadge";
 
 const TIER_STYLES: Record<string, { label: string; icon: any; bg: string; text: string; badge: string }> = {
     bronze: {
@@ -240,6 +241,11 @@ const PartnerManagement = () => {
                                 {selectedPartner.accountStatus === 'held' ? <PauseCircle className="h-3.5 w-3.5 mr-1" /> : <ShieldAlert className="h-3.5 w-3.5 mr-1" />}
                                 {selectedPartner.accountStatus.charAt(0).toUpperCase() + selectedPartner.accountStatus.slice(1)}
                             </Badge>
+                        )}
+                        {selectedPartner.isVerified ? (
+                            <VerifiedBadge status="verified" source="digilocker" />
+                        ) : (
+                            <Badge variant="outline">{selectedPartner.onboardingStatus?.replace('_', ' ') || 'unverified'}</Badge>
                         )}
                         <div className="flex gap-1">
                             <Button variant="outline" size="sm" onClick={() => {
@@ -587,7 +593,10 @@ const PartnerManagement = () => {
                                             return (
                                                 <div key={p._id} className="grid grid-cols-12 gap-3 items-center px-4 py-3 rounded-lg border hover:bg-accent/30 transition-colors">
                                                     <div className="col-span-3">
-                                                        <p className="font-medium text-sm truncate">{p.businessName || '—'}</p>
+                                                        <div className="flex items-center gap-2">
+                                                          <p className="font-medium text-sm truncate">{p.businessName || '—'}</p>
+                                                          {p.isVerified && <VerifiedBadge status="verified" source="digilocker" />}
+                                                        </div>
                                                         <p className="text-xs text-muted-foreground truncate">{p.email}</p>
                                                         {p.phone && <p className="text-xs text-muted-foreground">{p.phone}</p>}
                                                     </div>

@@ -46,7 +46,7 @@ const primaryNavItems: NavItem[] = [
     { label: "Shipments", href: "/shipments", icon: Package },
     { label: "Returns / RTO", href: "/returns-rto", icon: RotateCcw },
     { label: "Weight Disputes", href: "/weight-disputes", icon: Scale },
-    { label: "My Orders", href: "/my-orders", icon: ClipboardList },
+
     { label: "Fleet Tracking", href: "/fleet-tracking", icon: Navigation },
     { label: "Orders", href: "/partner/orders", icon: ClipboardList },
     { label: "Fleet View", href: "/partner/fleet-view", icon: Radio },
@@ -64,6 +64,7 @@ const primaryNavItems: NavItem[] = [
     { label: "Reports", href: "/reports", icon: FileBarChart2 },
     { label: "Analytics", href: "/analytics", icon: BarChart3 },
     { label: "Partner Mgmt", href: "/admin/partners", icon: Users },
+    { label: "Onboarding", href: "/admin/onboarding", icon: ClipboardList },
     { label: "Carriers", href: "/admin/carriers", icon: Truck },
     { label: "Promo Codes", href: "/admin/promo-codes", icon: Ticket },
     { label: "Wallet Recharges", href: "/admin/recharges", icon: Wallet },
@@ -198,7 +199,7 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                         }
 
                         // Admin-only items - hide from non-admins
-                        const adminItems = ["Users", "Warehouse", "Drivers", "Bulk Ops", "Fleet", "Fleet Tracking", "Reports", "Analytics", "Partner Mgmt", "Carriers", "Promo Codes", "Wallet Recharges", "Payment Gateway"];
+                        const adminItems = ["Users", "Warehouse", "Drivers", "Bulk Ops", "Fleet", "Fleet Tracking", "Reports", "Analytics", "Partner Mgmt", "Onboarding", "Carriers", "Promo Codes", "Wallet Recharges", "Payment Gateway"];
                         if (user?.role !== 'admin' && adminItems.includes(item.label)) {
                             // Allow shipment_partner to see Fleet Tracking and Fleet
                             if (user?.role === 'shipment_partner' && (item.label === "Fleet Tracking" || item.label === "Fleet")) {

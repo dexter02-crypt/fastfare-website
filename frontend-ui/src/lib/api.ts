@@ -122,6 +122,16 @@ export const authApi = {
     },
 };
 
+// DigiLocker API
+export const digilockerApi = {
+    getStatus: async () => {
+        return apiRequest('/auth/digilocker/status');
+    },
+    initAuth: async () => {
+        return apiRequest('/auth/digilocker/init');
+    }
+};
+
 // Shipments API
 export const shipmentsApi = {
     create: async (shipmentData: ShipmentData) => {
@@ -347,6 +357,13 @@ export const weightDisputesApi = {
     raiseDispute: async (id: string, dispute_reason: string) => apiRequest(`/weight-disputes/${id}/dispute`, { method: 'POST', body: JSON.stringify({ dispute_reason }) })
 };
 
+// ─── Onboarding API ───
+export const onboardingApi = {
+    getStatus: async () => apiRequest('/onboarding/status'),
+    submitProfile: async () => apiRequest('/onboarding/submit', { method: 'POST' }),
+    resubmitProfile: async () => apiRequest('/onboarding/resubmit', { method: 'POST' })
+};
+
 export default {
     auth: authApi,
     shipments: shipmentsApi,
@@ -359,5 +376,6 @@ export default {
     settlement: settlementApi,
     returns: returnsApi,
     weightDisputes: weightDisputesApi,
+    onboarding: onboardingApi,
 };
 

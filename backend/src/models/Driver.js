@@ -46,6 +46,33 @@ const driverSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+
+    // ══════ DigiLocker Verified Identity ══════
+    verifiedIdentity: {
+        source: { type: String, enum: ['digilocker', 'manual', 'none'], default: 'none' },
+        status: { type: String, enum: ['not_started', 'initiated', 'verified', 'failed'], default: 'not_started' },
+        fullName: String,
+        dob: String,
+        gender: String,
+        digilockerId: String,
+        aadhaarLastFour: String,
+        verifiedAt: Date,
+        lastAttemptAt: Date,
+        attemptCount: { type: Number, default: 0 },
+        referenceId: String,
+        failureReason: String
+    },
+
+    // ══════ Onboarding ══════
+    onboardingStatus: {
+        type: String,
+        enum: ['draft', 'digilocker_initiated', 'digilocker_verified', 'approved', 'suspended'],
+        default: 'draft'
+    },
+    nameMismatchFlag: { type: Boolean, default: false },
+    nameMismatchDetails: String,
+    reviewFlags: [{ type: String }],
+
     createdAt: {
         type: Date,
         default: Date.now

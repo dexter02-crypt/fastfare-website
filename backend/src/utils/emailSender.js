@@ -261,3 +261,215 @@ export const sendRegistrationOtpEmail = async (email, otpCode) => {
 };
 
 
+// ══════════════════════════════════════════════════
+// Onboarding Notification Emails
+// ══════════════════════════════════════════════════
+
+const onboardingEmailWrapper = (iconEmoji, headerBg, headerTitle, bodyHtml) => {
+    const year = new Date().getFullYear();
+    return `
+        <div style="font-family: 'Inter', 'Segoe UI', sans-serif; background-color: #f3f4f6; padding: 40px 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden;">
+                <div style="background: ${headerBg}; padding: 30px; text-align: center;">
+                    <div style="background-color: white; width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                        <span style="font-size: 32px;">${iconEmoji}</span>
+                    </div>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">${headerTitle}</h1>
+                    <p style="color: rgba(255,255,255,0.8); font-size: 12px; margin: 4px 0 0 0; letter-spacing: 1px;">FASTFARE LOGISTICS</p>
+                </div>
+                <div style="padding: 40px 30px;">
+                    ${bodyHtml}
+                </div>
+                <div style="padding: 24px; background-color: #f9fafb; text-align: center; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #6b7280; font-size: 13px; margin: 0 0 8px 0;">FastFare Logistics Pvt Ltd</p>
+                    <p style="color: #9ca3af; font-size: 12px; margin: 0;">&copy; ${year} FastFare. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
+export const sendOnboardingApprovedEmail = async (email, userName, role) => {
+    const client = getResendClient();
+    if (!client) return;
+    const fromEmail = process.env.EMAIL_FROM || 'noreply@fastfare.in';
+    const roleLabel = role === 'shipment_partner' ? 'Delivery Partner' : 'User';
+    const body = `
+        <h2 style="color: #065f46; margin-top: 0; font-size: 22px; text-align: center;">Your Account Has Been Approved! 🎉</h2>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hi ${userName},</p>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">
+            Great news! Your <strong>FastFare ${roleLabel}</strong> account has been reviewed and approved by our team.
+        </p>
+        <div style="background-color: #ecfdf5; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <p style="color: #065f46; margin: 0; font-size: 15px; font-weight: 600;">✅ What's now unlocked:</p>
+            <ul style="color: #065f46; font-size: 14px; margin: 12px 0 0 0; padding-left: 20px; line-height: 2;">
+                ${role === 'shipment_partner' ? `
+                    <li>Accept & manage shipment orders</li>
+                    <li>Receive earnings from deliveries</li>
+                    <li>Withdraw funds to your bank account</li>
+                    <li>Access fleet & warehouse management tools</li>
+                ` : `
+                    <li>Book shipments nationwide</li>
+                    <li>Access wallet & payments</li>
+                    <li>Full dashboard features</li>
+                `}
+            </ul>
+        </div>
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="https://fastfare.in/dashboard" style="background-color: #10b981; color: white; padding: 14px 36px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+                Go to Dashboard →
+            </a>
+        </div>
+    `;
+    try {
+        await client.emails.send({
+            from: `FastFare <${fromEmail}>`,
+            to: email,
+            subject: '🎉 Your FastFare account is approved!',
+            html: onboardingEmailWrapper('✅', 'linear-gradient(135deg, #10b981, #059669)', 'Account Approved', body),
+        });
+    } catch (err) {
+        console.error('Failed to send onboarding approved email:', err);
+    }
+};
+
+export const sendOnboardingRejectedEmail = async (email, userName, reason, role) => {
+    const client = getResendClient();
+    if (!client) return;
+    const fromEmail = process.env.EMAIL_FROM || 'noreply@fastfare.in';
+    const roleLabel = role === 'shipment_partner' ? 'Delivery Partner' : 'User';
+    const body = `
+        <h2 style="color: #991b1b; margin-top: 0; font-size: 22px; text-align: center;">Application Not Approved</h2>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hi ${userName},</p>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">
+            After reviewing your <strong>FastFare ${roleLabel}</strong> application, our team was unable to approve it at this time.
+        </p>
+        <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0; border-radius: 4px;">
+            <p style="color: #991b1b; margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">Reason:</p>
+            <p style="color: #7f1d1d; margin: 0; font-size: 14px; line-height: 1.5;">${reason || 'Your application did not meet the requirements. Please review and update your details.'}</p>
+        </div>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">
+            You can update your profile and resubmit your application for review. If you believe this was an error, please contact our support team.
+        </p>
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="https://fastfare.in/settings" style="background-color: #2563eb; color: white; padding: 14px 36px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+                Update Profile & Resubmit
+            </a>
+        </div>
+        <p style="color: #6b7280; font-size: 13px; margin-top: 24px; text-align: center;">
+            Need help? Contact us at <a href="mailto:support@fastfare.in" style="color: #2563eb;">support@fastfare.in</a>
+        </p>
+    `;
+    try {
+        await client.emails.send({
+            from: `FastFare <${fromEmail}>`,
+            to: email,
+            subject: 'FastFare Application Status Update',
+            html: onboardingEmailWrapper('❌', 'linear-gradient(135deg, #dc2626, #b91c1c)', 'Application Update', body),
+        });
+    } catch (err) {
+        console.error('Failed to send onboarding rejected email:', err);
+    }
+};
+
+export const sendOnboardingNeedsMoreInfoEmail = async (email, userName, adminNote) => {
+    const client = getResendClient();
+    if (!client) return;
+    const fromEmail = process.env.EMAIL_FROM || 'noreply@fastfare.in';
+    const body = `
+        <h2 style="color: #92400e; margin-top: 0; font-size: 22px; text-align: center;">Additional Information Needed</h2>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hi ${userName},</p>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">
+            We're reviewing your FastFare application and need a bit more information before we can proceed.
+        </p>
+        <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">
+            <p style="color: #92400e; margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">Message from our team:</p>
+            <p style="color: #78350f; margin: 0; font-size: 14px; line-height: 1.5;">${adminNote || 'Please update your profile with the required information and resubmit.'}</p>
+        </div>
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="https://fastfare.in/settings" style="background-color: #f59e0b; color: white; padding: 14px 36px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+                Update Your Profile
+            </a>
+        </div>
+    `;
+    try {
+        await client.emails.send({
+            from: `FastFare <${fromEmail}>`,
+            to: email,
+            subject: 'Action Required: Additional information needed for your FastFare application',
+            html: onboardingEmailWrapper('📋', 'linear-gradient(135deg, #f59e0b, #d97706)', 'Info Required', body),
+        });
+    } catch (err) {
+        console.error('Failed to send needs-more-info email:', err);
+    }
+};
+
+export const sendOnboardingSuspendedEmail = async (email, userName, reason) => {
+    const client = getResendClient();
+    if (!client) return;
+    const fromEmail = process.env.EMAIL_FROM || 'noreply@fastfare.in';
+    const body = `
+        <h2 style="color: #991b1b; margin-top: 0; font-size: 22px; text-align: center;">Account Suspended</h2>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hi ${userName},</p>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">
+            Your FastFare account has been temporarily suspended. During this time, access to platform features will be restricted.
+        </p>
+        ${reason ? `
+            <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="color: #991b1b; margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">Reason:</p>
+                <p style="color: #7f1d1d; margin: 0; font-size: 14px; line-height: 1.5;">${reason}</p>
+            </div>
+        ` : ''}
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">
+            If you believe this is an error or have questions, please contact our support team immediately.
+        </p>
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="mailto:support@fastfare.in" style="background-color: #6b7280; color: white; padding: 14px 36px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+                Contact Support
+            </a>
+        </div>
+    `;
+    try {
+        await client.emails.send({
+            from: `FastFare <${fromEmail}>`,
+            to: email,
+            subject: '⚠️ Your FastFare account has been suspended',
+            html: onboardingEmailWrapper('🚫', 'linear-gradient(135deg, #6b7280, #4b5563)', 'Account Suspended', body),
+        });
+    } catch (err) {
+        console.error('Failed to send suspended email:', err);
+    }
+};
+
+export const sendReverificationRequiredEmail = async (email, userName) => {
+    const client = getResendClient();
+    if (!client) return;
+    const fromEmail = process.env.EMAIL_FROM || 'noreply@fastfare.in';
+    const body = `
+        <h2 style="color: #1e40af; margin-top: 0; font-size: 22px; text-align: center;">Re-Verification Required</h2>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">Hi ${userName},</p>
+        <p style="color: #374151; font-size: 15px; line-height: 1.6;">
+            Our team has requested that you re-verify your identity through DigiLocker. This may be due to a data mismatch, security review, or a periodic verification check.
+        </p>
+        <div style="background-color: #eff6ff; border-left: 4px solid #2563eb; padding: 16px; margin: 24px 0; border-radius: 4px;">
+            <p style="color: #1e40af; margin: 0; font-size: 14px; line-height: 1.5;">
+                🔒 Please log in to your FastFare account and complete the DigiLocker verification process. This is essential to maintain your account access.
+            </p>
+        </div>
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="https://fastfare.in/settings/kyc" style="background-color: #2563eb; color: white; padding: 14px 36px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block;">
+                Verify Now
+            </a>
+        </div>
+    `;
+    try {
+        await client.emails.send({
+            from: `FastFare <${fromEmail}>`,
+            to: email,
+            subject: 'Action Required: Re-verify your FastFare identity',
+            html: onboardingEmailWrapper('🔄', 'linear-gradient(135deg, #2563eb, #1d4ed8)', 'Re-Verification', body),
+        });
+    } catch (err) {
+        console.error('Failed to send reverification email:', err);
+    }
+};

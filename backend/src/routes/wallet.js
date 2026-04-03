@@ -332,6 +332,123 @@ const statusLimiter = rateLimit({
     message: { message: 'Too many status check requests' }
 });
 
+const verifyLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    keyGenerator: (req) => req.user._id.toString(),
+    message: { message: 'Please wait before checking payment again' }
+});
+
+// Explicit Check Again / Verification Trigger
+router.post('/recharge/verify', protect, verifyLimiter, async (req, res) => {
+    try {
+        const { order_id } = req.body;
+        if (!order_id) return res.status(400).json({ message: 'Order ID is required' });
+
+        const rechargeOrder = await WalletRechargeOrder.findOne({ order_id });
+        if (!rechargeOrder) return res.status(404).json({ message: 'Order not found' });
+
+        if (rechargeOrder.user_id.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        const user = await User.findById(req.user._id);
+
+        if (rechargeOrder.wallet_credited || rechargeOrder.status === 'paid') {
+            return res.json({
+                status: 'paid',
+                wallet_credited: true,
+                amount: rechargeOrder.amount,
+                new_balance: user.walletBalance
+            });
+        }
+
+        if (rechargeOrder.status === 'failed' || rechargeOrder.status === 'cancelled') {
+             return res.json({ status: rechargeOrder.status, reason: rechargeOrder.failure_reason });
+        }
+
+        // Check external Cashfree status
+        const cfRes = await fetch(`${getCashfreeBaseUrl()}/orders/${order_id}`, {
+            method: 'GET',
+            headers: {
+                'x-api-version': '2023-08-01',
+                'x-client-id': process.env.CASHFREE_APP_ID,
+                'x-client-secret': process.env.CASHFREE_SECRET_KEY
+            }
+        });
+
+        if (!cfRes.ok) {
+            console.error('[Wallet] Manual Verify Cashfree Error:', await cfRes.text());
+            return res.status(500).json({ status: 'network_error', message: 'Unable to verify payment externally' });
+        }
+
+        const cfDetails = await cfRes.json();
+        const cfStatus = cfDetails.order_status;
+
+        if (cfStatus === 'PAID') {
+            const session = await mongoose.startSession();
+            session.startTransaction();
+            try {
+                const lockedOrder = await WalletRechargeOrder.findOne({ _id: rechargeOrder._id, wallet_credited: false }).session(session);
+                if (lockedOrder) {
+                    const balanceBefore = user.walletBalance || 0;
+                    const balanceAfter = balanceBefore + rechargeOrder.amount;
+
+                    user.walletBalance = balanceAfter;
+                    await user.save({ session });
+
+                    await Transaction.create([{
+                        userId: user._id,
+                        type: 'recharge',
+                        amount: rechargeOrder.amount,
+                        status: 'completed',
+                        balanceBefore,
+                        balanceAfter,
+                        description: `Wallet Recharge via Check Again (Order: ${order_id})`
+                    }], { session });
+
+                    lockedOrder.status = 'paid';
+                    lockedOrder.wallet_credited = true;
+                    lockedOrder.wallet_credited_at = new Date();
+                    lockedOrder.updated_at = new Date();
+                    await lockedOrder.save({ session });
+
+                    await session.commitTransaction();
+                    console.log(`[Wallet] Manual Check Again credited ₹${rechargeOrder.amount} for Order ${order_id}`);
+                } else {
+                    await session.abortTransaction();
+                }
+                session.endSession();
+
+                const updatedUser = await User.findById(req.user._id);
+                return res.json({
+                    status: 'paid',
+                    wallet_credited: true,
+                    amount: rechargeOrder.amount,
+                    new_balance: updatedUser.walletBalance
+                });
+
+            } catch (err) {
+                await session.abortTransaction();
+                session.endSession();
+                throw err;
+            }
+        } else if (cfStatus === 'ACTIVE') {
+            return res.json({ status: 'pending' });
+        } else {
+            if (rechargeOrder.status !== 'failed') {
+                rechargeOrder.status = 'failed';
+                rechargeOrder.failure_reason = 'Payment order expired or failed externally';
+                await rechargeOrder.save();
+            }
+            return res.json({ status: 'failed', reason: 'expired' });
+        }
+    } catch (error) {
+        console.error('[Wallet] Express Verify Exception:', error);
+        res.status(500).json({ status: 'network_error', message: 'Server error during status check' });
+    }
+});
+
 router.get('/recharge/status', protect, statusLimiter, async (req, res) => {
     try {
         const { order_id } = req.query;

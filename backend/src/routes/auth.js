@@ -7,6 +7,7 @@ import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
 import { Otp } from '../models/Otp.js';
 import { PendingRegistration } from '../models/PendingRegistration.js';
+import OnboardingEvent from '../models/OnboardingEvent.js';
 import { generateOTP } from '../utils/otpGenerator.js';
 import { sendPasswordResetEmail, sendPasswordChangedEmail } from '../utils/emailSender.js';
 
@@ -295,9 +296,37 @@ router.post('/register', async (req, res) => {
                     gender: kyc_gender || ''
                 }
             };
+            // Set verified identity for onboarding
+            userData.verifiedIdentity = {
+                source: 'digilocker',
+                status: 'verified',
+                fullName: kyc_name,
+                dob: kyc_dob,
+                gender: kyc_gender,
+                digilockerId: digilocker_id,
+                verifiedAt: new Date(),
+                lastAttemptAt: new Date(),
+                attemptCount: 1
+            };
+            // Auto-approve clean user registrations; partners always go to pending_review
+            if (userRole === 'user') {
+                userData.onboardingStatus = 'approved';
+                userData.onboardingApprovedAt = new Date();
+                userData.payoutEligible = true;
+                userData.operationallyActive = true;
+            } else {
+                userData.onboardingStatus = 'pending_review';
+                userData.onboardingSubmittedAt = new Date();
+            }
         } else {
             userData.kyc_status = "pending";
             userData.digilocker_verified = false;
+            userData.verifiedIdentity = { source: 'none', status: 'not_started' };
+            if (userRole === 'user') {
+                userData.onboardingStatus = 'draft';
+            } else {
+                userData.onboardingStatus = 'draft';
+            }
         }
 
         if (userRole === 'shipment_partner') {
@@ -322,6 +351,20 @@ router.post('/register', async (req, res) => {
 
         const user = await User.create(userData);
 
+        // Log onboarding event
+        await OnboardingEvent.create({
+            targetUserId: user._id,
+            targetRole: user.role,
+            eventType: digilocker_verified && userRole === 'user' ? 'auto_approved' : 'account_created',
+            actorId: user._id,
+            actorRole: userRole === 'shipment_partner' ? 'partner' : 'user',
+            previousStatus: null,
+            newStatus: user.onboardingStatus,
+            reason: digilocker_verified && userRole === 'user' 
+                ? 'Auto-approved: DigiLocker verified at registration' 
+                : 'Account created via registration'
+        });
+
         // Clean up the OTP from collection
         await EmailVerification.deleteMany({ email: normalizedEmail, purpose: 'registration' });
         
@@ -343,7 +386,16 @@ router.post('/register', async (req, res) => {
                 contactPerson: user.contactPerson,
                 role: user.role,
                 kyc: user.kyc,
-                partnerDetails: user.partnerDetails
+                partnerDetails: user.partnerDetails,
+                onboardingStatus: user.onboardingStatus,
+                verifiedIdentity: {
+                    source: user.verifiedIdentity?.source,
+                    status: user.verifiedIdentity?.status,
+                    fullName: user.verifiedIdentity?.fullName,
+                    verifiedAt: user.verifiedIdentity?.verifiedAt,
+                },
+                payoutEligible: user.payoutEligible,
+                operationallyActive: user.operationallyActive,
             },
             token
         });
@@ -385,7 +437,18 @@ router.post('/login', async (req, res) => {
                 gstin: user.gstin,
                 contactPerson: user.contactPerson,
                 role: user.role,
-                partnerDetails: user.partnerDetails
+                partnerDetails: user.partnerDetails,
+                onboardingStatus: user.onboardingStatus || 'approved',
+                verifiedIdentity: {
+                    source: user.verifiedIdentity?.source || 'none',
+                    status: user.verifiedIdentity?.status || 'not_started',
+                    fullName: user.verifiedIdentity?.fullName || null,
+                    verifiedAt: user.verifiedIdentity?.verifiedAt || null,
+                },
+                payoutEligible: user.payoutEligible || false,
+                operationallyActive: user.operationallyActive || false,
+                nameMismatchFlag: user.nameMismatchFlag || false,
+                reviewFlags: user.reviewFlags || [],
             },
             token
         });
@@ -409,7 +472,18 @@ router.get('/me', protect, async (req, res) => {
             contactPerson: req.user.contactPerson,
             role: req.user.role,
             savedAddresses: req.user.savedAddresses,
-            partnerDetails: req.user.partnerDetails
+            partnerDetails: req.user.partnerDetails,
+            onboardingStatus: req.user.onboardingStatus || 'approved',
+            verifiedIdentity: {
+                source: req.user.verifiedIdentity?.source || 'none',
+                status: req.user.verifiedIdentity?.status || 'not_started',
+                fullName: req.user.verifiedIdentity?.fullName || null,
+                verifiedAt: req.user.verifiedIdentity?.verifiedAt || null,
+            },
+            payoutEligible: req.user.payoutEligible || false,
+            operationallyActive: req.user.operationallyActive || false,
+            nameMismatchFlag: req.user.nameMismatchFlag || false,
+            reviewFlags: req.user.reviewFlags || [],
         }
     });
 });

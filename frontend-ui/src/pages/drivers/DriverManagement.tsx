@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,18 +12,48 @@ import {
   Search, Plus, User, Phone, MapPin, Truck, Star,
   Package, Clock, CheckCircle, AlertTriangle
 } from "lucide-react";
-
-const stats = [
-  { label: "Total Drivers", value: "0", icon: User },
-  { label: "Active Now", value: "0", icon: Truck },
-  { label: "On Delivery", value: "0", icon: Package },
-  { label: "Available", value: "0", icon: CheckCircle },
-];
-
-const drivers: { id: number; name: string; phone: string; status: string; vehicle: string; rating: number; deliveries: number; location: string }[] = [];
+import { API_BASE_URL } from "@/config";
+import { useToast } from "@/hooks/use-toast";
+import VerifiedBadge from "@/components/VerifiedBadge";
 
 const DriverManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchDrivers();
+  }, []);
+
+  const fetchDrivers = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE_URL}/api/fleet/drivers`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDrivers(data.drivers || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch drivers", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredDrivers = drivers.filter(d => 
+    d.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    d.mobile?.includes(searchQuery)
+  );
+
+  const currentStats = [
+    { label: "Total Drivers", value: drivers.length.toString(), icon: User },
+    { label: "Active Now", value: drivers.filter(d => d.status === 'active').length.toString(), icon: Truck },
+    { label: "On Delivery", value: "0", icon: Package },
+    { label: "Available", value: drivers.filter(d => d.status === 'active').length.toString(), icon: CheckCircle },
+  ];
 
   return (
     <DashboardLayout>
@@ -54,7 +84,7 @@ const DriverManagement = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat, index) => (
+          {currentStats.map((stat, index) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}
@@ -79,60 +109,65 @@ const DriverManagement = () => {
         </div>
 
         {/* Drivers Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {drivers.map((driver, index) => (
-            <motion.div
-              key={driver.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card className="hover:border-primary transition-colors cursor-pointer">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-14 w-14">
-                        <AvatarFallback>{driver.name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold">{driver.name}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {driver.phone}
-                        </p>
+        {loading ? (
+            <div className="flex justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+        ) : filteredDrivers.length === 0 ? (
+            <div className="text-center p-8 text-muted-foreground">No drivers found.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredDrivers.map((driver, index) => (
+              <motion.div
+                key={driver._id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card className="hover:border-primary transition-colors cursor-pointer">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-14 w-14">
+                          <AvatarFallback>{driver.fullName?.split(" ").map((n: string) => n[0]).join("")}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold">{driver.fullName}</p>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {driver.mobile}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <Badge variant={driver.status === "active" ? "default" : "outline"}>
+                          {driver.status}
+                        </Badge>
+                        {driver.verifiedIdentity?.status === 'verified' && (
+                          <VerifiedBadge status="verified" source="digilocker" />
+                        )}
                       </div>
                     </div>
-                    <Badge
-                      variant={
-                        driver.status === "Available" ? "default" :
-                          driver.status === "On Delivery" ? "secondary" : "outline"
-                      }
-                    >
-                      {driver.status}
-                    </Badge>
-                  </div>
 
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1">
                         <Truck className="h-4 w-4" />
-                        Vehicle
+                        Vehicle DL
                       </span>
-                      <span className="font-medium">{driver.vehicle}</span>
+                      <span className="font-medium">{driver.dlNo || '—'}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
-                        Location
+                        Aadhaar
                       </span>
-                      <span className="font-medium">{driver.location}</span>
+                      <span className="font-medium">•••• •••• {driver.aadhaar?.slice(-4) || '—'}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1">
                         <Package className="h-4 w-4" />
                         Deliveries
                       </span>
-                      <span className="font-medium">{driver.deliveries.toLocaleString()}</span>
+                      <span className="font-medium">{0}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1">
@@ -141,7 +176,7 @@ const DriverManagement = () => {
                       </span>
                       <div className="flex items-center gap-1">
                         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-medium">{driver.rating}</span>
+                        <span className="font-medium">5.0</span>
                       </div>
                     </div>
                   </div>
@@ -158,7 +193,8 @@ const DriverManagement = () => {
               </Card>
             </motion.div>
           ))}
-        </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

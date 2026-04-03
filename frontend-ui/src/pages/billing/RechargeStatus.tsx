@@ -70,10 +70,51 @@ const RechargeStatus = () => {
         }
     }, [retries, status]);
 
-    const handleRetry = () => {
+    const verifyManualStatus = async () => {
+        if (!orderId) return;
         setStatus('loading');
-        setRetries(0);
-        checkStatus();
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE_URL}/api/wallet/recharge/verify`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ order_id: orderId })
+            });
+
+            if (!res.ok) {
+                if (res.status === 401) {
+                    sessionStorage.setItem('pending_recharge_order', orderId);
+                    navigate(`/login?redirect=/billing/recharge/status&order_id=${orderId}`);
+                    return;
+                }
+                throw new Error('Network response was not ok');
+            }
+
+            const data = await res.json();
+            
+            if (data.status === 'paid') {
+                setStatus('paid');
+                setDetails(data);
+                sessionStorage.removeItem('recharge_order_id');
+            } else if (data.status === 'failed' || data.status === 'cancelled') {
+                setStatus('failed');
+                setDetails(data);
+            } else if (data.status === 'pending') {
+                setStatus('pending'); // User sees it's still pending
+            } else {
+                 setStatus('failed');
+            }
+
+        } catch (error) {
+            setStatus('network_error');
+        }
+    };
+
+    const handleRetry = () => {
+        verifyManualStatus();
     };
 
     return (

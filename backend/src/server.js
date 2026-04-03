@@ -62,6 +62,7 @@ import tierRoutes from './routes/tiers.js';
 import codRoutes from './routes/cod.js';
 import partnerLedgerRoutes from './routes/partner-ledger.js';
 import adminOverrideRoutes from './routes/admin-overrides.js';
+import onboardingRoutes from './routes/onboarding.js';
 
 // QR Scan-to-Pickup routes
 import scanRoutes from './routes/scan.js';
@@ -218,6 +219,7 @@ app.use('/api/cod', codRoutes);
 app.use('/api/partner', partnerLedgerRoutes);
 app.use('/api/partner/pricing', partnerPricingRoutes);
 app.use('/api/admin', adminOverrideRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/rates', ratesRoutes);
 
 // ─── QR Scan-to-Pickup Routes ───

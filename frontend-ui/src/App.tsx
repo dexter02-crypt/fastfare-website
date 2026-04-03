@@ -82,7 +82,7 @@ import PartnerTeamManagement from "./pages/partner/PartnerTeamManagement";
 import PartnerPricingPage from "./pages/partner/PartnerPricingPage";
 import PartnerOrders from "./pages/orders/PartnerOrders";
 import PartnerActivity from "./pages/orders/PartnerActivity";
-import UserOrders from "./pages/orders/UserOrders";
+
 import ReturnsRto from "./pages/orders/ReturnsRto";
 import WeightDisputes from "./pages/orders/WeightDisputes";
 
@@ -153,6 +153,7 @@ import DataRetentionPolicy from "./pages/legal/DataRetentionPolicy";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import PartnerManagement from "./pages/admin/PartnerManagement";
 import PromoCodesManagement from "./pages/admin/PromoCodesManagement";
+import AdminOnboardingQueue from "./pages/admin/AdminOnboardingQueue";
 
 // Account Deletion Flow
 import DeletionAcknowledgement from "./pages/account/DeletionAcknowledgement";
@@ -188,6 +189,7 @@ import AdminPaymentGatewaySettings from "./pages/admin/AdminPaymentGatewaySettin
 const queryClient = new QueryClient();
 
 import { WalletProvider } from "./contexts/WalletContext";
+import { DigilockerProvider } from "./contexts/DigilockerContext";
 import { SocketProvider } from "./providers/SocketProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ScrollToTop } from "./components/ScrollToTop";
@@ -213,6 +215,7 @@ const App = () => (
         <Sonner />
         <WalletProvider>
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <DigilockerProvider>
             <ScrollToTop />
             <Routes>
               {/* Public Routes */}
@@ -334,7 +337,7 @@ const App = () => (
               <Route path="/partner/wallet" element={<PartnerRoute><PartnerWalletDashboard /></PartnerRoute>} />
               <Route path="/partner/transactions" element={<PartnerRoute><PartnerTransactions /></PartnerRoute>} />
               <Route path="/partner/withdraw" element={<PartnerRoute><PartnerWithdrawal /></PartnerRoute>} />
-              <Route path="/my-orders" element={<ProtectedRoute><UserOrders /></ProtectedRoute>} />
+
               <Route path="/returns-rto" element={<ProtectedRoute><ReturnsRto /></ProtectedRoute>} />
               <Route path="/weight-disputes" element={<ProtectedRoute><WeightDisputes /></ProtectedRoute>} />
 
@@ -367,6 +370,7 @@ const App = () => (
 
               {/* Admin */}
               <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/admin/onboarding" element={<ProtectedRoute adminOnly><AdminOnboardingQueue /></ProtectedRoute>} />
               <Route path="/admin/partners" element={<ProtectedRoute adminOnly><PartnerManagement /></ProtectedRoute>} />
               <Route path="/admin/carriers" element={<ProtectedRoute adminOnly><AdminCarriers /></ProtectedRoute>} />
               <Route path="/admin/promo-codes" element={<ProtectedRoute adminOnly><PromoCodesManagement /></ProtectedRoute>} />
@@ -392,6 +396,7 @@ const App = () => (
 
               <Route path="*" element={<NotFound />} />
             </Routes>
+          </DigilockerProvider>
           </BrowserRouter>
         </WalletProvider>
       </TooltipProvider>

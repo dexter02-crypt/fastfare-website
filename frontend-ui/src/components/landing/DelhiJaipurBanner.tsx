@@ -64,26 +64,15 @@ const DelhiJaipurBanner = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6, duration: 0.6 }}
-                className="flex flex-col sm:flex-row gap-3 sm:gap-4"
               >
                 <Button
                   size="lg"
-                  className="bg-white text-slate-800 hover:bg-slate-50 font-semibold px-6 sm:px-8 gap-2 shadow-md border border-slate-200 w-full sm:w-auto"
+                  className="bg-blue-800 text-white hover:bg-blue-900 font-semibold px-8 sm:px-10 py-6 text-lg gap-2 shadow-lg w-full sm:w-auto shadow-blue-900/20"
                   asChild
                 >
                   <Link to="/register">
                     Book Now
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button
-                  size="lg"
-                  className="bg-blue-800 text-white hover:bg-blue-900 font-semibold px-6 sm:px-8 gap-2 shadow-md w-full sm:w-auto"
-                  asChild
-                >
-                  <Link to="/pricing">
-                    View Rates
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-5 w-5" />
                   </Link>
                 </Button>
               </motion.div>

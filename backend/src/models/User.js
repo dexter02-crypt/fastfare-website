@@ -142,6 +142,59 @@ const userSchema = new mongoose.Schema({
     kyc_name: String,
     kyc_dob: String,
     kyc_gender: String,
+
+    // ══════ Onboarding State Machine ══════
+    onboardingStatus: {
+        type: String,
+        enum: ['draft', 'submitted', 'digilocker_initiated', 'digilocker_verified',
+               'pending_review', 'approved', 'rejected', 'needs_more_info',
+               'suspended', 'reverification_required'],
+        default: 'draft'
+    },
+    onboardingSubmittedAt: Date,
+    onboardingApprovedAt: Date,
+    onboardingApprovedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    onboardingRejectedAt: Date,
+    onboardingRejectionReason: String,
+    onboardingReviewNotes: String,
+
+    // ══════ Verified Identity (DigiLocker Source of Truth) ══════
+    verifiedIdentity: {
+        source: { type: String, enum: ['digilocker', 'manual', 'none'], default: 'none' },
+        status: { type: String, enum: ['not_started', 'initiated', 'verified', 'failed'], default: 'not_started' },
+        fullName: String,
+        dob: String,
+        gender: String,
+        digilockerId: String,
+        aadhaarLastFour: String,
+        verifiedAt: Date,
+        lastAttemptAt: Date,
+        attemptCount: { type: Number, default: 0 },
+        referenceId: String,
+        failureReason: String
+    },
+
+    // ══════ Trust & Review Flags ══════
+    nameMismatchFlag: { type: Boolean, default: false },
+    nameMismatchDetails: String,
+    duplicateIdentityFlag: { type: Boolean, default: false },
+    reviewFlags: [{ type: String }],
+
+    // ══════ Bank Details (Cashfree Beneficiary) ══════
+    bankDetails: {
+        accountName: String,
+        accountNumber: String,
+        ifsc: String,
+        bankName: String,
+        beneficiaryId: String,  // Cashfree linked Beneficiary ID 
+        isVerified: { type: Boolean, default: false },
+        addedAt: Date
+    },
+
+    // ══════ Payout & Operational Readiness ══════
+    payoutEligible: { type: Boolean, default: false },
+    operationallyActive: { type: Boolean, default: false },
+
     tier: {
         type: String,
         enum: ['bronze', 'silver', 'gold'],
