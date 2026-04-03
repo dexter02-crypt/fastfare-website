@@ -71,20 +71,20 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
     ];
 
   const solutionsItems = [
-    { label: "Courier Services", href: "/solutions/courier", icon: Truck },
-    { label: "Warehousing", href: "/solutions/warehousing", icon: Grid },
-    { label: "Returns Management", href: "/solutions/returns", icon: Package },
+    { label: "Courier Services", href: "/services", icon: Truck },
+    { label: "Warehousing", href: "/services", icon: Grid },
+    { label: "Returns Management", href: "/services", icon: Package },
   ];
 
   const productsItems = [
-    { label: "Bulk Shipping", href: "/products/bulk", icon: Package },
-    { label: "Express Delivery", href: "/products/express", icon: Zap },
-    { label: "International", href: "/products/international", icon: Truck },
+    { label: "Bulk Shipping", href: "/services", icon: Package },
+    { label: "Express Delivery", href: "/services", icon: Zap },
+    { label: "International", href: "/services", icon: Truck },
   ];
 
   const resourcesItems = [
-    { label: "Documentation", href: "/resources/docs", icon: FileText },
-    { label: "API", href: "/resources/api", icon: Package },
+    { label: "Documentation", href: "/documentation", icon: FileText },
+    { label: "API", href: "/api-reference", icon: Package },
     { label: "Support", href: "/support", icon: HelpCircle },
   ];
 
@@ -415,14 +415,14 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
                 { label: 'Home', href: '/' },
                 { label: 'Track Shipment', href: '/track' },
                 { label: 'Integrations', href: '#integrations' },
-                { label: 'Courier Services', href: '/solutions/courier' },
-                { label: 'Warehousing', href: '/solutions/warehousing' },
-                { label: 'Returns Management', href: '/solutions/returns' },
-                { label: 'Bulk Shipping', href: '/products/bulk' },
-                { label: 'Express Delivery', href: '/products/express' },
-                { label: 'International Shipping', href: '/products/international' },
-                { label: 'Documentation', href: '/resources/docs' },
-                { label: 'API', href: '/resources/api' },
+                { label: 'Courier Services', href: '/services' },
+                { label: 'Warehousing', href: '/services' },
+                { label: 'Returns Management', href: '/services' },
+                { label: 'Bulk Shipping', href: '/services' },
+                { label: 'Express Delivery', href: '/services' },
+                { label: 'International Shipping', href: '/services' },
+                { label: 'Documentation', href: '/documentation' },
+                { label: 'API', href: '/api-reference' },
                 { label: 'Support', href: '/support' },
               ].map((item) => (
                 <Link
