@@ -5,7 +5,7 @@ interface DigilockerState {
     digilocker_verified: boolean;
     digilocker_verified_at: string | null;
     kyc_name: string | null;
-    kyc_status: 'verified' | 'not_started' | 'pending';
+    kyc_status: 'verified' | 'not_started' | 'pending' | 'in_progress';
     loading: boolean;
 }
 
@@ -58,6 +58,15 @@ export const DigilockerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     useEffect(() => {
         fetchStatus();
     }, [fetchStatus]);
+
+    useEffect(() => {
+        if (state.kyc_status === 'in_progress' && !state.digilocker_verified) {
+            const interval = setInterval(() => {
+                fetchStatus();
+            }, 10000);
+            return () => clearInterval(interval);
+        }
+    }, [state.kyc_status, state.digilocker_verified, fetchStatus]);
 
     const markVerified = useCallback(() => {
         setState(prev => ({

@@ -138,6 +138,12 @@ const userSchema = new mongoose.Schema({
     kyc_status: { type: String, default: 'pending' },
     digilocker_verified: { type: Boolean, default: false },
     digilocker_verified_at: Date,
+    digilocker_status: {
+        type: String,
+        enum: ['not_started', 'in_progress', 'verified'],
+        default: 'not_started'
+    },
+    digilocker_initiated_at: Date,
     digilocker_id: String,
     kyc_name: String,
     kyc_dob: String,

@@ -89,11 +89,16 @@ export const locationSocket = (io) => {
             }
         });
 
-        // Join partner room
         socket.on('join_partner', (data) => {
             const pId = data.partnerId || data.partner_id;
             if (pId) {
                 socket.join(`partner_${pId}`);
+            }
+        });
+
+        socket.on('join_user', (data) => {
+            if (data && data.userId) {
+                socket.join(`user_${data.userId}`);
             }
         });
 

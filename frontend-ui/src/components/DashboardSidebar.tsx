@@ -173,6 +173,7 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                             size="md"
                             variant={collapsed ? "icon" : "full"}
                             className={cn(!collapsed && "pl-3")}
+                            imgClassName={!collapsed ? "w-32 max-w-[130px] object-contain" : ""}
                         />
                     </Link>
                 </div>

@@ -190,7 +190,7 @@ const ForgotPassword = () => {
     console.log('Request body being sent:', requestBody);
 
     try {
-      const response = await fetch(`http://localhost:3000/api/auth/reset-password`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),

@@ -168,14 +168,16 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
             {/* Right Actions */}
             <div className="flex items-center gap-3 md:gap-4 shrink-0">
               {/* Wallet Balance */}
-              <div
-                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/20 cursor-pointer hover:bg-primary/10 transition-colors"
-                onClick={() => navigate('/billing/recharge')}
-                title="Wallet Balance"
-              >
-                <Wallet className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-primary">₹{balance?.toLocaleString('en-IN') || '0'}</span>
-              </div>
+              {user?.role !== 'shipment_partner' && (
+                <div
+                  className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/20 cursor-pointer hover:bg-primary/10 transition-colors"
+                  onClick={() => navigate('/billing/recharge')}
+                  title="Wallet Balance"
+                >
+                  <Wallet className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">₹{balance?.toLocaleString('en-IN') || '0'}</span>
+                </div>
+              )}
               {/* Track Order Link */}
               <div className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onClick={() => navigate('/track')}>
                 <MapPin className="h-4 w-4" />
@@ -189,7 +191,7 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
               </div>
 
               {/* APPS_SECTION_START — Hidden for Partner role. To restore: remove the role condition below */}
-              {user?.role !== 'partner' && (
+              {user?.role !== 'shipment_partner' && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="hidden md:flex">
@@ -270,43 +272,37 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
             <nav className="hidden md:flex items-center gap-8">
               {navLinks.map((link) => (
                 link.dropdown ? (
-                  <DropdownMenu key={link.label}>
-                    <DropdownMenuTrigger asChild>
-                      <Link
-                        to={link.href}
-                        className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {link.label}
-                        <ChevronDown className="h-3 w-3" />
-                      </Link>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-56">
-                      {link.label === "Solutions" && solutionsItems.map((item, idx) => (
-                        <DropdownMenuItem key={idx} asChild>
-                          <Link to={item.href} className="flex items-center gap-2 cursor-pointer">
+                  <div key={link.label} className="relative group">
+                    <Link
+                      to={link.href}
+                      className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground py-4"
+                    >
+                      {link.label}
+                      <ChevronDown className="h-3 w-3 transition-transform group-hover:rotate-180" />
+                    </Link>
+                    <div className="absolute top-full left-0 w-56 pt-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                      <div className="bg-popover text-popover-foreground rounded-md shadow-md border border-border p-1">
+                        {link.label === "Solutions" && solutionsItems.map((item, idx) => (
+                          <Link key={idx} to={item.href} className="flex items-center gap-2 px-2 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
                             <item.icon className="h-4 w-4" />
                             {item.label}
                           </Link>
-                        </DropdownMenuItem>
-                      ))}
-                      {link.label === "Products" && productsItems.map((item, idx) => (
-                        <DropdownMenuItem key={idx} asChild>
-                          <Link to={item.href} className="flex items-center gap-2 cursor-pointer">
+                        ))}
+                        {link.label === "Products" && productsItems.map((item, idx) => (
+                          <Link key={idx} to={item.href} className="flex items-center gap-2 px-2 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
                             <item.icon className="h-4 w-4" />
                             {item.label}
                           </Link>
-                        </DropdownMenuItem>
-                      ))}
-                      {link.label === "Resources" && resourcesItems.map((item, idx) => (
-                        <DropdownMenuItem key={idx} asChild>
-                          <Link to={item.href} className="flex items-center gap-2 cursor-pointer">
+                        ))}
+                        {link.label === "Resources" && resourcesItems.map((item, idx) => (
+                          <Link key={idx} to={item.href} className="flex items-center gap-2 px-2 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors">
                             <item.icon className="h-4 w-4" />
                             {item.label}
                           </Link>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <Link
                     key={link.label}

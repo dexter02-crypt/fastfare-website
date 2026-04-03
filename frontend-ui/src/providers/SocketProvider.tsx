@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { API_BASE_URL } from '@/config';
 import { toast } from 'sonner';
+import { authApi } from '@/lib/api';
 
 interface SocketContextType {
     socket: Socket | null;
@@ -26,6 +27,15 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         socket.on('connect', () => {
             console.log('Global socket connected');
             socket.emit('join_dashboard');
+            
+            // Join specific role rooms
+            const user = authApi.getCurrentUser();
+            if (user) {
+                socket.emit('join_user', { userId: user._id || user.id });
+                if (user.role === 'shipment_partner') {
+                    socket.emit('join_partner', { partnerId: user._id || user.id });
+                }
+            }
         });
 
         // Handle global real-time cache invalidation and toasts
@@ -44,6 +54,16 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         socket.on('shipment_status_updated', (data) => {
             queryClient.invalidateQueries({ queryKey: ['shipments'] });
             toast.info(`Shipment status updated`);
+        });
+
+        socket.on('shipment_accepted', (data) => {
+            queryClient.invalidateQueries({ queryKey: ['shipments'] });
+            toast.success(`Shipment ${data.awb} has been accepted!`);
+        });
+
+        socket.on('shipment_in_transit', (data) => {
+            queryClient.invalidateQueries({ queryKey: ['shipments'] });
+            toast.info(`Shipment ${data.awb} is now in transit.`);
         });
 
         socket.on('notification_received', (data) => {

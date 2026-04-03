@@ -746,6 +746,14 @@ router.put('/carrier/:id/accept', protect, requirePartner, async (req, res) => {
         });
         await shipment.save();
 
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`partner_${req.user._id}`).emit('shipment_accepted', shipment);
+            if (shipment.user) {
+                io.to(`user_${shipment.user}`).emit('shipment_accepted', shipment);
+            }
+        }
+
         res.json({ success: true, message: 'Shipment accepted', shipment });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -872,6 +880,13 @@ router.put('/carrier/:id/update-status', protect, requirePartner, async (req, re
                 status,
                 timestamp: new Date()
             });
+
+            if (status === 'in_transit') {
+                io.to(`partner_${req.user._id}`).emit('shipment_in_transit', shipment);
+                if (shipment.user) {
+                    io.to(`user_${shipment.user}`).emit('shipment_in_transit', shipment);
+                }
+            }
         }
 
         // Fire webhook for status change

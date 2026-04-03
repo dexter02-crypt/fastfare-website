@@ -38,6 +38,12 @@ router.get('/init', protect, async (req, res) => {
             verification_source: 'DigiLocker'
         });
 
+        // Set status to in_progress per Issue 1
+        await User.findByIdAndUpdate(req.user._id, {
+            digilocker_status: 'in_progress',
+            digilocker_initiated_at: new Date()
+        });
+
         const clientId = process.env.DIGILOCKER_CLIENT_ID;
         const redirectUri = process.env.DIGILOCKER_REDIRECT_URI;
         
@@ -291,6 +297,7 @@ router.get('/callback', async (req, res) => {
             user.kyc_dob = kycDob;
             user.kyc_gender = kycGender;
             user.kyc_status = "verified";
+            user.digilocker_status = "verified";
 
             user.kyc = {
                 ...user.kyc,
@@ -363,16 +370,28 @@ router.get('/callback', async (req, res) => {
 // Route: GET /api/auth/digilocker/status
 router.get('/status', protect, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('digilocker_verified digilocker_verified_at kyc_name kyc_status');
+        const user = await User.findById(req.user.id).select('digilocker_verified digilocker_verified_at kyc_name kyc_status digilocker_status digilocker_initiated_at');
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Timeout fallback: 30 minutes
+        let currentStatus = user.digilocker_status || 'not_started';
+        if (currentStatus === 'in_progress' && user.digilocker_initiated_at) {
+            const timeDiff = Date.now() - new Date(user.digilocker_initiated_at).getTime();
+            if (timeDiff > 30 * 60 * 1000) {
+                currentStatus = 'not_started';
+                await User.findByIdAndUpdate(req.user.id, {
+                    digilocker_status: 'not_started'
+                });
+            }
         }
 
         res.json({
             digilocker_verified: !!user.digilocker_verified,
             digilocker_verified_at: user.digilocker_verified_at ? user.digilocker_verified_at.toISOString() : null,
             kyc_name: user.kyc_name || null,
-            kyc_status: user.digilocker_verified ? 'verified' : (user.kyc_status || 'not_started')
+            kyc_status: user.digilocker_verified ? 'verified' : currentStatus
         });
     } catch (error) {
         console.error('DigiLocker Status fetch error:', error);
