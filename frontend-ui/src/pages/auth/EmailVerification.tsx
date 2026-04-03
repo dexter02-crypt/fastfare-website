@@ -123,8 +123,6 @@ const EmailVerification = () => {
       // Store token and user info
       localStorage.setItem("token", registerData.token);
       localStorage.setItem("user", JSON.stringify(registerData.user));
-      localStorage.setItem("kycStatus", "pending");
-      localStorage.setItem("kycSkippedAt", new Date().toISOString());
 
       toast({
         title: "Registration Successful! 🎉",

@@ -106,6 +106,9 @@ export const authApi = {
     logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        // Clean up any orphaned KYC localStorage keys
+        localStorage.removeItem('kycStatus');
+        localStorage.removeItem('kycSkippedAt');
     },
 
     getCurrentUser: () => {

@@ -324,8 +324,6 @@ const RegisterUser = () => {
             // Store token and user info
             localStorage.setItem("token", data.token);
             localStorage.setItem("user", JSON.stringify(data.user));
-            localStorage.setItem("kycStatus", kycSuccess ? "verified" : "pending");
-            localStorage.setItem("kycSkippedAt", new Date().toISOString());
 
             sessionStorage.removeItem("ff_pending_registration");
             sessionStorage.removeItem("ff_pending_reg_id");

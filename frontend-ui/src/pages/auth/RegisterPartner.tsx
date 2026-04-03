@@ -293,8 +293,6 @@ const RegisterPartner = () => {
             // Store token and user info
             localStorage.setItem("token", data.token);
             localStorage.setItem("user", JSON.stringify(data.partner || data.user));
-            localStorage.setItem("kycStatus", "pending");
-            localStorage.setItem("kycSkippedAt", new Date().toISOString());
 
             toast({
                 title: "Registration Submitted! 🎉",

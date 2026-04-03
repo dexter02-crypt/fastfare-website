@@ -99,7 +99,6 @@ const KYCVerification = () => {
       if (response.ok) {
         const data = await response.json();
         setKycStatus(data.kyc);
-        setKycStatus(data.kyc);
 
         // If already verified, show complete step
         if (data.kyc.status === "verified" || data.kyc?.digilocker?.status === "verified") {
@@ -406,10 +405,6 @@ const KYCVerification = () => {
                   const user = JSON.parse(localStorage.getItem("user") || "{}");
                   user.kycSkipped = true;
                   localStorage.setItem("user", JSON.stringify(user));
-
-                  // Set keys for Dashboard reminder
-                  localStorage.setItem("kycStatus", "pending");
-                  localStorage.setItem("kycSkippedAt", new Date().toISOString());
 
                   navigate("/dashboard");
                 }

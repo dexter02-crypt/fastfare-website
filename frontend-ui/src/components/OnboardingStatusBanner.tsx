@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
 import { Info, Clock, X, Loader2 } from 'lucide-react';
 import { useDigilocker } from '@/contexts/DigilockerContext';
-import { digilockerApi } from '@/lib/api';
+import { digilockerApi, authApi } from '@/lib/api';
 import { toast } from 'sonner';
 
 /**
  * DigiLocker verification banner.
  *
- * Reads from global DigilockerContext – renders nothing while loading or
- * when the user is already verified.  Dismissible per browser session.
+ * Reads from DigilockerContext (which fetches per-user from the backend).
+ * Renders nothing while loading or when the user is already verified.
+ * Dismissible per user per browser session (keyed by user ID).
  */
 const OnboardingStatusBanner: React.FC = () => {
     const { digilocker_verified, kyc_status, loading } = useDigilocker();
+    const currentUser = authApi.getCurrentUser();
+    const dismissKey = `digilocker_banner_dismissed_${currentUser?.id || currentUser?._id || 'unknown'}`;
     const [dismissed, setDismissed] = useState(() =>
-        sessionStorage.getItem('digilocker_banner_dismissed') === 'true'
+        sessionStorage.getItem(dismissKey) === 'true'
     );
     const [initLoading, setInitLoading] = useState(false);
 
@@ -23,7 +26,7 @@ const OnboardingStatusBanner: React.FC = () => {
     if (dismissed) return null;
 
     const handleDismiss = () => {
-        sessionStorage.setItem('digilocker_banner_dismissed', 'true');
+        sessionStorage.setItem(dismissKey, 'true');
         setDismissed(true);
     };
 
