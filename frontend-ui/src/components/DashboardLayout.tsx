@@ -17,8 +17,7 @@ import { Bell, Search, Menu, X, User, Settings, LogOut, AlertTriangle } from "lu
 import DashboardSidebar from "./DashboardSidebar";
 import Header from "./Header";
 import MobileBottomNav from "./MobileBottomNav";
-import { authApi } from "@/lib/api";
-import OnboardingStatusBanner from "./OnboardingStatusBanner";
+import { authApi, digilockerApi } from "@/lib/api";
 import { useDigilocker } from "@/contexts/DigilockerContext";
 import { toast } from "sonner";
 
@@ -35,6 +34,32 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const [searchQuery, setSearchQuery] = useState("");
     const user = authApi.getCurrentUser();
     const { markVerified } = useDigilocker();
+    const [currentUserDigilockerStatus, setCurrentUserDigilockerStatus] = useState<'not_started' | 'in_progress' | 'verified'>('not_started');
+
+    useEffect(() => {
+        let isMounted = true;
+        let pollingInterval: NodeJS.Timeout;
+
+        const checkStatus = async () => {
+            try {
+                if (!authApi.isAuthenticated()) return;
+                const data = await digilockerApi.getStatus();
+                if (isMounted && data) {
+                    setCurrentUserDigilockerStatus(data.kyc_status as any);
+                }
+            } catch {
+                if (isMounted) setCurrentUserDigilockerStatus('not_started');
+            }
+        };
+
+        checkStatus();
+        pollingInterval = setInterval(checkStatus, 10000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(pollingInterval);
+        };
+    }, []);
 
     // ── Handle ?kyc_success=true callback from DigiLocker ──
     useEffect(() => {
@@ -124,9 +149,28 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     </div>
                 )}
 
-                {/* DigiLocker Onboarding Banner — context-driven */}
+                {/* DigiLocker Verification Banner — ONLY shows if THIS user's DB status is 'in_progress' */}
                 <div className="mx-4 lg:mx-6 mt-4">
-                    <OnboardingStatusBanner />
+                    {currentUserDigilockerStatus === 'in_progress' && (
+                      <div style={{
+                        background: '#fef9e7',
+                        border: '1px solid #f0c040',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        marginBottom: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px'
+                      }}>
+                        <span style={{ color: '#b7791f' }}>⏱</span>
+                        <div>
+                          <strong style={{ color: '#b7791f' }}>Verification In Progress</strong>
+                          <p style={{ color: '#b7791f', margin: 0, fontSize: '14px' }}>
+                            Your DigiLocker verification is being processed. This usually takes a few minutes.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                 </div>
 
                 {/* Page Content */}

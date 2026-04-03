@@ -59,15 +59,7 @@ export const DigilockerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         fetchStatus();
     }, [fetchStatus]);
 
-    useEffect(() => {
-        if (state.kyc_status === 'in_progress' && !state.digilocker_verified) {
-            const interval = setInterval(() => {
-                fetchStatus();
-            }, 10000);
-            return () => clearInterval(interval);
-        }
-    }, [state.kyc_status, state.digilocker_verified, fetchStatus]);
-
+    // Removed background in_progress polling; DashboardLayout now handles it exclusively.
     const markVerified = useCallback(() => {
         setState(prev => ({
             ...prev,
