@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Search, Package, MapPin, Clock, CheckCircle, Eye, Truck,
-  Loader2, Radio, User, Navigation, AlertCircle, Calendar, Phone, X, RefreshCw, XCircle
+  Loader2, Radio, User, Navigation, AlertCircle, Calendar, Phone, X, RefreshCw, XCircle, LayoutGrid, List
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +23,7 @@ import { authApi } from "@/lib/api";
 import DashboardLayout from "@/components/DashboardLayout";
 import { API_BASE_URL } from "@/config";
 import { motion, AnimatePresence } from "framer-motion";
+import { StagePipeline } from "@/components/orders/StagePipeline";
 
 interface ParcelData {
   _id: string;
@@ -202,7 +204,56 @@ const PartnerOrders = () => {
   const location = useLocation();
   const { toast } = useToast();
   const user = authApi.getCurrentUser();
+  const queryClient = useQueryClient();
   const [viewType, setViewType] = useState<"scans" | "shipments">("scans");
+  
+  // View mode: 'list' or 'kanban' for orders
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  const userRole = user?.role === 'admin' ? 'admin' : 'partner';
+
+  // Fetch orders by stage for Kanban view
+  const { data: directShipmentData } = useQuery({
+    queryKey: ['orders-by-stage', 'direct_shipment'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/orders/my-orders?stage=direct_shipment`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      return data.orders || [];
+    },
+    enabled: viewMode === 'kanban'
+  });
+
+  const { data: warehouseData } = useQuery({
+    queryKey: ['orders-by-stage', 'warehouse_scans'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/orders/my-orders?stage=warehouse_scans`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      return data.orders || [];
+    },
+    enabled: viewMode === 'kanban'
+  });
+
+  // Handle stage update from Kanban
+  const handleStageUpdate = async (orderId: string, newStage: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/orders/${orderId}/stage`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ stage: newStage })
+      });
+      if (!res.ok) throw new Error('Failed');
+      queryClient.invalidateQueries({ queryKey: ['orders-by-stage'] });
+      toast({ title: 'Success', description: 'Order stage updated' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update stage' });
+    }
+  };
 
   // Read query parameters
   useEffect(() => {
@@ -535,6 +586,27 @@ const PartnerOrders = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1 border rounded-lg p-1">
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                className="gap-1"
+                onClick={() => setViewMode("list")}
+              >
+                <List className="h-4 w-4" />
+                List
+              </Button>
+              <Button
+                variant={viewMode === "kanban" ? "default" : "ghost"}
+                size="sm"
+                className="gap-1"
+                onClick={() => setViewMode("kanban")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                Kanban
+              </Button>
+            </div>
             <Button
               variant="outline"
               className="gap-2"
@@ -568,6 +640,18 @@ const PartnerOrders = () => {
             </button>
           )}
         </div>
+
+        {/* Kanban View - StagePipeline */}
+        {viewMode === "kanban" && (
+          <StagePipeline
+            orders={[
+              ...(directShipmentData || []),
+              ...(warehouseData || [])
+            ]}
+            userRole={userRole}
+            onStageUpdate={handleStageUpdate}
+          />
+        )}
 
         {viewType === "scans" ? (
           <>

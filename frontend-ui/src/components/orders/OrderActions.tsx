@@ -9,12 +9,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
     MoreVertical, Eye, Edit, Truck, CheckCircle2,
     Printer, Copy, XCircle, Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "@/config";
+import { toast } from 'sonner';
 
 // Import our Dialogs and Sheets components
 import {
@@ -68,8 +70,15 @@ export const OrderActions: React.FC<OrderActionsProps> = ({ order, onOrderUpdate
     const canConfirm = ['New', 'Pending'].includes(st);
     const canCancel = ['New', 'Pending', 'Confirmed', 'Processing'].includes(st);
 
+    // Confirmation dialog state
+    const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState('');
+    const [isUpdating, setIsUpdating] = useState(false);
+
     // Api Handlers
     const handleStatusUpdate = async (newStatus: string) => {
+        setConfirmDialogOpen(false);
+        setIsUpdating(true);
         try {
             const token = localStorage.getItem('token');
             const res = await fetch(`${API_BASE_URL}/api/orders/${order._id}/status`, {
@@ -81,24 +90,33 @@ export const OrderActions: React.FC<OrderActionsProps> = ({ order, onOrderUpdate
 
             if (data.success) {
                 onOrderUpdate(data.order);
-                toast({
-                    title: 'Success',
-                    description: `Order ${order.orderId} marked as ${newStatus}`,
-                    className: "bg-green-50 border-green-200"
-                });
+                toast.success('Status updated and customer notified via email');
             } else {
                 throw new Error(data.message);
             }
         } catch (e: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: e.message || `Failed to mark as ${newStatus}`
-            });
+            toast.error('Status update failed. Please try again.');
+        } finally {
+            setIsUpdating(false);
+            setPendingStatus('');
         }
     };
 
+    const handleStatusClick = (newStatus: string) => {
+        setPendingStatus(newStatus);
+        setConfirmDialogOpen(true);
+    };
+
     const handleDuplicate = async () => {
+        // Check minimum order value
+        if (order.orderValue < 150) {
+            toast({
+                variant: 'destructive',
+                title: 'Order value too low',
+                description: 'Orders below ₹150 cannot be processed. Please increase the order value to continue.'
+            });
+            return;
+        }
         setIsDuplicating(true);
         try {
             const token = localStorage.getItem('token');
@@ -140,6 +158,15 @@ export const OrderActions: React.FC<OrderActionsProps> = ({ order, onOrderUpdate
     };
 
     const handleSaveEdit = async () => {
+        // Check minimum order value
+        if (editForm.orderValue < 150) {
+            toast({
+                variant: 'destructive',
+                title: 'Order value too low',
+                description: 'Orders below ₹150 cannot be processed. Please increase the order value to continue.'
+            });
+            return;
+        }
         setIsSavingEdit(true);
         try {
             const token = localStorage.getItem('token');
@@ -328,6 +355,37 @@ export const OrderActions: React.FC<OrderActionsProps> = ({ order, onOrderUpdate
                         <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
+                                onClick={() => handleStatusClick('Accepted')}
+                                className="cursor-pointer py-2.5 text-blue-600"
+                            >
+                                <Truck className="h-4 w-4 mr-2" /> Mark Accepted
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => handleStatusClick('in_transit')}
+                                className="cursor-pointer py-2.5 text-orange-600"
+                            >
+                                <Truck className="h-4 w-4 mr-2" /> Mark In Transit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => handleStatusClick('out_for_delivery')}
+                                className="cursor-pointer py-2.5 text-indigo-600"
+                            >
+                                <Truck className="h-4 w-4 mr-2" /> Out for Delivery
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => handleStatusClick('delivered')}
+                                className="cursor-pointer py-2.5 text-green-600"
+                            >
+                                <CheckCircle2 className="h-4 w-4 mr-2" /> Mark Delivered
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => handleStatusClick('failed_delivery')}
+                                className="cursor-pointer py-2.5 text-red-600"
+                            >
+                                <XCircle className="h-4 w-4 mr-2" /> Failed Delivery
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
                                 onClick={() => setIsCancelOpen(true)}
                                 className="cursor-pointer py-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 focus:text-red-700 focus:bg-red-50"
                             >
@@ -474,6 +532,26 @@ export const OrderActions: React.FC<OrderActionsProps> = ({ order, onOrderUpdate
                             disabled={isCancelling}
                         >
                             {isCancelling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null} Yes, Cancel Order
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Status Update Confirmation Dialog */}
+            <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Status Update</DialogTitle>
+                        <DialogDescription>
+                            Update order #{order.orderId} status to {pendingStatus}? An email notification will be sent to the customer.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={() => handleStatusUpdate(pendingStatus)} disabled={isUpdating}>
+                            {isUpdating ? 'Updating...' : 'Confirm'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

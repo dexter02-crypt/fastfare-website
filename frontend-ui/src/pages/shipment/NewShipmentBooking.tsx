@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert } from "@/components/ui/alert";
 import { ArrowLeft, ArrowRight, Package } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -97,6 +98,13 @@ const NewShipmentBooking = () => {
 
   // Wallet sufficiency state
   const [isWalletSufficient, setIsWalletSufficient] = useState(true);
+
+  // Minimum order value validation
+  const calculateTotalOrderValue = () => {
+    return packageData.packages.reduce((sum, p) => sum + (p.value || 0) * p.quantity, 0);
+  };
+  const orderValue = calculateTotalOrderValue();
+  const isBelowMinimum = orderValue > 0 && orderValue < 150;
 
   const handleNext = async () => {
     if (currentStep < 4) {
@@ -270,7 +278,7 @@ const NewShipmentBooking = () => {
         const validCod = packageData.paymentMode === 'cod' ? (packageData.codAmount > 0 && packageData.codAmount <= 100000) : true;
         return packageData.contentType && packageData.packages.length > 0 && validCod;
       case 4:
-        return termsAccepted && serviceData.carrier && isWalletSufficient;
+        return termsAccepted && serviceData.carrier && isWalletSufficient && !isBelowMinimum;
       default:
         return false;
     }
@@ -427,6 +435,14 @@ const NewShipmentBooking = () => {
               )}
             </Button>
           </div>
+          
+          {/* Minimum Order Value Warning */}
+          {currentStep === 4 && isBelowMinimum && (
+            <Alert variant="destructive" className="mt-4">
+              <Package className="h-4 w-4" />
+              <span className="ml-2">Orders below ₹150 cannot be processed. Please increase the order value to continue.</span>
+            </Alert>
+          )}
         </div>
       </main>
 

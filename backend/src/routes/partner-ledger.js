@@ -1,8 +1,10 @@
 import express from 'express';
 import { protect, admin, requireApproved, requirePayoutEligible } from '../middleware/auth.js';
 import PartnerLedger from '../models/PartnerLedger.js';
+import Settlement from '../models/Settlement.js';
 import WithdrawalRequest from '../models/WithdrawalRequest.js';
 import Shipment from '../models/Shipment.js';
+import Order from '../models/Order.js';
 
 const router = express.Router();
 
@@ -760,6 +762,111 @@ router.post('/payouts/webhook', async (req, res) => {
     } catch (error) {
         console.error('Payout Webhook Error:', error);
         res.status(500).send('Internal Error');
+    }
+});
+
+// ══════════════════════════════════════════════════════
+// GET /api/partner/settlements
+// Partner's settlements with pagination
+// ══════════════════════════════════════════════════════
+router.get('/settlements', protect, async (req, res) => {
+    try {
+        if (req.user.role !== 'shipment_partner' && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Partner access only' });
+        }
+
+        const { page = 1, limit = 20, status, startDate, endDate } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const partnerId = req.user._id;
+
+        const query = { partnerId };
+        if (status) query.settlementStatus = status;
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) query.createdAt.$gte = new Date(startDate);
+            if (endDate) query.createdAt.$lte = new Date(endDate);
+        }
+
+        const [settlements, total] = await Promise.all([
+            Settlement.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit))
+                .populate('orderId', 'orderId customer address')
+                .lean(),
+            Settlement.countDocuments(query)
+        ]);
+
+        res.json({
+            success: true,
+            settlements: settlements.map(s => ({
+                _id: s._id,
+                orderId: s.orderId?._id,
+                orderNumber: s.orderId?.orderId,
+                customerName: s.orderId?.customer?.name,
+                customerAddress: s.orderId?.address,
+                orderValue: s.orderValue,
+                platformFee: s.platformFee,
+                netAmount: s.netAmount,
+                settlementStatus: s.settlementStatus,
+                payoutDate: s.payoutDate,
+                orderType: s.orderType,
+                createdAt: s.createdAt
+            })),
+            pagination: { 
+                page: parseInt(page), 
+                limit: parseInt(limit), 
+                total, 
+                pages: Math.ceil(total / parseInt(limit)) 
+            }
+        });
+    } catch (error) {
+        console.error('Partner settlements error:', error);
+        res.status(500).json({ error: 'Server error fetching settlements' });
+    }
+});
+
+// ══════════════════════════════════════════════════════
+// GET /api/partner/settlements/summary
+// Settlement summary for partner dashboard
+// ══════════════════════════════════════════════════════
+router.get('/settlements/summary', protect, async (req, res) => {
+    try {
+        if (req.user.role !== 'shipment_partner' && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Partner access only' });
+        }
+
+        const partnerId = req.user._id;
+        const monthStart = new Date();
+        monthStart.setDate(1);
+        monthStart.setHours(0, 0, 0, 0);
+
+        const [monthlyAgg, pendingAgg, paidAgg] = await Promise.all([
+            Settlement.aggregate([
+                { $match: { partnerId, createdAt: { $gte: monthStart } } },
+                { $group: { _id: null, total: { $sum: '$netAmount' } } }
+            ]),
+            Settlement.aggregate([
+                { $match: { partnerId, settlementStatus: 'pending' } },
+                { $group: { _id: null, total: { $sum: '$netAmount' } } }
+            ]),
+            Settlement.aggregate([
+                { $match: { partnerId, settlementStatus: 'paid' } },
+                { $group: { _id: null, total: { $sum: '$netAmount' } } }
+            ])
+        ]);
+
+        res.json({
+            success: true,
+            summary: {
+                thisMonthEarnings: monthlyAgg[0]?.total || 0,
+                totalPending: pendingAgg[0]?.total || 0,
+                totalPaidOut: paidAgg[0]?.total || 0
+            }
+        });
+    } catch (error) {
+        console.error('Settlement summary error:', error);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

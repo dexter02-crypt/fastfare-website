@@ -32,6 +32,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import ReportPlaceholderCard from "@/components/reports/ReportPlaceholderCard";
 
 const COLORS = ['#22c55e', '#f59e0b', '#ef4444', '#3b82f6'];
 
@@ -698,6 +699,17 @@ const Reports = () => {
                         </div>
                     </CardContent>
                 </Card>
+
+                <Separator />
+
+                {/* Coming Soon Reports */}
+                <div className="space-y-4">
+                    <h2 className="text-xl font-semibold">Additional Reports</h2>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <ReportPlaceholderCard title="GST Report" comingSoon={true} />
+                        <ReportPlaceholderCard title="COD Remittance" comingSoon={true} />
+                    </div>
+                </div>
             </div>
         </DashboardLayout>
     );

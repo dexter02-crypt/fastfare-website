@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import GettingStarted from "@/components/dashboard/GettingStarted";
 import DashboardSummary from "@/components/dashboard/DashboardSummary";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useOrderSocket } from "@/hooks/useOrderSocket";
 import {
   Package, TrendingUp, Clock, CheckCircle, AlertTriangle, Truck,
   Plus, Search, Bell, ArrowUpRight, ArrowDownRight, ArrowRight, BarChart3,
@@ -28,6 +29,14 @@ const OrganizationDashboard = () => {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [kycCompleted] = useState(false);
   const [walletRecharged] = useState(false);
+  
+  // Get current user for socket connection
+  const currentUser = authApi.getCurrentUser();
+  const userId = currentUser?._id;
+  const userRole = currentUser?.role || 'user';
+  
+  // Initialize socket listeners for real-time order updates
+  useOrderSocket(userId, userRole as 'user' | 'partner' | 'admin');
   const [firstOrderPlaced] = useState(false);
 
   const [dateRange, setDateRange] = useState("today");
