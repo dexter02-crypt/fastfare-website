@@ -45,7 +45,9 @@ export const seedAdmin = async () => {
                 console.warn('⚠️  ADMIN_EMAIL/ADMIN_PASSWORD not set — skipping seed');
                 return;
             }
-            const exists = await User.findOne({ email: adminEmail });
+            const exists = await User.findOne({ 
+                $or: [{ email: adminEmail }, { role: 'admin' }, { phone: TEST_ACCOUNTS[0].phone }] 
+            });
             if (!exists) {
                 await User.create({
                     ...TEST_ACCOUNTS[0],
@@ -53,6 +55,8 @@ export const seedAdmin = async () => {
                     password: adminPassword
                 });
                 console.log(`✅ Admin created: ${adminEmail}`);
+            } else {
+                console.log(`ℹ️ Admin account or seed data already exists — skipping seed`);
             }
             return;
         }
