@@ -7,30 +7,28 @@ let ioInstance;
 // Initialize socket handlers
 export const initSocket = (io) => {
     ioInstance = io;
-    // Authentication middleware
+    // Non-blocking authentication middleware — attaches user if token present
     io.use(async (socket, next) => {
         try {
-            const token = socket.handshake.auth.token;
-            if (!token) {
-                return next(new Error('Authentication required'));
+            const token = socket.handshake.auth?.token;
+            if (token) {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                const user = await User.findById(decoded.id).select('-password');
+                if (user) {
+                    socket.user = user;
+                }
             }
-
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            const user = await User.findById(decoded.id).select('-password');
-            
-            if (!user) {
-                return next(new Error('User not found'));
-            }
-
-            socket.user = user;
-            next();
         } catch (error) {
-            next(new Error('Authentication failed'));
+            // Token invalid/expired — continue without user (don't block)
+            console.log('Socket auth skip:', error.message);
         }
+        next();
     });
 
     io.on('connection', (socket) => {
         const user = socket.user;
+        if (!user) return; // Not an authenticated web-app connection — skip room joining
+
         const userId = user._id.toString();
         const role = user.role;
 
@@ -44,6 +42,11 @@ export const initSocket = (io) => {
         }
 
         console.log(`Socket connected: ${user.email} (${role})`);
+
+        // Handle explicit room join from frontend
+        socket.on('join', (room) => {
+            socket.join(room);
+        });
 
         // Handle disconnect
         socket.on('disconnect', () => {
