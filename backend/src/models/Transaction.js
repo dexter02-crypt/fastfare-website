@@ -51,6 +51,7 @@ const transactionSchema = new mongoose.Schema({
     // Idempotency key to prevent duplicate processing
     idempotencyKey: {
         type: String,
+        unique: true,
         sparse: true
     },
     createdAt: {
@@ -61,6 +62,5 @@ const transactionSchema = new mongoose.Schema({
 
 transactionSchema.index({ userId: 1, createdAt: -1 });
 transactionSchema.index({ shipmentId: 1 });
-transactionSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model('Transaction', transactionSchema);

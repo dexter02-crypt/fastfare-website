@@ -34,7 +34,6 @@ const partnerPricingSchema = new mongoose.Schema({
 });
 
 // Index for fast lookups
-partnerPricingSchema.index({ partnerId: 1 });
 partnerPricingSchema.index({ 'coverage.states': 1 });
 
 const PartnerPricing = mongoose.model('PartnerPricing', partnerPricingSchema);

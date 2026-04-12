@@ -4,7 +4,6 @@ import Parcel from '../models/Parcel.js';
 const TEST_ACCOUNTS = [
     {
         businessName: 'FastFare Admin',
-        gstin: 'ADMIN000000000',
         businessType: 'logistics',
         contactPerson: 'System Admin',
         email: 'admin@fastfare.com',
