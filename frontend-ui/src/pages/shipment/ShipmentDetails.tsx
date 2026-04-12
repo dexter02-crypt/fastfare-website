@@ -191,34 +191,55 @@ const ShipmentDetails = () => {
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      // The exact shipment ID tracking room name depends on backend logic,
-      // But typically we can just listen globally to the location broadcast
-      // or join a specific tracking room if the backend requires it.
+      // Join tracking rooms for driver location
       socket.emit("join_tracking", `tracking_${shipment._id}`);
-      socket.emit("join_tracking", shipment._id); // Also try raw ID
+      socket.emit("join_tracking", shipment._id);
+      // Join shipment-specific room for real-time status updates from partner
+      socket.emit("join_shipment", shipment._id);
     });
 
-    socket.on("shipment_status_updated", (data: any) => {
-      if (data.shipmentId === shipment._id) {
-        setShipment(prev => prev ? { ...prev, status: data.status } : null);
-        toast({ title: "Status Updated", description: "Shipment status changed to " + formatStatus(data.status) });
+    // Real-time status + tracking history update from partner
+    socket.on("shipment_status_update", (data: { shipmentId: string; status: string; trackingHistory?: TrackingEvent[]; updatedAt: string }) => {
+      if (data.shipmentId !== shipment._id) return;
+      setShipment(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          status: data.status,
+          ...(data.trackingHistory ? { trackingHistory: data.trackingHistory } : {}),
+        };
+      });
+      const label = data.status.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+      toast({ title: "📦 Status Updated", description: `Shipment status: ${label}` });
+    });
+
+    // Legacy global status update handler
+    socket.on("shipment_status_updated", (data: { shipmentId?: string; shipment_id?: string; status?: string; new_status?: string }) => {
+      const sid = data.shipmentId || data.shipment_id;
+      const newStatus = data.status || data.new_status;
+      if (sid === shipment._id && newStatus) {
+        setShipment(prev => prev ? { ...prev, status: newStatus } : null);
+        toast({ title: "Status Updated", description: "Shipment status changed to " + formatStatus(newStatus) });
       }
     });
 
-    socket.on("driver_location_broadcast", (data: any) => {
+    socket.on("driver_location_broadcast", (data: { driver_id: string; lat: number; lng: number }) => {
       if (shipment.assigned_driver_id && data.driver_id === shipment.assigned_driver_id) {
         setDriverLocation({ lat: data.lat, lng: data.lng });
       }
     });
 
     // Handle generic locationUpdate from older implementation
-    socket.on("locationUpdate", (data: any) => {
+    socket.on("locationUpdate", (data: { driverId?: string; driver_id?: string; lat: number; lng: number }) => {
       if (data.driverId === shipment.assigned_driver_id || data.driver_id === shipment.assigned_driver_id) {
         setDriverLocation({ lat: data.lat, lng: data.lng });
       }
     });
 
-    return () => { socket.disconnect(); };
+    return () => {
+      socket.emit("leave_shipment", shipment._id);
+      socket.disconnect();
+    };
   }, [shipment?._id, shipment?.assigned_driver_id]);
 
   // Live Map Initializer

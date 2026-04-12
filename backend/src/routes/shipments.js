@@ -686,7 +686,7 @@ router.get('/carrier/incoming', protect, requirePartner, async (req, res) => {
             const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
             query.status = statuses.length > 1 ? { $in: statuses } : statuses[0];
         } else {
-            query.status = { $in: ['pending_acceptance', 'accepted', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery'] };
+            query.status = { $in: ['payment_received', 'partner_assigned', 'pending_acceptance', 'accepted', 'pickup_scheduled', 'picked_up', 'in_transit', 'out_for_delivery'] };
         }
 
         const shipments = await Shipment.find(query)
@@ -828,7 +828,8 @@ router.put('/carrier/:id/update-status', protect, requirePartner, async (req, re
         const currentIdx = statusOrder.indexOf(shipment.status);
         const newIdx = statusOrder.indexOf(status);
 
-        if (newIdx <= currentIdx) {
+        // Allow forward transitions; also allow jumping from partner_assigned/payment_received to pickup_scheduled
+        if (newIdx <= currentIdx && !['partner_assigned', 'payment_received'].includes(shipment.status)) {
             return res.status(400).json({
                 success: false,
                 message: `Cannot transition from '${shipment.status}' to '${status}'`
@@ -872,6 +873,7 @@ router.put('/carrier/:id/update-status', protect, requirePartner, async (req, re
                 shipmentId: shipment._id,
                 awb: shipment.awb,
                 status,
+                trackingHistory: shipment.trackingHistory,
                 timestamp: new Date()
             });
             io.emit('shipment_update', {
@@ -879,6 +881,14 @@ router.put('/carrier/:id/update-status', protect, requirePartner, async (req, re
                 awb: shipment.awb,
                 status,
                 timestamp: new Date()
+            });
+
+            // Emit to shipment-specific room for real-time user tracking
+            io.to(`shipment_${shipment._id}`).emit('shipment_status_update', {
+                shipmentId: shipment._id,
+                status,
+                trackingHistory: shipment.trackingHistory,
+                updatedAt: new Date()
             });
 
             if (status === 'in_transit') {

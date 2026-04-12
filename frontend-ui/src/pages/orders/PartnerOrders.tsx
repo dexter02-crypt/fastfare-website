@@ -388,7 +388,7 @@ const PartnerOrders = () => {
     try {
       const token = localStorage.getItem("token");
       const statusMap: Record<string, string> = {
-        new: "pending_acceptance",
+        new: "pending_acceptance,partner_assigned,payment_received",
         active: "accepted,pickup_scheduled,picked_up",
         transit: "in_transit,out_for_delivery",
         completed: "delivered",
@@ -500,6 +500,8 @@ const PartnerOrders = () => {
 
   const getNextStatusAction = (status: string) => {
     const map: Record<string, { label: string; nextStatus: string; icon: any; isSchedule?: boolean }> = {
+      partner_assigned: { label: "Schedule Pickup", nextStatus: "pickup_scheduled", icon: Calendar, isSchedule: true },
+      payment_received: { label: "Schedule Pickup", nextStatus: "pickup_scheduled", icon: Calendar, isSchedule: true },
       accepted: { label: "Schedule Pickup", nextStatus: "pickup_scheduled", icon: Calendar, isSchedule: true },
       pickup_scheduled: { label: "Mark Picked Up", nextStatus: "picked_up", icon: Package },
       picked_up: { label: "Mark In Transit", nextStatus: "in_transit", icon: Truck },
@@ -511,6 +513,8 @@ const PartnerOrders = () => {
 
   const getShipmentStatusBadge = (status: string) => {
     const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      payment_received: { label: "Payment Received", variant: "default" },
+      partner_assigned: { label: "Assigned", variant: "default" },
       pending_acceptance: { label: "New", variant: "default" },
       accepted: { label: "Accepted", variant: "secondary" },
       pickup_scheduled: { label: "Pickup Scheduled", variant: "secondary" },

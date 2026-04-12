@@ -60,6 +60,16 @@ export const locationSocket = (io) => {
             socket.join(trackingId);
         });
 
+        // Join shipment-specific room for real-time status updates
+        socket.on('join_shipment', (shipmentId) => {
+            socket.join(`shipment_${shipmentId}`);
+            console.log(`[Socket] Client joined room: shipment_${shipmentId}`);
+        });
+
+        socket.on('leave_shipment', (shipmentId) => {
+            socket.leave(`shipment_${shipmentId}`);
+        });
+
         socket.on('join:fleet-room', () => {
             socket.join('fleet-room');
             console.log(`[Socket] Socket ${socket.id} joined fleet-room`);
