@@ -1,4 +1,4 @@
-﻿import { Resend } from 'resend';
+import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 import logger from '../../utils/logger.js';
 import * as templates from './templates/index.js';
@@ -78,30 +78,45 @@ const sendEmailFireAndForget = (to, subject, html, emailType, orderId) => {
 };
 
 export const sendOrderAssignmentToPartner = async (payload) => {
-    const subject = `New Order Assignment — Action Required | FastFare #${payload.orderId}`;
-    const html = templates.orderAssignmentTemplate({ ...payload, baseUrl: getBaseUrl() });
-    if (payload.partnerEmail) {
-        return sendEmail(payload.partnerEmail, subject, html, 'order_assignment_partner', payload.orderId);
+    try {
+        const subject = `New Order Assignment — Action Required | FastFare #${payload.orderId}`;
+        const html = templates.orderAssignmentTemplate({ ...payload, baseUrl: getBaseUrl() });
+        if (payload.partnerEmail) {
+            sendEmailFireAndForget(payload.partnerEmail, subject, html, 'order_assignment_partner', payload.orderId);
+        }
+    } catch (err) {
+        logger.error({ type: 'email_error', error: err.message });
     }
-    return { success: false, reason: 'No partner email' };
 };
 
 export const sendOrderConfirmationToUser = async (payload) => {
-    const subject = `Order Placed Successfully — Awaiting Partner Confirmation | FastFare #${payload.orderId}`;
-    const html = templates.orderConfirmationTemplate({ ...payload, baseUrl: getBaseUrl() });
-    return sendEmail(payload.userEmail, subject, html, 'order_confirmation_user', payload.orderId);
+    try {
+        const subject = `Order Placed Successfully — Awaiting Partner Confirmation | FastFare #${payload.orderId}`;
+        const html = templates.orderConfirmationTemplate({ ...payload, baseUrl: getBaseUrl() });
+        sendEmailFireAndForget(payload.userEmail, subject, html, 'order_confirmation_user', payload.orderId);
+    } catch (err) {
+        logger.error({ type: 'email_error', error: err.message });
+    }
 };
 
 export const sendOrderAcceptedToUser = async (payload) => {
-    const subject = `Great News! Your Order Has Been Accepted | FastFare #${payload.orderId}`;
-    const html = templates.orderAcceptedTemplate({ ...payload, baseUrl: getBaseUrl() });
-    return sendEmail(payload.userEmail, subject, html, 'order_accepted_user', payload.orderId);
+    try {
+        const subject = `Great News! Your Order Has Been Accepted | FastFare #${payload.orderId}`;
+        const html = templates.orderAcceptedTemplate({ ...payload, baseUrl: getBaseUrl() });
+        sendEmailFireAndForget(payload.userEmail, subject, html, 'order_accepted_user', payload.orderId);
+    } catch (err) {
+        logger.error({ type: 'email_error', error: err.message });
+    }
 };
 
 export const sendOrderDeclinedToUser = async (payload) => {
-    const subject = `Order Update — Partner Unavailable | FastFare #${payload.orderId}`;
-    const html = templates.orderDeclinedTemplate({ ...payload, baseUrl: getBaseUrl() });
-    return sendEmail(payload.userEmail, subject, html, 'order_declined_user', payload.orderId);
+    try {
+        const subject = `Order Update — Partner Unavailable | FastFare #${payload.orderId}`;
+        const html = templates.orderDeclinedTemplate({ ...payload, baseUrl: getBaseUrl() });
+        sendEmailFireAndForget(payload.userEmail, subject, html, 'order_declined_user', payload.orderId);
+    } catch (err) {
+        logger.error({ type: 'email_error', error: err.message });
+    }
 };
 
 export const sendStatusUpdateToUser = async (payload) => {

@@ -324,13 +324,17 @@ const ShipmentDetails = () => {
       let customerProfile = JSON.parse(localStorage.getItem('user') || '{}');
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`${API_BASE_URL}/api/settings/organization`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const orgData = await response.json();
-        customerProfile = { ...customerProfile, ...orgData };
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/settings/organization`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          const orgData = await response.json();
+          customerProfile = { ...customerProfile, ...orgData };
+        }
+      } catch (fetchErr) {
+        console.warn("Could not fetch organization details, proceeding with local profile.", fetchErr);
       }
       
       toast({ title: "Processing PDF", description: "Please wait..." });
@@ -374,12 +378,16 @@ const ShipmentDetails = () => {
       toast({ title: "Loading Invoice", description: "Fetching details..." });
       let customerProfile = JSON.parse(localStorage.getItem('user') || '{}');
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/settings/organization`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const orgData = await response.json();
-        customerProfile = { ...customerProfile, ...orgData };
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/settings/organization`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const orgData = await response.json();
+          customerProfile = { ...customerProfile, ...orgData };
+        }
+      } catch(fetchErr) {
+        console.warn("Could not fetch organization details, proceeding with local profile.", fetchErr);
       }
       setInvoiceHtml(generateTaxInvoiceHTML(shipment, customerProfile, false));
       setShowInvoicePreview(true);

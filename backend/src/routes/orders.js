@@ -6,8 +6,8 @@ import User from '../models/User.js';
 import Settlement from '../models/Settlement.js';
 import { protect } from '../middleware/auth.js';
 import logger from '../utils/logger.js';
-import { notifyPartnerOrderAssignment, notifyUserOrderConfirmation, notifyUserOrderAccepted, notifyUserOrderDeclined, notifyUserStatusUpdate } from '../services/emailService/index.js';
-import { emitOrderAssignment, acceptOrder, declineOrder, emitInTransit } from '../services/socket.js';
+import { sendOrderAssignmentToPartner, sendOrderConfirmationToUser, sendOrderAcceptedToUser, sendOrderDeclinedToUser, notifyUserStatusUpdate } from '../services/emailService/index.js';
+import { emitOrderAssignment, emitOrderAccepted, emitOrderDeclined, emitInTransit } from '../services/socket.js';
 
 const router = express.Router();
 
@@ -190,7 +190,7 @@ router.post('/', protect, async (req, res) => {
         // Send email notifications (fire-and-forget)
         const user = await User.findById(req.user._id).select('email contactPerson businessName').lean();
         if (user?.email) {
-            notifyUserOrderConfirmation({
+            sendOrderConfirmationToUser({
                 orderId: newOrder.orderId,
                 userEmail: user.email,
                 userName: user.contactPerson || user.businessName || 'Customer',
@@ -205,7 +205,7 @@ router.post('/', protect, async (req, res) => {
         if (req.body.partnerId) {
             const partner = await User.findById(req.body.partnerId).select('email businessName contactPerson').lean();
             if (partner?.email) {
-                notifyPartnerOrderAssignment({
+                sendOrderAssignmentToPartner({
                     orderId: newOrder.orderId,
                     partnerEmail: partner.email,
                     partnerName: partner.businessName || partner.contactPerson || 'Partner',
@@ -369,7 +369,7 @@ router.patch('/:id/accept', protect, async (req, res) => {
         // Emit accepted event to user
         const io = req.app.get('io');
         if (io) {
-            acceptOrder(io, order._id.toString(), order.userId.toString());
+            emitOrderAccepted(io, order._id.toString(), order.userId.toString());
             io.to(`user:${order.userId}`).emit('order:accepted', {
                 orderId: order.orderId,
                 partnerName: req.user.businessName || req.user.contactPerson || 'Partner',
@@ -400,7 +400,7 @@ router.patch('/:id/decline', protect, async (req, res) => {
         // Emit declined event to user
         const io = req.app.get('io');
         if (io) {
-            declineOrder(io, order._id.toString(), order.userId.toString());
+            emitOrderDeclined(io, order._id.toString(), order.userId.toString());
             io.to(`user:${order.userId}`).emit('order:declined', {
                 orderId: order.orderId,
                 isAutoDeclined: false,
@@ -558,7 +558,7 @@ router.get('/summary', protect, async (req, res) => {
         
         const [total, active, delivered, pending] = await Promise.all([
             Order.countDocuments({ userId }),
-            Order.countDocuments({ userId, orderStatus: { $in: ['New', 'Pending', 'Confirmed', 'Processing', 'Shipped'] }),
+            Order.countDocuments({ userId, orderStatus: { $in: ['New', 'Pending', 'Confirmed', 'Processing', 'Shipped'] } }),
             Order.countDocuments({ userId, orderStatus: 'Delivered' }),
             Order.countDocuments({ userId, orderStatus: { $in: ['New', 'Pending'] } })
         ]);

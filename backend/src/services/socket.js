@@ -2,9 +2,11 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
 const autoDeclineTimers = new Map();
+let ioInstance;
 
 // Initialize socket handlers
 export const initSocket = (io) => {
+    ioInstance = io;
     // Authentication middleware
     io.use(async (socket, next) => {
         try {
@@ -50,6 +52,8 @@ export const initSocket = (io) => {
     });
 };
 
+export const getIO = () => ioInstance;
+
 // Emit new order assignment to partner
 export const emitOrderAssignment = (io, order, partnerId) => {
     const payload = {
@@ -87,7 +91,7 @@ export const emitOrderAssignment = (io, order, partnerId) => {
 };
 
 // Accept order
-export const acceptOrder = async (io, orderId, userId) => {
+export const emitOrderAccepted = async (io, orderId, userId) => {
     const timer = autoDeclineTimers.get(orderId);
     if (timer) {
         clearTimeout(timer);
@@ -98,7 +102,7 @@ export const acceptOrder = async (io, orderId, userId) => {
 };
 
 // Decline order
-export const declineOrder = async (io, orderId, userId) => {
+export const emitOrderDeclined = async (io, orderId, userId) => {
     const timer = autoDeclineTimers.get(orderId);
     if (timer) {
         clearTimeout(timer);
@@ -117,4 +121,4 @@ export const emitInTransit = (io, order, userId) => {
     });
 };
 
-export default { initSocket, emitOrderAssignment, acceptOrder, declineOrder, emitInTransit };
+export default { initSocket, getIO, emitOrderAssignment, emitOrderAccepted, emitOrderDeclined, emitInTransit };

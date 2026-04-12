@@ -18,4 +18,4 @@ const settlementSchema = new mongoose.Schema({
 settlementSchema.index({ partnerId: 1, createdAt: -1 });
 settlementSchema.index({ settlementStatus: 1 });
 
-export default mongoose.model('Settlement', settlementSchema);
+export default mongoose.models.Settlement || mongoose.model('Settlement', settlementSchema);
