@@ -24,6 +24,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { API_BASE_URL } from "@/config";
 import { motion, AnimatePresence } from "framer-motion";
 import { StagePipeline } from "@/components/orders/StagePipeline";
+import { useOrderSocket } from "@/hooks/useOrderSocket";
 
 interface ParcelData {
   _id: string;
@@ -210,6 +211,8 @@ const PartnerOrders = () => {
   // View mode: 'list' or 'kanban' for orders
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const userRole = user?.role === 'admin' ? 'admin' : 'partner';
+
+  useOrderSocket(user?._id || '', 'partner');
 
   // Fetch orders by stage for Kanban view
   const { data: directShipmentData } = useQuery({

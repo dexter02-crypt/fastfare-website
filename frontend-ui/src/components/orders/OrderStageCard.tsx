@@ -8,7 +8,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmStageDialog } from './ConfirmStageDialog';
 import { useState } from 'react';
-import { MapPin, User, Package } from 'lucide-react';
+import { MapPin, User, Package, Check, X, Loader2 } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { API_BASE_URL } from '@/config';
+import { useToast } from '@/hooks/use-toast';
 
 interface OrderStageCardProps {
   order: any;
@@ -23,6 +26,47 @@ export function OrderStageCard({ order, userRole, onStageUpdate, stageConfig }: 
   
   const currentStage = order.orderStage || 'direct_shipment';
   const currentConfig = stageConfig[currentStage];
+  
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const acceptMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/orders/${order._id}/accept`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to accept order');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Order Accepted', description: 'You have accepted this order' });
+      queryClient.invalidateQueries({ queryKey: ['orders-by-stage'] });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  });
+
+  const declineMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/orders/${order._id}/decline`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to decline order');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Order Declined', description: 'Order returned to queue' });
+      queryClient.invalidateQueries({ queryKey: ['orders-by-stage'] });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  });
 
   const handleConfirmStage = (newStage: string) => {
     setSelectedStage(newStage);
@@ -62,7 +106,31 @@ export function OrderStageCard({ order, userRole, onStageUpdate, stageConfig }: 
           </div>
         </div>
 
-        {userRole === 'partner' && currentStage === 'direct_shipment' && (
+        {userRole === 'partner' && currentStage === 'direct_shipment' && (order.orderStatus === 'New' || order.orderStatus === 'pending_acceptance' || order.status === 'pending_acceptance') && (
+          <div className="flex flex-col sm:flex-row gap-2 mt-4">
+            <Button 
+              size="sm" 
+              className="flex-1 bg-green-600 hover:bg-green-700"
+              onClick={() => acceptMutation.mutate()}
+              disabled={acceptMutation.isPending || declineMutation.isPending}
+            >
+              {acceptMutation.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
+              Accept
+            </Button>
+            <Button 
+              size="sm" 
+              variant="destructive"
+              className="flex-1"
+              onClick={() => declineMutation.mutate()}
+              disabled={acceptMutation.isPending || declineMutation.isPending}
+            >
+              {declineMutation.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <X className="h-4 w-4 mr-1" />}
+              Decline
+            </Button>
+          </div>
+        )}
+
+        {userRole === 'partner' && currentStage === 'direct_shipment' && order.orderStatus === 'Confirmed' && (
           <Button 
             size="sm" 
             className="w-full mt-3 bg-blue-600 hover:bg-blue-700"

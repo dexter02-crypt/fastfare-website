@@ -7,9 +7,10 @@ import Settlement from '../models/Settlement.js';
 import { protect } from '../middleware/auth.js';
 import logger from '../utils/logger.js';
 import { sendOrderAssignmentToPartner, sendOrderConfirmationToUser, sendOrderAcceptedToUser, sendOrderDeclinedToUser, notifyUserStatusUpdate } from '../services/emailService/index.js';
-import { emitOrderAssignment, emitOrderAccepted, emitOrderDeclined, emitInTransit } from '../services/socket.js';
+import { emitOrderAssignment, emitOrderAccepted, emitOrderDeclined, emitInTransit, getIO } from '../services/socket.js';
 
 const router = express.Router();
+const autoDeclineTimers = new Map();
 
 // Generate a random Order ID (e.g. ORD-FF-8A91B)
 const generateOrderId = () => `ORD-FF-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
@@ -187,54 +188,96 @@ router.post('/', protect, async (req, res) => {
 
         await newOrder.save();
 
-        // Send email notifications (fire-and-forget)
-        const user = await User.findById(req.user._id).select('email contactPerson businessName').lean();
-        if (user?.email) {
-            sendOrderConfirmationToUser({
-                orderId: newOrder.orderId,
-                userEmail: user.email,
-                userName: user.contactPerson || user.businessName || 'Customer',
-                pickup: newOrder.address?.line1,
-                delivery: newOrder.address?.city,
-                orderValue: newOrder.orderValue,
-                partnerBusinessName: 'Assigned Partner'
-            });
-        }
-
-        // If partner assigned, notify them
-        if (req.body.partnerId) {
-            const partner = await User.findById(req.body.partnerId).select('email businessName contactPerson').lean();
-            if (partner?.email) {
-                sendOrderAssignmentToPartner({
-                    orderId: newOrder.orderId,
-                    partnerEmail: partner.email,
-                    partnerName: partner.businessName || partner.contactPerson || 'Partner',
-                    pickupAddress: newOrder.address?.line1,
-                    pickupCity: newOrder.address?.city,
-                    deliveryAddress: newOrder.address?.line2,
-                    deliveryCity: newOrder.address?.city,
-                    orderValue: newOrder.orderValue,
-                    orderType: newOrder.orderType || 'prepaid',
-                    customerName: newOrder.customer?.name?.split(' ')[0],
-                    packageWeight: req.body.weight || 1
-                });
-
-                // Emit socket event to partner (fire-and-forget)
-                const io = req.app.get('io');
-                if (io && partner?._id) {
-                    emitOrderAssignment(io, {
-                        _id: newOrder._id,
-                        orderId: newOrder.orderId,
-                        pickup: newOrder.pickup || newOrder.address?.line1,
-                        delivery: newOrder.address,
-                        weight: req.body.weight || 1,
+        // BACKEND FIX 1 — ORDER CREATION NOTIFICATIONS
+        Promise.resolve().then(async () => {
+            try {
+                let partner = null;
+                if (req.body.partnerId) {
+                    partner = await User.findById(req.body.partnerId).select('firstName lastName email phone businessName').lean();
+                }
+                const customer = await User.findById(req.user._id).select('firstName email contactPerson name').lean();
+                
+                if (partner?.email) {
+                    sendOrderAssignmentToPartner({
+                        partnerEmail: partner.email,
+                        partnerFirstName: partner.firstName || partner.businessName || 'Partner',
+                        orderId: newOrder._id.toString(),
+                        orderNumber: newOrder.orderId,
+                        customerFirstName: customer?.firstName || customer?.name?.split(' ')[0] || 'Customer',
+                        pickupAddress: newOrder.address?.line1,
+                        deliveryAddress: newOrder.address?.city,
+                        packageWeight: req.body.weight || 1,
                         orderValue: newOrder.orderValue,
                         orderType: newOrder.orderType || 'prepaid',
-                        customer: newOrder.customer
-                    }, partner._id.toString());
+                        reviewLink: process.env.BASE_URL + '/partner/orders'
+                    }).catch(console.error);
                 }
+
+                if (customer?.email) {
+                    sendOrderConfirmationToUser({
+                        userEmail: customer.email,
+                        userFirstName: customer.firstName || customer?.name?.split(' ')[0] || 'Customer',
+                        orderId: newOrder._id.toString(),
+                        orderNumber: newOrder.orderId,
+                        partnerName: partner ? `${partner.firstName || ''} ${partner.lastName || ''}`.trim() : 'Assigned Partner',
+                        pickupAddress: newOrder.address?.line1,
+                        deliveryAddress: newOrder.address?.city,
+                        orderValue: newOrder.orderValue,
+                        trackingLink: process.env.BASE_URL + '/shipments'
+                    }).catch(console.error);
+                }
+
+                if (partner) {
+                    const io = req.app.get('io') || getIO();
+                    if (io) {
+                        io.to('partner:' + partner._id.toString()).emit('order:new_assignment', {
+                            orderId: newOrder._id,
+                            orderNumber: newOrder.orderId,
+                            pickupAddress: newOrder.address?.line1,
+                            deliveryAddress: newOrder.address?.city,
+                            packageWeight: req.body.weight || 1,
+                            orderValue: newOrder.orderValue,
+                            orderType: newOrder.orderType || 'prepaid',
+                            customerFirstName: customer?.firstName || customer?.name?.split(' ')[0] || 'Customer',
+                            createdAt: newOrder.createdAt
+                        });
+                    }
+
+                    const _oid = newOrder._id.toString();
+                    const _uid = newOrder.userId.toString();
+                    
+                    const _t = setTimeout(async () => {
+                        try {
+                            const _o = await Order.findById(_oid);
+                            if (_o && _o.orderStatus === 'New') {
+                                _o.orderStatus = 'Cancelled';
+                                await _o.save();
+                                const _io = req.app.get('io') || getIO();
+                                if (_io) {
+                                    _io.to('user:' + _uid).emit('order:auto_declined', {
+                                        orderId: _oid,
+                                        message: 'Partner did not respond in time'
+                                    });
+                                }
+                                sendOrderDeclinedToUser({
+                                    orderId: _oid,
+                                    userEmail: customer?.email,
+                                    userFirstName: customer?.firstName,
+                                    isAutoDeclined: true
+                                }).catch(console.error);
+                            }
+                        } catch (e) {
+                            console.error('AutoDecline:', e);
+                        } finally {
+                            autoDeclineTimers.delete(_oid);
+                        }
+                    }, 300000);
+                    autoDeclineTimers.set(_oid, _t);
+                }
+            } catch (err) {
+                console.error('Error in post-order creation notifications:', err);
             }
-        }
+        });
 
         res.status(201).json({ success: true, order: newOrder });
     } catch (error) {
@@ -285,71 +328,143 @@ router.put('/:id', protect, async (req, res) => {
 });
 
 // @route   PATCH /api/orders/:id/status
-// @desc    Quickly update just the order status
+// @desc    Update order status
 // @access  Private
 router.patch('/:id/status', protect, async (req, res) => {
     try {
-        const { status } = req.body;
-
-        if (!status) {
-            return res.status(400).json({ success: false, message: 'Status is required' });
+        const { status, note } = req.body;
+        
+        const validStatuses = ['confirmed', 'in_transit', 'shipped', 'out_for_delivery', 'delivered', 'failed_delivery', 'returned'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ success: false, message: 'Invalid status value' });
         }
 
-        let order = await Order.findById(req.params.id);
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-        if (!order) {
-            return res.status(404).json({ success: false, message: 'Order not found' });
+        if (req.user.role === 'shipment_partner' && order.partnerId?.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'Not assigned to this order' });
         }
 
-        if (order.userId.toString() !== req.user.id && req.user.role !== 'admin') {
-            return res.status(401).json({ success: false, message: 'Not authorized' });
+        const statusMapList = {
+            'confirmed': 'Confirmed',
+            'in_transit': 'Shipped', // Map 'in_transit' to slightly valid backend enum
+            'shipped': 'Shipped',
+            'out_for_delivery': 'Shipped',
+            'delivered': 'Delivered',
+            'failed_delivery': 'Pending',
+            'returned': 'Cancelled'
+        };
+        order.orderStatus = statusMapList[status] || order.orderStatus;
+
+        if (order.orderStage) {
+            const stageMapping = {
+                'confirmed': 'direct_shipment',
+                'in_transit': 'in_transit',
+                'shipped': 'in_transit',
+                'out_for_delivery': 'in_transit',
+                'delivered': 'delivered',
+                'failed_delivery': 'direct_shipment',
+                'returned': 'direct_shipment'
+            };
+            order.orderStage = stageMapping[status] || order.orderStage;
         }
 
-        order.orderStatus = status;
-
-        // If converted to shipment, optionally link here (body can include linkedAwb)
-        if (req.body.linkedAwb) order.linkedAwb = req.body.linkedAwb;
-
-        await order.save();
-
-        // Send status update email to user (fire-and-forget)
-        const user = await User.findById(order.userId).select('email contactPerson').lean();
-        if (user?.email) {
-            notifyUserStatusUpdate({
-                orderId: order.orderId,
-                userEmail: user.email,
-                userName: user.contactPerson || 'Customer',
-                status: status,
-                deliveryCity: order.address?.city,
-                estimatedDelivery: req.body.estimatedDelivery,
-                failureReason: req.body.failureReason,
-                orderHistory: order.orderHistory || []
+        if (order.orderHistory) {
+            order.orderHistory.push({
+                stage: status,
+                changedBy: req.user._id,
+                timestamp: new Date(),
+                note: note || ''
             });
         }
 
-        // Emit socket event for status update (fire-and-forget)
-        const io = req.app.get('io');
-        if (io) {
-            io.to(`user:${order.userId}`).emit('order:status_updated', {
-                orderId: order._id,
-                newStatus: status,
-                partnerName: req.user.businessName || req.user.contactPerson || 'Partner',
-                timestamp: new Date()
-            });
-            if (order.partnerId) {
-                io.to(`partner:${order.partnerId}`).emit('order:status_updated', {
+        if (status === 'delivered') {
+            const existingSettlement = await Settlement.findOne({ orderId: order._id });
+            if (!existingSettlement) {
+                const feePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT) || 5;
+                const value = order.orderValue || 0;
+                const pFee = (value * feePercent) / 100;
+                const net = value - pFee;
+                
+                Settlement.create({
                     orderId: order._id,
-                    newStatus: status,
-                    partnerName: req.user.businessName,
-                    timestamp: new Date()
-                });
+                    partnerId: req.user._id,
+                    orderValue: value,
+                    platformFee: pFee,
+                    netAmount: net,
+                    settlementStatus: 'pending',
+                    orderType: order.orderType || 'prepaid'
+                }).catch(console.error);
             }
         }
 
-        res.json({ success: true, order });
+        await order.save();
+
+        const labelMap = {
+            'confirmed': 'Order Confirmed',
+            'in_transit': 'In Transit',
+            'shipped': 'Shipped',
+            'out_for_delivery': 'Out for Delivery',
+            'delivered': 'Delivered',
+            'failed_delivery': 'Delivery Failed',
+            'returned': 'Returned'
+        };
+        const statusLabel = labelMap[status];
+        const partnerName = `${req.user.firstName || req.user.businessName || ''} ${req.user.lastName || ''}`.trim();
+
+        Promise.resolve().then(async () => {
+            const customer = await User.findById(order.userId).select('email firstName name').lean();
+            if (!customer) return;
+
+            const io = req.app.get('io') || getIO();
+            if (io) {
+                io.to('user:' + customer._id.toString()).emit('order:status_updated', {
+                    orderId: order._id,
+                    newStatus: status,
+                    newStatusLabel: statusLabel,
+                    partnerName,
+                    timestamp: new Date()
+                });
+                io.to('partner:' + req.user._id.toString()).emit('order:status_confirmed', {
+                    orderId: order._id,
+                    status: status
+                });
+            }
+
+            const ccEmail = status === 'delivered' ? req.user.email : undefined;
+
+            notifyUserStatusUpdate({
+                userEmail: customer.email,
+                userFirstName: customer.firstName || customer.name,
+                orderId: order._id.toString(),
+                status: status,
+                statusLabel,
+                partnerName,
+                orderValue: order.orderValue,
+                deliveryAddress: order.address?.city,
+                trackingLink: process.env.BASE_URL + '/shipments',
+                ccEmail
+            }).catch(console.error);
+
+            const emailMod = await import('../services/emailService/index.js');
+            if (emailMod.sendStatusConfirmationToPartner) {
+                emailMod.sendStatusConfirmationToPartner({
+                    partnerEmail: req.user.email,
+                    partnerFirstName: req.user.firstName || req.user.businessName,
+                    orderId: order._id.toString(),
+                    status: status,
+                    statusLabel,
+                    customerFirstName: customer.firstName || customer.name,
+                    timestamp: new Date()
+                }).catch(console.error);
+            }
+        });
+
+        res.status(200).json({ success: true, order });
     } catch (error) {
         console.error('Error updating order status:', error);
-        res.status(500).json({ success: false, message: 'Server error updating status.' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
@@ -358,26 +473,65 @@ router.patch('/:id/status', protect, async (req, res) => {
 // @access  Private (Partner)
 router.patch('/:id/accept', protect, async (req, res) => {
     try {
-        const order = await Order.findById(req.params.id);
-        if (!order) {
-            return res.status(404).json({ success: false, message: 'Order not found' });
+        if (req.user.role !== 'shipment_partner') {
+            return res.status(403).json({ success: false, message: 'Only partners can accept orders' });
         }
 
-        order.orderStatus = 'Accepted';
-        await order.save();
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-        // Emit accepted event to user
-        const io = req.app.get('io');
-        if (io) {
-            emitOrderAccepted(io, order._id.toString(), order.userId.toString());
-            io.to(`user:${order.userId}`).emit('order:accepted', {
-                orderId: order.orderId,
-                partnerName: req.user.businessName || req.user.contactPerson || 'Partner',
-                timestamp: new Date()
+        if (order.partnerId?.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'Not assigned to this order' });
+        }
+
+        if (order.orderStatus !== 'New') {
+            return res.status(400).json({ success: false, message: 'Order is not in assignable state' });
+        }
+
+        order.orderStatus = 'Confirmed';
+        
+        if (order.orderHistory) {
+            order.orderHistory.push({
+                stage: 'confirmed',
+                changedBy: req.user._id,
+                timestamp: new Date(),
+                note: 'Partner accepted order'
             });
         }
+        
+        await order.save();
 
-        res.json({ success: true, order });
+        if (autoDeclineTimers.has(req.params.id)) {
+            clearTimeout(autoDeclineTimers.get(req.params.id));
+            autoDeclineTimers.delete(req.params.id);
+        }
+
+        Promise.resolve().then(async () => {
+            const customer = await User.findById(order.userId).select('email firstName name').lean();
+            if (customer) {
+                const partnerName = `${req.user.firstName || req.user.businessName || ''} ${req.user.lastName || ''}`.trim();
+                const io = req.app.get('io') || getIO();
+                if (io) {
+                    io.to('user:' + customer._id.toString()).emit('order:accepted', {
+                        orderId: order._id,
+                        partnerName: partnerName,
+                        timestamp: new Date()
+                    });
+                }
+                
+                sendOrderAcceptedToUser({
+                    userEmail: customer.email,
+                    userFirstName: customer.firstName || customer.name || 'Customer',
+                    orderId: order._id.toString(),
+                    partnerName: partnerName,
+                    pickupAddress: order.address?.line1,
+                    deliveryAddress: order.address?.city,
+                    trackingLink: process.env.BASE_URL + '/shipments'
+                }).catch(console.error);
+            }
+        });
+
+        res.status(200).json({ success: true, order });
     } catch (error) {
         console.error('Error accepting order:', error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -389,80 +543,60 @@ router.patch('/:id/accept', protect, async (req, res) => {
 // @access  Private (Partner)
 router.patch('/:id/decline', protect, async (req, res) => {
     try {
-        const order = await Order.findById(req.params.id);
-        if (!order) {
-            return res.status(404).json({ success: false, message: 'Order not found' });
+        if (req.user.role !== 'shipment_partner') {
+            return res.status(403).json({ success: false, message: 'Only partners can decline orders' });
         }
 
-        order.orderStatus = 'Declined';
-        await order.save();
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-        // Emit declined event to user
-        const io = req.app.get('io');
-        if (io) {
-            emitOrderDeclined(io, order._id.toString(), order.userId.toString());
-            io.to(`user:${order.userId}`).emit('order:declined', {
-                orderId: order.orderId,
-                isAutoDeclined: false,
-                timestamp: new Date()
+        if (order.partnerId?.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'Not assigned to this order' });
+        }
+
+        order.orderStatus = 'Cancelled';
+        
+        if (order.orderHistory) {
+            order.orderHistory.push({
+                stage: 'cancelled',
+                changedBy: req.user._id,
+                timestamp: new Date(),
+                note: 'Partner declined order'
             });
         }
+        
+        await order.save();
 
-        res.json({ success: true, order });
+        if (autoDeclineTimers.has(req.params.id)) {
+            clearTimeout(autoDeclineTimers.get(req.params.id));
+            autoDeclineTimers.delete(req.params.id);
+        }
+
+        Promise.resolve().then(async () => {
+            const customer = await User.findById(order.userId).select('email firstName name').lean();
+            if (customer) {
+                const io = req.app.get('io') || getIO();
+                if (io) {
+                    io.to('user:' + customer._id.toString()).emit('order:declined', {
+                        orderId: order._id,
+                        isAutoDeclined: false,
+                        timestamp: new Date()
+                    });
+                }
+                
+                sendOrderDeclinedToUser({
+                    userEmail: customer.email,
+                    userFirstName: customer.firstName || customer.name || 'Customer',
+                    orderId: order._id.toString(),
+                    isAutoDeclined: false
+                }).catch(console.error);
+            }
+        });
+
+        res.status(200).json({ success: true });
     } catch (error) {
         console.error('Error declining order:', error);
         res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
-// @route   PATCH /api/orders/:id/intransit
-// @desc    Mark order as in transit
-// @access  Private (Partner)
-router.patch('/:id/intransit', protect, async (req, res) => {
-    try {
-        const order = await Order.findById(req.params.id);
-        if (!order) {
-            return res.status(404).json({ success: false, message: 'Order not found' });
-        }
-
-        order.orderStatus = 'In Transit';
-        order.orderStage = 'in_transit';
-        await order.save();
-
-        // Emit in_transit event to user
-        const io = req.app.get('io');
-        if (io) {
-            emitInTransit(io, order, order.userId.toString());
-        }
-
-        res.json({ success: true, order });
-    } catch (error) {
-        console.error('Error marking in transit:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
-// @route   DELETE /api/orders/:id
-// @desc    Cancel/Delete an order (We use status updates, but included for completeness)
-// @access  Private
-router.delete('/:id', protect, async (req, res) => {
-    try {
-        const order = await Order.findById(req.params.id);
-
-        if (!order) {
-            return res.status(404).json({ success: false, message: 'Order not found' });
-        }
-
-        if (order.userId.toString() !== req.user.id && req.user.role !== 'admin') {
-            return res.status(401).json({ success: false, message: 'Not authorized' });
-        }
-
-        await order.deleteOne();
-
-        res.json({ success: true, message: 'Order removed' });
-    } catch (error) {
-        console.error('Error deleting order:', error);
-        res.status(500).json({ success: false, message: 'Server error.' });
     }
 });
 
