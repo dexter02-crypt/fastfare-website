@@ -52,6 +52,7 @@ import carrierWebhookRoutes from './routes/carrier-webhook.js';
 
 // Socket handler
 import { locationSocket } from './socket/location.socket.js';
+import { initSocket } from './services/socket.js';
 
 import { seedAdmin } from './scripts/seedAdmin.js';
 
@@ -126,6 +127,7 @@ app.set('io', io);
 
 // Initialize socket handlers
 locationSocket(io);
+initSocket(io);
 
 // Middleware
 app.use(cors({
