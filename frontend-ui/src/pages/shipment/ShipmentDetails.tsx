@@ -39,6 +39,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { BackButton } from "@/components/BackButton";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import LiveLocationModal from "./LiveLocationModal";
+import { CancelShipmentDialog, CANCELLABLE_STATUSES } from "@/components/CancelShipmentDialog";
 
 interface ShipmentAddress {
   name: string;
@@ -87,6 +88,8 @@ interface Shipment {
   totalTax?: number;
   rto_charge?: number;
   totalAmount?: number;
+  totalPayable?: number;
+  amountCharged?: number;
   promoCode?: string;
   discountApplied?: number;
   invoiceNumber?: string;
@@ -133,6 +136,7 @@ const ShipmentDetails = () => {
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [invoiceHtml, setInvoiceHtml] = useState<string>("");
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -436,24 +440,13 @@ const ShipmentDetails = () => {
     });
   };
 
-  const handleCancelShipment = async () => {
-    if (!confirm("Are you sure you want to cancel this shipment?")) return;
+  const handleCancelShipment = () => {
+    setShowCancelDialog(true);
+  };
 
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE_URL}/api/shipments/${id}/cancel`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) throw new Error("Failed to cancel");
-
+  const handleCancelSuccess = (data: { awb: string; refundAmount: number; newBalance: number | null; status: string }) => {
+    if (shipment) {
       setShipment({ ...shipment, status: 'cancelled' });
-      toast({ title: "Shipment Cancelled" });
-    } catch (err) {
-      toast({ title: "Error", description: "Could not cancel shipment", variant: "destructive" });
     }
   };
 
@@ -567,8 +560,9 @@ const ShipmentDetails = () => {
             <Button variant="outline" size="sm" onClick={() => navigate(`/returns/create?shipmentId=${id}`)}>
               <RefreshCw className="h-4 w-4 mr-2" /> Create Return
             </Button>
-            {['pending', 'pickup_scheduled'].includes(shipment.status) && (
-              <Button variant="destructive" size="sm" onClick={handleCancelShipment}>
+            {(CANCELLABLE_STATUSES.includes(shipment.status) || shipment.status === 'cancelled') && (
+              <Button variant="destructive" size="sm" onClick={handleCancelShipment}
+                disabled={shipment.status === 'cancelled'}>
                 <XCircle className="h-4 w-4 mr-2" /> Cancel
               </Button>
             )}
@@ -1159,6 +1153,22 @@ const ShipmentDetails = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Cancel Shipment Dialog */}
+      <CancelShipmentDialog
+        shipment={shipment ? {
+          _id: shipment._id || shipment.id,
+          awb: shipment.awb,
+          status: shipment.status,
+          paymentMode: shipment.paymentMode || 'prepaid',
+          totalPayable: shipment.totalPayable,
+          amountCharged: shipment.amountCharged,
+          shippingCost: shipment.shippingCost,
+        } : null}
+        isOpen={showCancelDialog}
+        onClose={() => setShowCancelDialog(false)}
+        onCancelled={handleCancelSuccess}
+      />
     </DashboardLayout >
   );
 };

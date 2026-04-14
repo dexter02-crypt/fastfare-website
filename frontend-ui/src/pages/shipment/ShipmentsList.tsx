@@ -30,10 +30,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Search, Truck, MapPin, Package, CheckCircle, Clock, Eye, Download, Info, ClipboardCopy, User, Calendar, Navigation, Loader2
+  Search, Truck, MapPin, Package, CheckCircle, Clock, Eye, Download, Info, ClipboardCopy, User, Calendar, Navigation, Loader2, XCircle
 } from "lucide-react";
 import { API_BASE_URL } from "@/config";
 import { useToast } from "@/components/ui/use-toast";
+import { CancelShipmentDialog, CANCELLABLE_STATUSES, ShipmentForCancel } from "@/components/CancelShipmentDialog";
 
 interface ParcelData {
   _id: string;
@@ -89,6 +90,8 @@ interface OrderData {
   driverLocation: any;
   promoCode?: string;
   discountApplied?: number;
+  amountCharged?: number;
+  totalPayable?: number;
   createdAt: string;
 }
 
@@ -104,6 +107,7 @@ const ShipmentsList = () => {
   const [loading, setLoading] = useState(true);
   const [parcels, setParcels] = useState<ParcelData[]>([]);
   const [parcelsLoading, setParcelsLoading] = useState(true);
+  const [cancelTarget, setCancelTarget] = useState<ShipmentForCancel | null>(null);
 
   // Fetch real orders from backend
   useEffect(() => {
@@ -445,6 +449,22 @@ const ShipmentsList = () => {
                                   <Navigation className="h-3.5 w-3.5 mr-1" /> Track
                                 </Button>
                               )}
+                              {CANCELLABLE_STATUSES.includes(order.status) && (
+                                <Button variant="ghost" size="sm"
+                                  className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => setCancelTarget({
+                                    _id: order.id,
+                                    awb: order.awb,
+                                    status: order.status,
+                                    paymentMode: order.paymentMode || 'prepaid',
+                                    totalPayable: order.totalPayable,
+                                    amountCharged: order.amountCharged,
+                                    shippingCost: order.shippingCost,
+                                  })}
+                                >
+                                  <XCircle className="h-3.5 w-3.5 mr-1" /> Cancel
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>{formatDate(order.createdAt)}</TableCell>
@@ -591,6 +611,19 @@ const ShipmentsList = () => {
         )}
 
       </div>
+
+      {/* Cancel Shipment Dialog */}
+      <CancelShipmentDialog
+        shipment={cancelTarget}
+        isOpen={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onCancelled={(data) => {
+          setOrders(prev => prev.map(o =>
+            o.awb === data.awb ? { ...o, status: 'cancelled' } : o
+          ));
+          setCancelTarget(null);
+        }}
+      />
     </DashboardLayout>
   );
 };

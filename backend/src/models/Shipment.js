@@ -145,6 +145,18 @@ const shipmentSchema = new mongoose.Schema({
     },
     promoCode: { type: String, default: null },
     discountApplied: { type: Number, default: 0 },
+    // ─── Cancellation & Refund Fields ───
+    amountCharged: { type: Number, default: 0 },           // Frozen at booking — never mutated
+    refundAmount: { type: Number, default: 0 },
+    refundedAt: { type: Date, default: null },
+    refundTransactionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Transaction', default: null },
+    cancelledAt: { type: Date, default: null },
+    cancelledBy: {
+        type: String,
+        enum: ['user', 'admin', 'system', null],
+        default: null
+    },
+    cancellationReason: { type: String, default: null },
     createdAt: {
         type: Date,
         default: Date.now

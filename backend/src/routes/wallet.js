@@ -575,30 +575,151 @@ router.get('/balance', protect, async (req, res) => {
 
 router.get('/transactions', protect, async (req, res) => {
     try {
-        const { page = 1, limit = 30, type } = req.query;
+        const { page = 1, limit = 20, type } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
+        const lim = parseInt(limit);
 
         const query = { userId: req.user._id };
-        if (type) query.type = type;
+        // Support type filtering: ALL (default), or specific types
+        if (type && type !== 'ALL' && type !== 'all') {
+            // Map frontend filter names to DB type values
+            const typeMap = {
+                'DEBIT': 'shipment_charge',
+                'REFUND': 'refund',
+                'RECHARGE': 'recharge',
+                'ADJUSTMENT': 'adjustment',
+                'WITHDRAWAL': 'withdrawal'
+            };
+            query.type = typeMap[type.toUpperCase()] || type;
+        }
 
-        const [transactions, total] = await Promise.all([
+        const [transactions, total, user] = await Promise.all([
             Transaction.find(query)
                 .sort({ createdAt: -1 })
                 .skip(skip)
-                .limit(parseInt(limit))
-                .populate('shipmentId', 'awb carrier'),
-            Transaction.countDocuments(query)
+                .limit(lim)
+                .populate('shipmentId', 'awb carrier paymentMode'),
+            Transaction.countDocuments(query),
+            User.findById(req.user._id).select('walletBalance')
         ]);
 
         res.json({
             success: true,
+            wallet_balance: user?.walletBalance || 0,
+            total_transactions: total,
             transactions,
-            pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) }
+            has_more: skip + lim < total,
+            pagination: { page: parseInt(page), limit: lim, total, pages: Math.ceil(total / lim) }
         });
     } catch (error) {
+        console.error('Transactions fetch error:', error);
         res.status(500).json({ error: 'Failed to fetch transactions' });
     }
 });
+
+// ==========================================
+// ADMIN: BACKFILL REFUNDS FOR PAST CANCELLED ORDERS
+// ==========================================
+
+router.post('/refund/backfill', protect, async (req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+
+    try {
+        const Shipment = (await import('../models/Shipment.js')).default;
+
+        // Find cancelled wallet-paid shipments with no refund processed
+        const cancelledShipments = await Shipment.find({
+            status: 'cancelled',
+            paymentMode: 'wallet',
+            $or: [
+                { refundAmount: { $exists: false } },
+                { refundAmount: 0 },
+                { refundAmount: null }
+            ],
+            refundedAt: { $eq: null }
+        }).lean();
+
+        const results = [];
+        let totalRefunded = 0;
+
+        for (const shipment of cancelledShipments) {
+            const refundAmount = shipment.amountCharged || shipment.totalPayable || 0;
+            if (refundAmount <= 0) {
+                results.push({ awb: shipment.awb, action: 'skipped', reason: 'Zero amount' });
+                continue;
+            }
+
+            const session = await mongoose.startSession();
+            session.startTransaction();
+            try {
+                const lockedShipment = await Shipment.findOne({
+                    _id: shipment._id,
+                    refundedAt: null
+                }).session(session);
+
+                if (!lockedShipment) {
+                    await session.abortTransaction();
+                    session.endSession();
+                    results.push({ awb: shipment.awb, action: 'skipped', reason: 'Already processed' });
+                    continue;
+                }
+
+                const user = await User.findById(shipment.user).session(session);
+                if (!user) {
+                    await session.abortTransaction();
+                    session.endSession();
+                    results.push({ awb: shipment.awb, action: 'skipped', reason: 'User not found' });
+                    continue;
+                }
+
+                const balanceBefore = user.walletBalance || 0;
+                const balanceAfter = balanceBefore + refundAmount;
+
+                user.walletBalance = balanceAfter;
+                await user.save({ session });
+
+                const [txn] = await Transaction.create([{
+                    userId: user._id,
+                    type: 'refund',
+                    amount: refundAmount,
+                    status: 'completed',
+                    description: `Refund for cancelled order ${shipment.awb} (Backfill)`,
+                    shipmentId: shipment._id,
+                    balanceBefore,
+                    balanceAfter
+                }], { session });
+
+                lockedShipment.refundAmount = refundAmount;
+                lockedShipment.refundedAt = new Date();
+                lockedShipment.refundTransactionId = txn._id;
+                await lockedShipment.save({ session });
+
+                await session.commitTransaction();
+                session.endSession();
+
+                totalRefunded += refundAmount;
+                results.push({ awb: shipment.awb, action: 'refunded', amount: refundAmount, userId: user._id.toString() });
+            } catch (err) {
+                await session.abortTransaction();
+                session.endSession();
+                results.push({ awb: shipment.awb, action: 'error', reason: err.message });
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `Backfill complete. ${results.filter(r => r.action === 'refunded').length} refunds processed.`,
+            totalRefunded,
+            results
+        });
+    } catch (error) {
+        console.error('[Wallet] Backfill error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 
 // ==========================================
 // ADMIN RECONCILIATION

@@ -221,6 +221,7 @@ const userSchema = new mongoose.Schema({
     emailVerificationCode: String,
     emailVerificationExpires: Date,
     emailVerified: { type: Boolean, default: false },
+    pricingOnboarded: { type: Boolean, default: false },
     notificationPreferences: {
         emailShipmentUpdates: { type: Boolean, default: true },
         emailBilling: { type: Boolean, default: true },

@@ -214,8 +214,8 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <WalletProvider>
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <WalletProvider>
             <DigilockerProvider>
             <ScrollToTop />
             <Routes>
@@ -338,7 +338,7 @@ const App = () => (
               <Route path="/partner/orders" element={<PartnerRoute><PartnerOrders /></PartnerRoute>} />
               <Route path="/partner/activity" element={<PartnerRoute><PartnerActivity /></PartnerRoute>} />
               <Route path="/partner/team" element={<PartnerTeamManagement />} />
-              <Route path="/partner/pricing" element={<PartnerPricingPage />} />
+              <Route path="/partner/pricing" element={<PartnerRoute><PartnerPricingPage /></PartnerRoute>} />
               <Route path="/partner/wallet" element={<PartnerRoute><PartnerWalletDashboard /></PartnerRoute>} />
               <Route path="/partner/transactions" element={<PartnerRoute><PartnerTransactions /></PartnerRoute>} />
               <Route path="/partner/withdraw" element={<PartnerRoute><PartnerWithdrawal /></PartnerRoute>} />
@@ -402,8 +402,8 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </DigilockerProvider>
+          </WalletProvider>
           </BrowserRouter>
-        </WalletProvider>
       </TooltipProvider>
     </SocketProvider>
   </QueryClientProvider>

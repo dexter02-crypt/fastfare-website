@@ -166,6 +166,10 @@ router.post('/', protect, async (req, res) => {
         createdShipment.totalPayable = totalPayable;
         createdShipment.promoCode = appliedPromoCode;
         createdShipment.discountApplied = discountApplied;
+        // Freeze amount charged for future refund calculation
+        if (paymentMode === 'wallet') {
+            createdShipment.amountCharged = totalPayable;
+        }
 
         const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
         createdShipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -348,6 +352,10 @@ router.post('/create', protect, async (req, res) => {
         createdShipment.totalPayable = totalPayable;
         createdShipment.promoCode = appliedPromoCode;
         createdShipment.discountApplied = discountApplied;
+        // Freeze amount charged for future refund calculation
+        if (paymentMode === 'wallet') {
+            createdShipment.amountCharged = totalPayable;
+        }
 
         const days = serviceType === 'overnight' ? 1 : serviceType === 'express' ? 3 : 7;
         createdShipment.estimatedDelivery = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -633,34 +641,138 @@ router.put('/:id', protect, async (req, res) => {
     }
 });
 
-// Cancel shipment
+// Cancel shipment with wallet refund (transactional)
 router.post('/:id/cancel', protect, async (req, res) => {
+    const CANCELLABLE_STATUSES = [
+        'pending', 'pending_acceptance', 'pickup_scheduled',
+        'payment_received', 'partner_assigned', 'accepted', 'booked'
+    ];
+
+    // ── Pre-validation (no transaction needed) ──
+    const shipment = await Shipment.findOne({ _id: req.params.id, user: req.user._id });
+    if (!shipment) {
+        return res.status(404).json({ success: false, error: 'SHIPMENT_NOT_FOUND', message: 'Shipment not found' });
+    }
+    if (shipment.status === 'cancelled') {
+        return res.status(400).json({ success: false, error: 'ORDER_ALREADY_CANCELLED', message: 'This order is already cancelled.' });
+    }
+    if (!CANCELLABLE_STATUSES.includes(shipment.status)) {
+        return res.status(400).json({
+            success: false,
+            error: 'ORDER_NOT_CANCELLABLE',
+            message: `This order cannot be cancelled. Status: ${shipment.status.replace(/_/g, ' ')}`
+        });
+    }
+
+    // ── Determine refund eligibility ──
+    const isWalletPaid = shipment.paymentMode === 'wallet';
+    const refundAmount = isWalletPaid ? (shipment.amountCharged || shipment.totalPayable || 0) : 0;
+    const reason = req.body.reason || 'User requested cancellation';
+
+    // ── Start atomic transaction ──
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const shipment = await Shipment.findOne({
-            _id: req.params.id,
-            user: req.user._id
-        });
+        // Re-fetch with session lock to prevent concurrent cancel
+        const lockedShipment = await Shipment.findOne({
+            _id: shipment._id,
+            status: { $ne: 'cancelled' }
+        }).session(session);
 
-        if (!shipment) {
-            return res.status(404).json({ error: 'Shipment not found' });
+        if (!lockedShipment) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({ success: false, error: 'ORDER_ALREADY_CANCELLED', message: 'This order was already cancelled.' });
         }
 
-        if (!['pending', 'pending_acceptance', 'pickup_scheduled'].includes(shipment.status)) {
-            return res.status(400).json({ error: 'Cannot cancel shipment after pickup' });
-        }
-
-        shipment.status = 'cancelled';
-        shipment.trackingHistory.push({
+        // 1. Update shipment status
+        lockedShipment.status = 'cancelled';
+        lockedShipment.cancelledAt = new Date();
+        lockedShipment.cancelledBy = 'user';
+        lockedShipment.cancellationReason = reason;
+        lockedShipment.trackingHistory.push({
             status: 'cancelled',
-            description: 'Shipment cancelled by user'
+            description: `Shipment cancelled by user — ${reason}`,
+            timestamp: new Date()
         });
 
-        await shipment.save();
-        res.json({ success: true, message: 'Shipment cancelled' });
+        let newWalletBalance = null;
+        let transactionId = null;
+
+        // 2. Process wallet refund if applicable
+        if (refundAmount > 0) {
+            const user = await User.findById(req.user._id).session(session);
+            if (!user) {
+                throw new Error('User not found during refund');
+            }
+
+            const balanceBefore = user.walletBalance || 0;
+            const balanceAfter = balanceBefore + refundAmount;
+
+            // Credit wallet
+            user.walletBalance = balanceAfter;
+            await user.save({ session });
+
+            // Create refund transaction record
+            const [txn] = await Transaction.create([{
+                userId: req.user._id,
+                type: 'refund',
+                amount: refundAmount,
+                status: 'completed',
+                description: `Refund for cancelled order ${lockedShipment.awb}`,
+                shipmentId: lockedShipment._id,
+                balanceBefore,
+                balanceAfter
+            }], { session });
+
+            transactionId = txn._id;
+            newWalletBalance = balanceAfter;
+
+            // Update shipment refund fields
+            lockedShipment.refundAmount = refundAmount;
+            lockedShipment.refundedAt = new Date();
+            lockedShipment.refundTransactionId = txn._id;
+        }
+
+        await lockedShipment.save({ session });
+        await session.commitTransaction();
+        session.endSession();
+
+        // ── Emit socket event for real-time UI update ──
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user_${req.user._id}`).emit('shipment_status_update', {
+                shipmentId: lockedShipment._id,
+                status: 'cancelled',
+                trackingHistory: lockedShipment.trackingHistory
+            });
+        }
+
+        // ── Build response ──
+        const response = {
+            success: true,
+            message: refundAmount > 0
+                ? 'Order cancelled and refund processed.'
+                : 'Order cancelled successfully.',
+            awb: lockedShipment.awb,
+            refund_amount: refundAmount,
+            new_wallet_balance: newWalletBalance,
+            transaction_id: transactionId
+        };
+
+        res.json(response);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        await session.abortTransaction();
+        session.endSession();
+        console.error('[Cancel] Transaction error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'CANCELLATION_FAILED',
+            message: 'Cancellation failed. No changes were made. Please try again.'
+        });
     }
 });
+
 
 // ══════════════════════════════════════════════════════════════
 // CARRIER-SIDE ENDPOINTS (Now Shipment Partner Incoming Orders)

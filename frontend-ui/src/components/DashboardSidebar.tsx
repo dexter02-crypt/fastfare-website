@@ -202,7 +202,7 @@ const DashboardSidebar = ({ collapsed = false, onCollapse, onMobileItemClick }: 
                         // Partner specific filtering - show limited menu + WMS items
                         if (user?.role === 'shipment_partner') {
                             const partnerAllowed = [
-                                "Dashboard", "Orders", "Fleet", "Fleet View", "Activity", "Fleet Tracking", "Tracking", "Wallet", "Settlement", "My Reports", "Team", "Settings", "Help Center",
+                                "Dashboard", "Orders", "Fleet", "Fleet View", "Activity", "Fleet Tracking", "Tracking", "Wallet", "Settlement", "My Reports", "Team", "Pricing & Services", "Settings", "Help Center",
                                 // WMS items
                                 "Warehouse Hub", "WMS Fleet", "Inventory", "Inbound", "RTD Returns", "Live Tracking", "WMS Reports"
                             ];
