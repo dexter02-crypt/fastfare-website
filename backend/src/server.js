@@ -1,4 +1,5 @@
-import 'dotenv/config';  // MUST be first — loads .env before any route imports use process.env
+import * as dotenv from 'dotenv';
+dotenv.config({ override: true }); // MUST be first — forcefully overwrites PM2/OS cache with purely what is inside .env
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
