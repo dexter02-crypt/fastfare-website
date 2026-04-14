@@ -21,7 +21,7 @@ const router = express.Router();
 let _resendClient = null;
 const getResendClient = () => {
     if (!_resendClient && process.env.RESEND_API_KEY) {
-        const cleanKey = process.env.RESEND_API_KEY.replace(/['"\r\n\t ]/g, '').trim();
+        const cleanKey = process.env.RESEND_API_KEY.trim();
         _resendClient = new Resend(cleanKey);
     }
     return _resendClient;

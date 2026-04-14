@@ -15,8 +15,8 @@ let resendClient = null;
 
 const getResendClient = () => {
     if (!resendClient && process.env.RESEND_API_KEY) {
-        // Force-clean the API key to bypass PM2/server-side .env trailing whitespace & quote issues
-        const cleanKey = process.env.RESEND_API_KEY.replace(/['"\r\n\t ]/g, '').trim();
+        // Only trim leading/trailing whitespace — do NOT strip quotes or use regex that could eat valid key chars
+        const cleanKey = process.env.RESEND_API_KEY.trim();
         resendClient = new Resend(cleanKey);
     }
     return resendClient;
