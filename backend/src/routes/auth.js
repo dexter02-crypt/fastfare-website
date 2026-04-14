@@ -19,13 +19,25 @@ const generateToken = (id) => {
 };
 
 // ============= Resend Email Setup =============
-const resendClient = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+// Lazy-init Resend client — avoids breakage when env vars aren't loaded at import time
+let _resendClient = null;
+const getResendClient = () => {
+    if (!_resendClient && process.env.RESEND_API_KEY) {
+        _resendClient = new Resend(process.env.RESEND_API_KEY);
+    }
+    return _resendClient;
+};
 
 // Send email helper using Resend
 const sendEmail = async ({ to, subject, html }) => {
-    const { data, error } = await resendClient.emails.send({
-        from: `FastFare <${FROM_EMAIL}>`,
+    const client = getResendClient();
+    if (!client) {
+        console.warn('[FastFare Auth] RESEND_API_KEY not set. Skipping email.');
+        return;
+    }
+    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || 'support@fastfare.in';
+    const { data, error } = await client.emails.send({
+        from: `FastFare <${fromEmail}>`,
         to: [to],
         subject,
         html,

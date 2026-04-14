@@ -16,8 +16,15 @@ import { Resend } from 'resend';
 
 
 const router = express.Router();
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'FastFare <support@fastfare.in>';
+
+// Lazy-init Resend client — avoids breakage when env vars aren't loaded at import time
+let _resendClient = null;
+const getResendClient = () => {
+    if (!_resendClient && process.env.RESEND_API_KEY) {
+        _resendClient = new Resend(process.env.RESEND_API_KEY);
+    }
+    return _resendClient;
+};
 
 /**
  * @route   GET /api/admin/stats
@@ -84,8 +91,14 @@ router.get('/users/:id/kyc-attempts', protect, admin, async (req, res) => {
 // Helper to send deletion email
 const sendAdminDeletionEmail = async (email, name) => {
     try {
-        await resend.emails.send({
-            from: FROM_EMAIL,
+        const client = getResendClient();
+        if (!client) {
+            console.warn('[FastFare Admin] RESEND_API_KEY is not defined. Skipping deletion email.');
+            return;
+        }
+        const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || 'support@fastfare.in';
+        await client.emails.send({
+            from: `FastFare <${fromEmail}>`,
             to: email,
             subject: 'Your FastFare account has been removed',
             html: `
@@ -98,6 +111,7 @@ const sendAdminDeletionEmail = async (email, name) => {
                 </div>
             `
         });
+        console.log(`[FastFare Admin] Deletion email sent to ${email}`);
     } catch (err) {
         console.error('[FastFare Admin] Failed to send deletion email:', err);
     }

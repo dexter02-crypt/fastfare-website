@@ -1,13 +1,25 @@
 import { Resend } from 'resend';
 
-const resendClient = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+// Lazy-init Resend client — avoids breakage when env vars aren't loaded at import time
+let _resendClient = null;
+const getResendClient = () => {
+    if (!_resendClient && process.env.RESEND_API_KEY) {
+        _resendClient = new Resend(process.env.RESEND_API_KEY);
+    }
+    return _resendClient;
+};
+const getFromEmail = () => process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || 'support@fastfare.in';
 
 const sendEmail = async ({ to, subject, html }) => {
     try {
-        const { data, error } = await resendClient.emails.send({
-            from: `FastFare <${FROM_EMAIL}>`,
-            reply_to: 'support@fastfare.com',
+        const client = getResendClient();
+        if (!client) {
+            console.warn('[FastFare Email] RESEND_API_KEY not set. Skipping shipment email.');
+            return;
+        }
+        const { data, error } = await client.emails.send({
+            from: `FastFare <${getFromEmail()}>`,
+            reply_to: 'support@fastfare.in',
             to: [to],
             subject,
             html,

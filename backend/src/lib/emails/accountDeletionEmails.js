@@ -1,7 +1,14 @@
 import { Resend } from 'resend';
 
-const resendClient = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+// Lazy-init Resend client — avoids breakage when env vars aren't loaded at import time
+let _resendClient = null;
+const getResendClient = () => {
+    if (!_resendClient && process.env.RESEND_API_KEY) {
+        _resendClient = new Resend(process.env.RESEND_API_KEY);
+    }
+    return _resendClient;
+};
+const getFromEmail = () => process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || 'support@fastfare.in';
 
 export const sendDeleteOtpEmail = async (email, name, otp, accountType) => {
     const subject = `🔐 Your FastFare Account Deletion OTP — ${name}`;
@@ -75,8 +82,10 @@ export const sendDeleteOtpEmail = async (email, name, otp, accountType) => {
     `;
 
     try {
-        await resendClient.emails.send({
-            from: `FastFare <${FROM_EMAIL}>`,
+        const client = getResendClient();
+        if (!client) { console.warn('[FastFare Email] RESEND_API_KEY not set. Skipping OTP email.'); return; }
+        await client.emails.send({
+            from: `FastFare <${getFromEmail()}>`,
             reply_to: 'support@fastfare.in',
             to: [email],
             subject,
@@ -182,8 +191,10 @@ export const sendDeleteConfirmationEmail = async (email, name, accountType, user
     `;
 
     try {
-        await resendClient.emails.send({
-            from: `FastFare <${FROM_EMAIL}>`,
+        const client = getResendClient();
+        if (!client) { console.warn('[FastFare Email] RESEND_API_KEY not set. Skipping deletion confirmation email.'); return; }
+        await client.emails.send({
+            from: `FastFare <${getFromEmail()}>`,
             reply_to: 'support@fastfare.in',
             to: [email],
             subject,
