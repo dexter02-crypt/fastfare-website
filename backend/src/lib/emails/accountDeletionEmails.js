@@ -4,7 +4,8 @@ import { Resend } from 'resend';
 let _resendClient = null;
 const getResendClient = () => {
     if (!_resendClient && process.env.RESEND_API_KEY) {
-        _resendClient = new Resend(process.env.RESEND_API_KEY);
+        const cleanKey = process.env.RESEND_API_KEY.replace(/['"\r\n\t ]/g, '').trim();
+        _resendClient = new Resend(cleanKey);
     }
     return _resendClient;
 };
