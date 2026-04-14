@@ -26,7 +26,7 @@ const ACCOUNTS = [
         gstin: 'ADMIN000000000',
         businessType: 'logistics',
         contactPerson: 'System Admin',
-        email: 'admin@fastfare.com',
+        email: 'adiirao1749@gmail.com',
         phone: '0000000000',
         password: 'Admin@123',
         role: 'admin',
@@ -125,7 +125,7 @@ async function resetDatabase() {
         console.log('═══════════════════════════════════════\n');
 
         console.log('Login credentials:');
-        console.log('  Admin:   admin@fastfare.com   / Admin@123');
+        console.log('  Admin:   adiirao1749@gmail.com / Admin@123');
         console.log('  User:    user@fastfare.com    / User@123');
         console.log('  Partner: partner@fastfare.com / Partner@123');
 

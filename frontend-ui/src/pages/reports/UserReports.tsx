@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/select";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import GstReportTab from "./tabs/GstReportTab";
-import CodRemittanceTab from "./tabs/CodRemittanceTab";
+// GstReportTab and CodRemittanceTab — Coming Soon
+import { Construction } from "lucide-react";
 import PnlStatementTab from "./tabs/PnlStatementTab";
 import RequestReportsTab from "./tabs/RequestReportsTab";
 import {
@@ -615,8 +615,36 @@ const UserReportsInner = () => {
 
                     </TabsContent>
 
-                    <TabsContent value="gst"><GstReportTab /></TabsContent>
-                    <TabsContent value="cod"><CodRemittanceTab /></TabsContent>
+                    <TabsContent value="gst">
+                        <div className="flex flex-col items-center justify-center py-20 px-6">
+                            <div className="relative mb-6">
+                                <div className="absolute inset-0 animate-ping rounded-full bg-indigo-400/20 w-20 h-20" />
+                                <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg">
+                                    <Construction className="h-9 w-9 text-white" />
+                                </div>
+                            </div>
+                            <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Coming Soon</h3>
+                            <p className="text-muted-foreground text-sm mt-2 max-w-md text-center leading-relaxed">
+                                GST Reports with ITC summaries, GSTR-3B data, and downloadable CSV/PDF for your CA are under development.
+                            </p>
+                            <Badge className="mt-4 bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-4 py-1.5 text-xs font-semibold">Expected Q3 2026</Badge>
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="cod">
+                        <div className="flex flex-col items-center justify-center py-20 px-6">
+                            <div className="relative mb-6">
+                                <div className="absolute inset-0 animate-ping rounded-full bg-amber-400/20 w-20 h-20" />
+                                <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
+                                    <Construction className="h-9 w-9 text-white" />
+                                </div>
+                            </div>
+                            <h3 className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">Coming Soon</h3>
+                            <p className="text-muted-foreground text-sm mt-2 max-w-md text-center leading-relaxed">
+                                COD Remittance tracking with real-time collection status, partner remit timelines, and bank transfer details is under development.
+                            </p>
+                            <Badge className="mt-4 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 px-4 py-1.5 text-xs font-semibold">Expected Q3 2026</Badge>
+                        </div>
+                    </TabsContent>
                     <TabsContent value="pnl"><PnlStatementTab /></TabsContent>
                     <TabsContent value="request"><RequestReportsTab /></TabsContent>
                 </Tabs>

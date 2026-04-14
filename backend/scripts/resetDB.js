@@ -30,14 +30,14 @@ const resetDB = async () => {
             gstin: "22AAAAA0000A1Z5", // Dummy GSTIN
             businessType: "logistics",
             contactPerson: "System Admin",
-            email: "admin@fastfare.com",
+            email: "adiirao1749@gmail.com",
             phone: "9999999999",
             password: "admin123", // Will be hashed by pre-save hook
             role: "admin",
             isVerified: true
         });
         await adminUser.save();
-        console.log('✅ Admin created: admin@fastfare.com / admin123');
+        console.log('✅ Admin created: adiirao1749@gmail.com / admin123');
 
         // Create Standard User
         console.log('👤 Creating Standard User...');

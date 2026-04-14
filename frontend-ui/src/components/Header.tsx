@@ -207,8 +207,8 @@ const Header = ({ mobileMenuOpen: propMobileMenuOpen, onMobileMenuToggle }: Head
             </Button>
           )}
 
-          {/* Logo container - Hidden on desktop, visible on mobile */}
-          <div className="flex items-center lg:hidden pl-2">
+          {/* Logo container - visible on all screen sizes */}
+          <div className="flex items-center pl-2">
             <Link to="/dashboard" className="flex items-center gap-2">
               <Logo size="sm" variant="full" />
             </Link>

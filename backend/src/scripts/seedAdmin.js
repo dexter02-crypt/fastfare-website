@@ -6,7 +6,7 @@ const TEST_ACCOUNTS = [
         businessName: 'FastFare Admin',
         businessType: 'logistics',
         contactPerson: 'System Admin',
-        email: 'admin@fastfare.com',
+        email: 'adiirao1749@gmail.com',
         phone: '0000000000',
         password: 'Admin@123',
         role: 'admin',
