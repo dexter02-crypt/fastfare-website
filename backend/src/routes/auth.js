@@ -106,7 +106,9 @@ router.post('/send-registration-otp', async (req, res) => {
             await sendRegistrationOtpEmail(normalizedEmail, otpCode);
         } catch (emailErr) {
             console.error('Failed to dispatch registration email via Resend:', emailErr);
-            return res.status(500).json({ error: 'We had trouble sending the verification email. Please check your email address and try again, or contact support@fastfare.in.' });
+            return res.status(500).json({ 
+                error: `We had trouble sending the verification email: ${emailErr.message}. Please contact support.` 
+            });
         }
 
         res.status(200).json({

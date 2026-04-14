@@ -244,7 +244,7 @@ export const sendRegistrationOtpEmail = async (email, otpCode) => {
                 console.log('=============================================\n');
                 return { success: true, bypassed: true };
             }
-            throw new Error('Failed to send email via Resend');
+            throw new Error(`Resend API Error: ${error.message || JSON.stringify(error)}`);
         }
         return { success: true };
     } catch (err) {
