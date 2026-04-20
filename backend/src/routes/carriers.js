@@ -145,20 +145,39 @@ router.get('/', protect, async (req, res) => {
             .sort({ createdAt: -1 })
             .lean();
 
+        // Load accurate pricing from PartnerPricing schema
+        const PartnerPricing = (await import('../models/PartnerPricing.js')).default;
+        const pricings = await PartnerPricing.find({ partnerId: { $in: partners.map(p => p._id) } }).lean();
+
         // Map format for admin frontend
-        let carriers = partners.map(p => ({
-            _id: p._id,
-            businessName: p.businessName,
-            contactPerson: p.contactPerson,
-            email: p.email,
-            phone: p.phone,
-            gstin: p.gstin,
-            status: p.partnerDetails?.status || 'pending_approval',
-            fleetDetails: p.partnerDetails?.fleetDetails || { totalVehicles: 0, vehicleTypes: [] },
-            serviceZones: p.partnerDetails?.serviceZones || [],
-            baseFare: p.partnerDetails?.baseFare,
-            createdAt: p.createdAt
-        }));
+        let carriers = partners.map(p => {
+            const pricing = pricings.find(pr => pr.partnerId.toString() === p._id.toString());
+            const standardService = pricing?.services?.find(s => s.type === 'standard' || s.active) || {};
+            
+            return {
+                _id: p._id,
+                businessName: pricing?.companyName || p.businessName,
+                contactPerson: p.contactPerson,
+                email: p.email,
+                phone: p.phone,
+                gstin: p.gstin,
+                status: p.partnerDetails?.status || 'pending_approval',
+                partnerDetails: {
+                    fleetDetails: p.partnerDetails?.fleetDetails || { totalVehicles: 0, vehicleTypes: [] },
+                    serviceZones: p.partnerDetails?.serviceZones || [],
+                    baseFare: standardService?.basePrice || 0,
+                    perKgRate: standardService?.perKgRate || 0,
+                    rating: p.partnerDetails?.rating || 4.0,
+                    eta: standardService?.estimatedDays || p.partnerDetails?.eta || 'N/A',
+                    features: standardService?.codAvailable ? ['COD Available'] : [],
+                    supportedTypes: p.partnerDetails?.supportedTypes || ['standard'],
+                    rejectionReason: p.partnerDetails?.rejectionReason,
+                    approvedAt: p.partnerDetails?.approvedAt,
+                    status: p.partnerDetails?.status || 'pending_approval'
+                },
+                createdAt: p.createdAt
+            };
+        });
 
         res.json({ success: true, carriers });
     } catch (error) {
