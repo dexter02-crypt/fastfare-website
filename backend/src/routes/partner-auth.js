@@ -65,7 +65,7 @@ router.post('/register', async (req, res) => {
             verifiedToken, name, phone, email, password, businessName,
             zone, address, city, state, aadhaar,
             gstin, panNumber, fleetDetails, serviceZones,
-            supportedTypes, baseFare, perKgRate, webhookUrl, features
+            supportedTypes
         } = req.body;
 
         if (!phone || !password || !name || !email) {
@@ -117,10 +117,6 @@ router.post('/register', async (req, res) => {
                 fleetDetails: fleetDetails || { totalVehicles: 0, vehicleTypes: [] },
                 serviceZones: serviceZones || [],
                 supportedTypes: supportedTypes || ['standard'],
-                baseFare: baseFare || 99,
-                perKgRate: perKgRate || 10,
-                webhookUrl: webhookUrl || '',
-                features: features || [],
                 status: 'pending_approval'
             }
         });

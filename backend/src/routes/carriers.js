@@ -12,19 +12,28 @@ router.get('/active', async (req, res) => {
             'partnerDetails.status': 'approved'
         }).select('businessName contactPerson partnerDetails').lean();
 
-        // Map to format matching frontend expectations
-        const carriers = partners.map(p => ({
-            _id: p._id,
-            businessName: p.businessName,
-            contactPerson: p.contactPerson,
-            rating: p.partnerDetails?.rating,
-            baseFare: p.partnerDetails?.baseFare,
-            perKgRate: p.partnerDetails?.perKgRate,
-            eta: p.partnerDetails?.eta,
-            features: p.partnerDetails?.features,
-            supportedTypes: p.partnerDetails?.supportedTypes,
-            serviceZones: p.partnerDetails?.serviceZones
-        }));
+        // Load accurate pricing from PartnerPricing schema
+        const PartnerPricing = (await import('../models/PartnerPricing.js')).default;
+        const pricings = await PartnerPricing.find({ partnerId: { $in: partners.map(p => p._id) } }).lean();
+
+        // Map format
+        let carriers = partners.map(p => {
+            const pricing = pricings.find(pr => pr.partnerId.toString() === p._id.toString());
+            const standardService = pricing?.services?.find(s => s.type === 'standard' || s.active) || {};
+
+            return {
+                _id: p._id,
+                businessName: pricing?.companyName || p.businessName,
+                contactPerson: p.contactPerson,
+                rating: p.partnerDetails?.rating,
+                baseFare: standardService?.basePrice || 99,
+                perKgRate: standardService?.perKgRate || 10,
+                eta: standardService?.estimatedDays || p.partnerDetails?.eta || '3-5 days',
+                features: standardService?.codAvailable ? ['COD Available'] : [],
+                supportedTypes: p.partnerDetails?.supportedTypes || ['standard'],
+                serviceZones: p.partnerDetails?.serviceZones
+            };
+        });
 
         res.json({ success: true, carriers });
     } catch (error) {
@@ -47,24 +56,54 @@ router.get('/check-serviceability', async (req, res) => {
         }
 
         let partners = await User.find(query).select('businessName contactPerson partnerDetails').lean();
+        
+        // Load accurate pricing from PartnerPricing schema
+        const PartnerPricing = (await import('../models/PartnerPricing.js')).default;
+        const pricings = await PartnerPricing.find({ partnerId: { $in: partners.map(p => p._id) } }).lean();
 
         // Map format
-        let carriers = partners.map(p => ({
-            _id: p._id,
-            businessName: p.businessName,
-            contactPerson: p.contactPerson,
-            rating: p.partnerDetails?.rating,
-            baseFare: p.partnerDetails?.baseFare,
-            perKgRate: p.partnerDetails?.perKgRate,
-            eta: p.partnerDetails?.eta,
-            features: p.partnerDetails?.features,
-            supportedTypes: p.partnerDetails?.supportedTypes,
-            serviceZones: p.partnerDetails?.serviceZones
-        }));
+        let carriers = partners.map(p => {
+            const pricing = pricings.find(pr => pr.partnerId.toString() === p._id.toString());
+            const standardService = pricing?.services?.find(s => s.type === 'standard' || s.active) || {};
+            
+            return {
+                _id: p._id,
+                businessName: pricing?.companyName || p.businessName,
+                contactPerson: p.contactPerson,
+                rating: p.partnerDetails?.rating,
+                baseFare: standardService?.basePrice || 99,
+                perKgRate: standardService?.perKgRate || 10,
+                eta: standardService?.estimatedDays || p.partnerDetails?.eta || '3-5 days',
+                features: standardService?.codAvailable ? ['COD Available'] : [],
+                supportedTypes: p.partnerDetails?.supportedTypes || ['standard'],
+                serviceZones: p.partnerDetails?.serviceZones
+            };
+        });
 
         // Filter by serviceability (pincode match)
         if (pickup || delivery) {
             carriers = carriers.filter(carrier => {
+                const pricing = pricings.find(pr => pr.partnerId.toString() === carrier._id.toString());
+                const pinRanges = pricing?.coverage?.pinRanges || [];
+                const states = pricing?.coverage?.states || [];
+                
+                // If it claims "All India", we can permit it.
+                if (states.includes('All India')) return true;
+
+                // Otherwise fallback to pincode ranges checking
+                if (pinRanges.length > 0) {
+                     return pinRanges.some((range) => {
+                         const start = parseInt(range.from);
+                         const end = parseInt(range.to);
+                         const pickupNum = pickup ? parseInt(pickup) : null;
+                         const deliveryNum = delivery ? parseInt(delivery) : null;
+
+                         return (!pickup || (pickupNum >= start && pickupNum <= end)) &&
+                                (!delivery || (deliveryNum >= start && deliveryNum <= end));
+                     });
+                }
+                
+                // Fallback to legacy
                 if (!carrier.serviceZones || carrier.serviceZones.length === 0) return true; // no zones = serves all
                 return carrier.serviceZones.some((zone) => {
                     if (!zone.pincodes || zone.pincodes.length === 0) return true;

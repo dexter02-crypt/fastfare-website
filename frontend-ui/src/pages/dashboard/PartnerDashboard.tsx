@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { authApi } from "@/lib/api";
 import { API_BASE_URL } from "@/config";
+import { PricingOnboardingModal } from "@/components/PricingOnboardingModal";
 
 
 const wmsActions = [
@@ -73,6 +74,7 @@ const PartnerDashboard = () => {
 
     return (
         <DashboardLayout>
+            <PricingOnboardingModal />
             <div className="space-y-8 flex-1 h-full bg-gray-50/50 p-2">
                 {/* Welcome Section */}
                 <div className="flex flex-col gap-1">

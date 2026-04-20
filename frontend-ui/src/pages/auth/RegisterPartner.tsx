@@ -65,12 +65,6 @@ const RegisterPartner = () => {
         serviceStates: "",
         servicePincodes: "",
         supportedTypes: ["standard"] as string[],
-        baseFare: "99",
-        perKgRate: "10",
-        eta: "3-5 days",
-        webhookUrl: "",
-        features: [] as string[],
-        featureInput: "",
     });
 
     const toggleArrayField = (field: string, value: string) => {
@@ -85,22 +79,7 @@ const RegisterPartner = () => {
         });
     };
 
-    const addFeature = () => {
-        if (formData.featureInput.trim()) {
-            setFormData(prev => ({
-                ...prev,
-                features: [...prev.features, prev.featureInput.trim()],
-                featureInput: ""
-            }));
-        }
-    };
 
-    const removeFeature = (index: number) => {
-        setFormData(prev => ({
-            ...prev,
-            features: prev.features.filter((_, i) => i !== index)
-        }));
-    };
 
     const verifyGstin = async () => {
         if (formData.gstin.length !== 15) {
@@ -270,11 +249,6 @@ const RegisterPartner = () => {
                     }))
                     : [],
                 supportedTypes: formData.supportedTypes,
-                baseFare: parseFloat(formData.baseFare) || 99,
-                perKgRate: parseFloat(formData.perKgRate) || 10,
-                webhookUrl: formData.webhookUrl || undefined,
-                features: formData.features,
-                eta: formData.eta || '3-5 days',
                 zone: formData.city,
                 city: formData.city
             };
@@ -595,89 +569,7 @@ const RegisterPartner = () => {
                             </div>
                         </div>
 
-                        {/* Pricing & Integration */}
-                        <div className="pt-4 mt-4 border-t border-border/50">
-                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                <Zap className="h-4 w-4 text-primary" /> Pricing & Features
-                            </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="baseFare">Base Fare (₹)</Label>
-                                    <Input
-                                        id="baseFare"
-                                        type="number"
-                                        value={formData.baseFare}
-                                        onChange={(e) => setFormData({ ...formData, baseFare: e.target.value })}
-                                        placeholder="99"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="perKgRate">Per KG Rate (₹)</Label>
-                                    <Input
-                                        id="perKgRate"
-                                        type="number"
-                                        value={formData.perKgRate}
-                                        onChange={(e) => setFormData({ ...formData, perKgRate: e.target.value })}
-                                        placeholder="10"
-                                    />
-                                </div>
-                            </div>
-                        </div>
 
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="eta">Avg. Delivery ETA</Label>
-                                <Input
-                                    id="eta"
-                                    value={formData.eta}
-                                    onChange={(e) => setFormData({ ...formData, eta: e.target.value })}
-                                    placeholder="e.g. 3-5 Business Days"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="webhookUrl">Webhook URL (Optional)</Label>
-                                <div className="relative">
-                                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        id="webhookUrl"
-                                        value={formData.webhookUrl}
-                                        onChange={(e) => setFormData({ ...formData, webhookUrl: e.target.value })}
-                                        placeholder="https://your-api.com/webhook"
-                                        className="pl-10"
-                                    />
-                                </div>
-                                <p className="text-[10px] text-muted-foreground">Receive real-time shipment events via HTTP POST</p>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Special Features / Highlights</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        value={formData.featureInput}
-                                        onChange={(e) => setFormData({ ...formData, featureInput: e.target.value })}
-                                        placeholder="e.g. Temperature Controlled, Real-time tracking"
-                                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addFeature())}
-                                    />
-                                    <Button type="button" size="icon" variant="outline" onClick={addFeature}>
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                                {formData.features.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {formData.features.map((f, i) => (
-                                            <span
-                                                key={i}
-                                                className="bg-primary/10 text-primary px-2 py-1 text-xs rounded-full flex items-center gap-1"
-                                            >
-                                                {f}
-                                                <button type="button" onClick={() => removeFeature(i)} className="hover:text-red-500">
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
 
                         {/* Password */}
                         <div className="pt-4 mt-4 border-t border-border/50 space-y-2">

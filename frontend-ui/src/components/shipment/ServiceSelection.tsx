@@ -88,10 +88,12 @@ const ServiceSelection = ({ data, onChange, pickupPincode, deliveryPincode, char
     onChange({ ...data, [field]: value });
   };
 
-  // Calculate carrier price: perKgRate × chargeableWeight
+  // Calculate carrier price: baseFare + (perKgRate × chargeableWeight)
   const getCarrierShippingCost = (carrier: CarrierOption) => {
+    const base = carrier.baseFare || 0;
     const rate = carrier.perKgRate || 0;
-    return Math.round(rate * chargeableWeight);
+    const effectiveWeight = Math.max(chargeableWeight, 0.5);
+    return Math.round(base + (rate * effectiveWeight));
   };
 
   const handleCarrierSelect = (carrierId: string) => {
