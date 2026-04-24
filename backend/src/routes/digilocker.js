@@ -94,7 +94,7 @@ router.get('/callback', async (req, res) => {
     }
 
     const errorBase = req.session.digilocker_pending_reg_id 
-        ? `${baseUrl}/register/user` 
+        ? `${baseUrl}/register` 
         : `${baseUrl}/settings`;
 
     // Closure helper for redirects handling DB state wrapping
@@ -231,9 +231,12 @@ router.get('/callback', async (req, res) => {
             req.session.digilocker_signup_verified = true;
             delete req.session.digilocker_pending_reg_id;
 
+            // Redirect to the correct registration page based on role
+            const registerPath = pendingReg.role === 'shipment_partner' ? '/register/partner' : '/register/user';
+
             return req.session.save((err) => {
                 const safeName = encodeURIComponent(kycName);
-                return trackAndRedirect(`${baseUrl}/register/user?kyc_success=true&verified_name=${safeName}`, 'success');
+                return trackAndRedirect(`${baseUrl}${registerPath}?kyc_success=true&verified_name=${safeName}`, 'success');
             });
         } else if (userId) {
             // Flow: Existing User Settings KYC

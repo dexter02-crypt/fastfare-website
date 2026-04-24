@@ -178,7 +178,7 @@ router.post('/verify-registration-otp', async (req, res) => {
 // Register
 router.post('/register/initiate-digilocker', async (req, res) => {
     try {
-        const { email, businessName, businessType, contactPerson, phone, gstin } = req.body;
+        const { email, businessName, businessType, contactPerson, phone, gstin, role } = req.body;
         
         if (!email || !phone) return res.status(400).json({ error: 'Email and phone are required.' });
 
@@ -187,6 +187,7 @@ router.post('/register/initiate-digilocker', async (req, res) => {
 
         const pendingReg = await PendingRegistration.create({
             email, businessName, businessType, contactPerson, phone, gstin,
+            role: role || 'user',
             status: "pending_digilocker"
         });
 

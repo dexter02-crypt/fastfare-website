@@ -65,7 +65,10 @@ router.post('/register', async (req, res) => {
             verifiedToken, name, phone, email, password, businessName,
             zone, address, city, state, aadhaar,
             gstin, panNumber, fleetDetails, serviceZones,
-            supportedTypes
+            supportedTypes,
+            // DigiLocker verification fields
+            digilocker_verified, kyc_name, kyc_dob, kyc_gender,
+            pending_registration_id
         } = req.body;
 
         if (!phone || !password || !name || !email) {
@@ -102,7 +105,7 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ success: false, message: msg });
         }
 
-        const user = await User.create({
+        const userData = {
             contactPerson: name,
             businessName: businessName || `${name}'s Business`,
             phone,
@@ -112,6 +115,7 @@ router.post('/register', async (req, res) => {
             gstin: gstin || `PARTNER${phone.slice(-10)}`,
             businessType: 'logistics',
             isVerified: true,
+            emailVerified: true,
             partnerDetails: {
                 zone, address, city, state, aadhaar,
                 fleetDetails: fleetDetails || { totalVehicles: 0, vehicleTypes: [] },
@@ -119,9 +123,54 @@ router.post('/register', async (req, res) => {
                 supportedTypes: supportedTypes || ['standard'],
                 status: 'pending_approval'
             }
-        });
+        };
+
+        // Persist DigiLocker verification data if available
+        if (digilocker_verified) {
+            userData.kyc_status = 'verified';
+            userData.digilocker_verified = true;
+            userData.digilocker_verified_at = new Date();
+            userData.kyc_name = kyc_name;
+            userData.kyc_dob = kyc_dob;
+            userData.kyc_gender = kyc_gender;
+            userData.kyc = {
+                status: 'verified',
+                verifiedAt: new Date(),
+                digilocker: {
+                    status: 'verified',
+                    verifiedAt: new Date(),
+                    dob: kyc_dob || '',
+                    gender: kyc_gender || ''
+                }
+            };
+            userData.verifiedIdentity = {
+                source: 'digilocker',
+                status: 'verified',
+                fullName: kyc_name,
+                dob: kyc_dob,
+                gender: kyc_gender,
+                verifiedAt: new Date(),
+                lastAttemptAt: new Date(),
+                attemptCount: 1
+            };
+            userData.onboardingStatus = 'pending_review';
+            userData.onboardingSubmittedAt = new Date();
+        } else {
+            userData.kyc_status = 'pending';
+            userData.digilocker_verified = false;
+            userData.verifiedIdentity = { source: 'none', status: 'not_started' };
+            userData.onboardingStatus = 'draft';
+        }
+
+        const user = await User.create(userData);
 
         await EmailVerification.deleteMany({ email: normalizedEmail, purpose: 'registration' });
+
+        // Clean up pending registration if applicable
+        if (pending_registration_id) {
+            const { PendingRegistration } = await import('../models/PendingRegistration.js');
+            await PendingRegistration.findByIdAndDelete(pending_registration_id);
+        }
 
         const token = generateToken(user._id);
         const partner = await formatPartner(user);

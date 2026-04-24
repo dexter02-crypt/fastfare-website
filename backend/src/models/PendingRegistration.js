@@ -12,6 +12,7 @@ const pendingRegistrationSchema = new mongoose.Schema({
     contactPerson: { type: String, required: true },
     phone: { type: String, required: true },
     gstin: { type: String },
+    role: { type: String, enum: ['user', 'shipment_partner'], default: 'user' },
     
     // DigiLocker Status fields
     status: {

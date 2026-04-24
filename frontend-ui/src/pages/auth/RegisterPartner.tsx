@@ -38,6 +38,12 @@ const RegisterPartner = () => {
     const [isVerifying, setIsVerifying] = useState(false);
     const [countdown, setCountdown] = useState(0);
 
+    // DigiLocker states
+    const [kycSuccess, setKycSuccess] = useState(false);
+    const [verifiedName, setVerifiedName] = useState("");
+    const [kycError, setKycError] = useState("");
+    const [verifyingDigilocker, setVerifyingDigilocker] = useState(false);
+
     useEffect(() => {
         let timer: NodeJS.Timeout;
         if (countdown > 0 && showOtpScreen) {
@@ -45,6 +51,49 @@ const RegisterPartner = () => {
         }
         return () => clearInterval(timer);
     }, [countdown, showOtpScreen]);
+
+    // Restore form data and DigiLocker status from query params / sessionStorage after redirect
+    useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        const kycStatus = queryParams.get("kyc_success");
+        const kycFailure = queryParams.get("kyc_error");
+        const vName = queryParams.get("verified_name");
+
+        if (kycStatus === "true") {
+            setKycSuccess(true);
+            if (vName) setVerifiedName(decodeURIComponent(vName));
+            toast({ title: "Verification Successful", description: "Your identity has been verified via DigiLocker." });
+        } else if (kycFailure) {
+            setKycError(kycFailure);
+            toast({ title: "Verification Failed", description: "Identity verification failed: " + kycFailure, variant: "destructive" });
+        }
+
+        const savedData = sessionStorage.getItem("ff_pending_partner_registration");
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                setFormData(prev => ({
+                    ...prev,
+                    businessName: parsed.businessName || "",
+                    gstin: parsed.gstin || "",
+                    contactPerson: parsed.contactPerson || "",
+                    email: parsed.email || "",
+                    phone: parsed.phone || "",
+                    city: parsed.city || "",
+                    totalVehicles: parsed.totalVehicles || "",
+                    vehicleTypes: parsed.vehicleTypes || [],
+                    serviceStates: parsed.serviceStates || "",
+                    servicePincodes: parsed.servicePincodes || "",
+                    supportedTypes: parsed.supportedTypes || ["standard"],
+                }));
+            } catch (err) {}
+        }
+
+        if (kycStatus || kycFailure) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, [toast]);
+
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [gstinVerifying, setGstinVerifying] = useState(false);
     const [gstinVerified, setGstinVerified] = useState(false);
@@ -145,7 +194,55 @@ const RegisterPartner = () => {
         if (passwordStrength <= 2) return "Weak";
         if (passwordStrength <= 4) return "Medium";
         return "Strong";
-    };    const handleSendOtp = async (e: React.FormEvent) => {
+    };
+
+    const handleDigilockerInitiate = async () => {
+        if (!formData.email || !formData.phone || !formData.businessName || !formData.contactPerson) {
+            toast({ title: "Missing fields", description: "Please fill in Email, Phone, Business Name and Contact Person before verifying.", variant: "destructive" });
+            return;
+        }
+
+        sessionStorage.setItem("ff_pending_partner_registration", JSON.stringify({
+            businessName: formData.businessName,
+            gstin: formData.gstin,
+            contactPerson: formData.contactPerson,
+            email: formData.email,
+            phone: formData.phone,
+            city: formData.city,
+            totalVehicles: formData.totalVehicles,
+            vehicleTypes: formData.vehicleTypes,
+            serviceStates: formData.serviceStates,
+            servicePincodes: formData.servicePincodes,
+            supportedTypes: formData.supportedTypes,
+        }));
+
+        setVerifyingDigilocker(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/register/initiate-digilocker`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: formData.email,
+                    phone: formData.phone,
+                    businessName: formData.businessName,
+                    businessType: "logistics",
+                    contactPerson: formData.contactPerson,
+                    gstin: formData.gstin,
+                    role: "shipment_partner"
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Failed to initiate DigiLocker");
+
+            sessionStorage.setItem("ff_pending_reg_id", data.pending_id);
+            window.location.href = data.auth_url;
+        } catch (err) {
+            setVerifyingDigilocker(false);
+            toast({ title: "Error", description: err instanceof Error ? err.message : "Error initiating DigiLocker", variant: "destructive" });
+        }
+    };
+
+    const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (formData.phone.length !== 10 || !/^[6-9]\d{9}$/.test(formData.phone)) {
@@ -226,7 +323,7 @@ const RegisterPartner = () => {
             const gstin = formData.gstin || `99${formData.phone.slice(0, 5)}00000A1Z${Math.floor(Math.random() * 10)}`;
             const registrationData = {
                 verifiedToken: verifyData.verifiedToken,
-                name: formData.contactPerson, // partner endpoint expects "name" in some places and "contactPerson" in others
+                name: formData.contactPerson,
                 businessName: formData.businessName,
                 gstin: gstin,
                 businessType: "logistics",
@@ -235,7 +332,11 @@ const RegisterPartner = () => {
                 phone: formData.phone,
                 password: formData.password,
                 role: "shipment_partner",
-                // Passing down the carrier-specific data as partnerDetails (handled automatically by backend partner-auth)
+                // DigiLocker verification data
+                digilocker_verified: kycSuccess,
+                kyc_name: verifiedName,
+                pending_registration_id: sessionStorage.getItem("ff_pending_reg_id") || undefined,
+                // Passing down the carrier-specific data as partnerDetails
                 fleetDetails: {
                     totalVehicles: parseInt(formData.totalVehicles) || 0,
                     vehicleTypes: formData.vehicleTypes,
@@ -267,6 +368,9 @@ const RegisterPartner = () => {
             // Store token and user info
             localStorage.setItem("token", data.token);
             localStorage.setItem("user", JSON.stringify(data.partner || data.user));
+
+            sessionStorage.removeItem("ff_pending_partner_registration");
+            sessionStorage.removeItem("ff_pending_reg_id");
 
             toast({
                 title: "Registration Submitted! 🎉",
@@ -627,6 +731,49 @@ const RegisterPartner = () => {
                             />
                             {formData.confirmPassword && formData.password !== formData.confirmPassword && (
                                 <p className="text-xs text-red-500">Passwords do not match</p>
+                            )}
+                        </div>
+
+                        {/* Verify Your Identity — DigiLocker */}
+                        <div className="space-y-2 mt-4 mb-4">
+                            <Label className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Verify Your Identity</Label>
+                            {kycSuccess ? (
+                                <div className="p-4 border border-green-200 bg-green-50 rounded-lg flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                                            <Check className="h-5 w-5 text-green-600" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-green-800">Verified via DigiLocker</p>
+                                            <p className="text-xs text-green-600">Name: {verifiedName}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="p-4 border rounded-lg bg-card flex flex-col sm:flex-row items-center gap-4 justify-between transition-colors hover:bg-muted/50">
+                                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                                        <div className="h-10 w-10 bg-[#0066cc]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                                            <Shield className="h-5 w-5 text-[#0066cc]" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-foreground">Verify with DigiLocker</p>
+                                            <p className="text-xs text-muted-foreground">Verify your identity securely via MeriPehchaan (Optional)</p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        onClick={handleDigilockerInitiate}
+                                        disabled={verifyingDigilocker}
+                                        className="bg-white border text-[#0066cc] border-[#0066cc]/20 hover:bg-[#0066cc]/10 w-full sm:w-auto shadow-sm"
+                                    >
+                                        {verifyingDigilocker ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Connecting...</> : 'Verify Now'}
+                                    </Button>
+                                </div>
+                            )}
+                            {kycError && (
+                                <p className="text-xs text-red-500 flex items-center gap-1">
+                                    <X className="h-3 w-3" /> DigiLocker verification failed: {kycError}
+                                </p>
                             )}
                         </div>
 
